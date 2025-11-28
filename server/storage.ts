@@ -9,9 +9,22 @@ import type {
   ClassificacaoRisco,
   Empresa,
   User,
-  InsertUser
+  InsertUser,
+  TRT,
+  InsertTRT,
+  Vara,
+  InsertVara,
+  Juiz,
+  InsertJuiz,
+  Julgamento,
+  InsertJulgamento,
+  Favorabilidade,
+  JuizComFavorabilidade,
+  VaraComFavorabilidade,
+  TRTComFavorabilidade,
+  DecisionResult
 } from "@shared/schema";
-import { users } from "@shared/schema";
+import { users, trts, varas, juizes, julgamentos } from "@shared/schema";
 import { parseExcelFile } from "./excel-parser";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
@@ -26,6 +39,34 @@ export interface IStorage {
   updateUserRole(id: string, role: string): Promise<User | undefined>;
   updateUserPassword(id: string, passwordHash: string): Promise<User | undefined>;
   getAllUsers(): Promise<User[]>;
+  
+  getAllTRTs(): Promise<TRT[]>;
+  getTRT(id: string): Promise<TRT | undefined>;
+  createTRT(trt: InsertTRT): Promise<TRT>;
+  updateTRT(id: string, data: Partial<InsertTRT>): Promise<TRT | undefined>;
+  deleteTRT(id: string): Promise<boolean>;
+  
+  getVarasByTRT(trtId: string): Promise<Vara[]>;
+  getVara(id: string): Promise<Vara | undefined>;
+  createVara(vara: InsertVara): Promise<Vara>;
+  updateVara(id: string, data: Partial<InsertVara>): Promise<Vara | undefined>;
+  deleteVara(id: string): Promise<boolean>;
+  
+  getJuizesByVara(varaId: string): Promise<Juiz[]>;
+  getJuiz(id: string): Promise<Juiz | undefined>;
+  createJuiz(juiz: InsertJuiz): Promise<Juiz>;
+  updateJuiz(id: string, data: Partial<InsertJuiz>): Promise<Juiz | undefined>;
+  deleteJuiz(id: string): Promise<boolean>;
+  
+  getJulgamentosByJuiz(juizId: string): Promise<Julgamento[]>;
+  getJulgamento(id: string): Promise<Julgamento | undefined>;
+  createJulgamento(julgamento: InsertJulgamento): Promise<Julgamento>;
+  updateJulgamento(id: string, data: Partial<InsertJulgamento>): Promise<Julgamento | undefined>;
+  deleteJulgamento(id: string): Promise<boolean>;
+  
+  getJuizFavorabilidade(juizId: string): Promise<Favorabilidade>;
+  getAllJuizesComFavorabilidade(): Promise<JuizComFavorabilidade[]>;
+  getAllTRTsComFavorabilidade(): Promise<TRTComFavorabilidade[]>;
 }
 
 export class MemStorage implements IStorage {
@@ -240,6 +281,206 @@ export class MemStorage implements IStorage {
       percentualRiscoProvavel: totalProcessos > 0 ? Math.round((riscoProvavel / totalProcessos) * 100) : 0,
       percentualFaseRecursal: totalProcessos > 0 ? Math.round((faseRecursal / totalProcessos) * 100) : 0,
     };
+  }
+
+  async getAllTRTs(): Promise<TRT[]> {
+    return await db.select().from(trts).orderBy(trts.numero);
+  }
+
+  async getTRT(id: string): Promise<TRT | undefined> {
+    const [trt] = await db.select().from(trts).where(eq(trts.id, id));
+    return trt;
+  }
+
+  async createTRT(trt: InsertTRT): Promise<TRT> {
+    const [created] = await db.insert(trts).values(trt).returning();
+    return created;
+  }
+
+  async updateTRT(id: string, data: Partial<InsertTRT>): Promise<TRT | undefined> {
+    const [updated] = await db.update(trts).set(data).where(eq(trts.id, id)).returning();
+    return updated;
+  }
+
+  async deleteTRT(id: string): Promise<boolean> {
+    const result = await db.delete(trts).where(eq(trts.id, id));
+    return true;
+  }
+
+  async getVarasByTRT(trtId: string): Promise<Vara[]> {
+    return await db.select().from(varas).where(eq(varas.trtId, trtId));
+  }
+
+  async getVara(id: string): Promise<Vara | undefined> {
+    const [vara] = await db.select().from(varas).where(eq(varas.id, id));
+    return vara;
+  }
+
+  async createVara(vara: InsertVara): Promise<Vara> {
+    const [created] = await db.insert(varas).values(vara).returning();
+    return created;
+  }
+
+  async updateVara(id: string, data: Partial<InsertVara>): Promise<Vara | undefined> {
+    const [updated] = await db.update(varas).set(data).where(eq(varas.id, id)).returning();
+    return updated;
+  }
+
+  async deleteVara(id: string): Promise<boolean> {
+    await db.delete(varas).where(eq(varas.id, id));
+    return true;
+  }
+
+  async getJuizesByVara(varaId: string): Promise<Juiz[]> {
+    return await db.select().from(juizes).where(eq(juizes.varaId, varaId));
+  }
+
+  async getJuiz(id: string): Promise<Juiz | undefined> {
+    const [juiz] = await db.select().from(juizes).where(eq(juizes.id, id));
+    return juiz;
+  }
+
+  async createJuiz(juiz: InsertJuiz): Promise<Juiz> {
+    const [created] = await db.insert(juizes).values(juiz).returning();
+    return created;
+  }
+
+  async updateJuiz(id: string, data: Partial<InsertJuiz>): Promise<Juiz | undefined> {
+    const [updated] = await db.update(juizes).set(data).where(eq(juizes.id, id)).returning();
+    return updated;
+  }
+
+  async deleteJuiz(id: string): Promise<boolean> {
+    await db.delete(juizes).where(eq(juizes.id, id));
+    return true;
+  }
+
+  async getJulgamentosByJuiz(juizId: string): Promise<Julgamento[]> {
+    return await db.select().from(julgamentos).where(eq(julgamentos.juizId, juizId));
+  }
+
+  async getJulgamento(id: string): Promise<Julgamento | undefined> {
+    const [julgamento] = await db.select().from(julgamentos).where(eq(julgamentos.id, id));
+    return julgamento;
+  }
+
+  async createJulgamento(julgamento: InsertJulgamento): Promise<Julgamento> {
+    const [created] = await db.insert(julgamentos).values(julgamento).returning();
+    return created;
+  }
+
+  async updateJulgamento(id: string, data: Partial<InsertJulgamento>): Promise<Julgamento | undefined> {
+    const [updated] = await db.update(julgamentos).set(data).where(eq(julgamentos.id, id)).returning();
+    return updated;
+  }
+
+  async deleteJulgamento(id: string): Promise<boolean> {
+    await db.delete(julgamentos).where(eq(julgamentos.id, id));
+    return true;
+  }
+
+  private calculateFavorabilidade(julgamentosData: Julgamento[]): Favorabilidade {
+    const favoraveis = julgamentosData.filter(j => j.resultado === "favoravel").length;
+    const desfavoraveis = julgamentosData.filter(j => j.resultado === "desfavoravel").length;
+    const parciais = julgamentosData.filter(j => j.resultado === "parcial").length;
+    
+    const pontosFavoraveis = favoraveis + (parciais * 0.5);
+    const total = favoraveis + desfavoraveis + parciais;
+    
+    return {
+      totalJulgamentos: total,
+      favoraveis,
+      desfavoraveis,
+      parciais,
+      percentualFavoravel: total > 0 ? Math.round((pontosFavoraveis / total) * 100) : 0,
+      percentualDesfavoravel: total > 0 ? Math.round(((desfavoraveis + parciais * 0.5) / total) * 100) : 0,
+    };
+  }
+
+  async getJuizFavorabilidade(juizId: string): Promise<Favorabilidade> {
+    const julgamentosData = await this.getJulgamentosByJuiz(juizId);
+    return this.calculateFavorabilidade(julgamentosData);
+  }
+
+  async getAllJuizesComFavorabilidade(): Promise<JuizComFavorabilidade[]> {
+    const allTrts = await this.getAllTRTs();
+    const result: JuizComFavorabilidade[] = [];
+
+    for (const trt of allTrts) {
+      const trtVaras = await this.getVarasByTRT(trt.id);
+      for (const vara of trtVaras) {
+        const varaJuizes = await this.getJuizesByVara(vara.id);
+        for (const juiz of varaJuizes) {
+          const favorabilidade = await this.getJuizFavorabilidade(juiz.id);
+          result.push({
+            id: juiz.id,
+            nome: juiz.nome,
+            tipo: juiz.tipo,
+            varaId: vara.id,
+            varaNome: vara.nome,
+            trtId: trt.id,
+            trtNome: trt.nome,
+            favorabilidade,
+          });
+        }
+      }
+    }
+
+    return result;
+  }
+
+  async getAllTRTsComFavorabilidade(): Promise<TRTComFavorabilidade[]> {
+    const allTrts = await this.getAllTRTs();
+    const result: TRTComFavorabilidade[] = [];
+
+    for (const trt of allTrts) {
+      const trtVaras = await this.getVarasByTRT(trt.id);
+      const varasComFavorabilidade: VaraComFavorabilidade[] = [];
+      let trtJulgamentos: Julgamento[] = [];
+
+      for (const vara of trtVaras) {
+        const varaJuizes = await this.getJuizesByVara(vara.id);
+        const juizesComFavorabilidade: JuizComFavorabilidade[] = [];
+        let varaJulgamentos: Julgamento[] = [];
+
+        for (const juiz of varaJuizes) {
+          const julgamentosJuiz = await this.getJulgamentosByJuiz(juiz.id);
+          varaJulgamentos = [...varaJulgamentos, ...julgamentosJuiz];
+          trtJulgamentos = [...trtJulgamentos, ...julgamentosJuiz];
+          
+          juizesComFavorabilidade.push({
+            id: juiz.id,
+            nome: juiz.nome,
+            tipo: juiz.tipo,
+            varaId: vara.id,
+            varaNome: vara.nome,
+            trtId: trt.id,
+            trtNome: trt.nome,
+            favorabilidade: this.calculateFavorabilidade(julgamentosJuiz),
+          });
+        }
+
+        varasComFavorabilidade.push({
+          id: vara.id,
+          nome: vara.nome,
+          cidade: vara.cidade,
+          trtId: trt.id,
+          juizes: juizesComFavorabilidade,
+          favorabilidade: this.calculateFavorabilidade(varaJulgamentos),
+        });
+      }
+
+      result.push({
+        id: trt.id,
+        numero: trt.numero,
+        nome: trt.nome,
+        uf: trt.uf,
+        varas: varasComFavorabilidade,
+        favorabilidade: this.calculateFavorabilidade(trtJulgamentos),
+      });
+    }
+
+    return result;
   }
 }
 
