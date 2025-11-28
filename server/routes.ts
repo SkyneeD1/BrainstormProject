@@ -2,7 +2,16 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated, isAdmin, hashPassword, verifyPassword } from "./auth";
-import { loginSchema, createUserSchema, updatePasswordSchema, updateRoleSchema } from "@shared/schema";
+import { 
+  loginSchema, 
+  createUserSchema, 
+  updatePasswordSchema, 
+  updateRoleSchema,
+  insertTRTSchema,
+  insertVaraSchema,
+  insertJuizSchema,
+  insertJulgamentoSchema
+} from "@shared/schema";
 import XLSX from "xlsx";
 import { randomUUID } from "crypto";
 import multer from "multer";
@@ -326,6 +335,290 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error processing Excel file:", error);
       res.status(500).json({ error: "Falha ao processar arquivo Excel" });
+    }
+  });
+
+  // ========== TRT Routes ==========
+  app.get("/api/trts", isAuthenticated, async (req, res) => {
+    try {
+      const trts = await storage.getAllTRTs();
+      res.json(trts);
+    } catch (error) {
+      console.error("Error fetching TRTs:", error);
+      res.status(500).json({ error: "Erro ao buscar TRTs" });
+    }
+  });
+
+  app.get("/api/trts/:id", isAuthenticated, async (req, res) => {
+    try {
+      const trt = await storage.getTRT(req.params.id);
+      if (!trt) {
+        return res.status(404).json({ error: "TRT não encontrado" });
+      }
+      res.json(trt);
+    } catch (error) {
+      console.error("Error fetching TRT:", error);
+      res.status(500).json({ error: "Erro ao buscar TRT" });
+    }
+  });
+
+  app.post("/api/trts", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const parsed = insertTRTSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.errors[0]?.message || "Dados inválidos" });
+      }
+      const trt = await storage.createTRT(parsed.data);
+      res.status(201).json(trt);
+    } catch (error) {
+      console.error("Error creating TRT:", error);
+      res.status(500).json({ error: "Erro ao criar TRT" });
+    }
+  });
+
+  app.patch("/api/trts/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const trt = await storage.updateTRT(req.params.id, req.body);
+      if (!trt) {
+        return res.status(404).json({ error: "TRT não encontrado" });
+      }
+      res.json(trt);
+    } catch (error) {
+      console.error("Error updating TRT:", error);
+      res.status(500).json({ error: "Erro ao atualizar TRT" });
+    }
+  });
+
+  app.delete("/api/trts/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      await storage.deleteTRT(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting TRT:", error);
+      res.status(500).json({ error: "Erro ao excluir TRT" });
+    }
+  });
+
+  // ========== Vara Routes ==========
+  app.get("/api/trts/:trtId/varas", isAuthenticated, async (req, res) => {
+    try {
+      const varas = await storage.getVarasByTRT(req.params.trtId);
+      res.json(varas);
+    } catch (error) {
+      console.error("Error fetching varas:", error);
+      res.status(500).json({ error: "Erro ao buscar varas" });
+    }
+  });
+
+  app.get("/api/varas/:id", isAuthenticated, async (req, res) => {
+    try {
+      const vara = await storage.getVara(req.params.id);
+      if (!vara) {
+        return res.status(404).json({ error: "Vara não encontrada" });
+      }
+      res.json(vara);
+    } catch (error) {
+      console.error("Error fetching vara:", error);
+      res.status(500).json({ error: "Erro ao buscar vara" });
+    }
+  });
+
+  app.post("/api/varas", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const parsed = insertVaraSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.errors[0]?.message || "Dados inválidos" });
+      }
+      const vara = await storage.createVara(parsed.data);
+      res.status(201).json(vara);
+    } catch (error) {
+      console.error("Error creating vara:", error);
+      res.status(500).json({ error: "Erro ao criar vara" });
+    }
+  });
+
+  app.patch("/api/varas/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const vara = await storage.updateVara(req.params.id, req.body);
+      if (!vara) {
+        return res.status(404).json({ error: "Vara não encontrada" });
+      }
+      res.json(vara);
+    } catch (error) {
+      console.error("Error updating vara:", error);
+      res.status(500).json({ error: "Erro ao atualizar vara" });
+    }
+  });
+
+  app.delete("/api/varas/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      await storage.deleteVara(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting vara:", error);
+      res.status(500).json({ error: "Erro ao excluir vara" });
+    }
+  });
+
+  // ========== Juiz Routes ==========
+  app.get("/api/varas/:varaId/juizes", isAuthenticated, async (req, res) => {
+    try {
+      const juizes = await storage.getJuizesByVara(req.params.varaId);
+      res.json(juizes);
+    } catch (error) {
+      console.error("Error fetching juizes:", error);
+      res.status(500).json({ error: "Erro ao buscar juízes" });
+    }
+  });
+
+  app.get("/api/juizes/:id", isAuthenticated, async (req, res) => {
+    try {
+      const juiz = await storage.getJuiz(req.params.id);
+      if (!juiz) {
+        return res.status(404).json({ error: "Juiz não encontrado" });
+      }
+      res.json(juiz);
+    } catch (error) {
+      console.error("Error fetching juiz:", error);
+      res.status(500).json({ error: "Erro ao buscar juiz" });
+    }
+  });
+
+  app.post("/api/juizes", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const parsed = insertJuizSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.errors[0]?.message || "Dados inválidos" });
+      }
+      const data = {
+        ...parsed.data,
+        dataEntrada: parsed.data.dataEntrada ? new Date(parsed.data.dataEntrada) : null,
+        dataSaida: parsed.data.dataSaida ? new Date(parsed.data.dataSaida) : null,
+      };
+      const juiz = await storage.createJuiz(data);
+      res.status(201).json(juiz);
+    } catch (error) {
+      console.error("Error creating juiz:", error);
+      res.status(500).json({ error: "Erro ao criar juiz" });
+    }
+  });
+
+  app.patch("/api/juizes/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const juiz = await storage.updateJuiz(req.params.id, req.body);
+      if (!juiz) {
+        return res.status(404).json({ error: "Juiz não encontrado" });
+      }
+      res.json(juiz);
+    } catch (error) {
+      console.error("Error updating juiz:", error);
+      res.status(500).json({ error: "Erro ao atualizar juiz" });
+    }
+  });
+
+  app.delete("/api/juizes/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      await storage.deleteJuiz(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting juiz:", error);
+      res.status(500).json({ error: "Erro ao excluir juiz" });
+    }
+  });
+
+  // ========== Julgamento Routes ==========
+  app.get("/api/juizes/:juizId/julgamentos", isAuthenticated, async (req, res) => {
+    try {
+      const julgamentos = await storage.getJulgamentosByJuiz(req.params.juizId);
+      res.json(julgamentos);
+    } catch (error) {
+      console.error("Error fetching julgamentos:", error);
+      res.status(500).json({ error: "Erro ao buscar julgamentos" });
+    }
+  });
+
+  app.get("/api/julgamentos/:id", isAuthenticated, async (req, res) => {
+    try {
+      const julgamento = await storage.getJulgamento(req.params.id);
+      if (!julgamento) {
+        return res.status(404).json({ error: "Julgamento não encontrado" });
+      }
+      res.json(julgamento);
+    } catch (error) {
+      console.error("Error fetching julgamento:", error);
+      res.status(500).json({ error: "Erro ao buscar julgamento" });
+    }
+  });
+
+  app.post("/api/julgamentos", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const parsed = insertJulgamentoSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.errors[0]?.message || "Dados inválidos" });
+      }
+      const data = {
+        ...parsed.data,
+        dataJulgamento: parsed.data.dataJulgamento ? new Date(parsed.data.dataJulgamento) : null,
+      };
+      const julgamento = await storage.createJulgamento(data);
+      res.status(201).json(julgamento);
+    } catch (error) {
+      console.error("Error creating julgamento:", error);
+      res.status(500).json({ error: "Erro ao criar julgamento" });
+    }
+  });
+
+  app.patch("/api/julgamentos/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const julgamento = await storage.updateJulgamento(req.params.id, req.body);
+      if (!julgamento) {
+        return res.status(404).json({ error: "Julgamento não encontrado" });
+      }
+      res.json(julgamento);
+    } catch (error) {
+      console.error("Error updating julgamento:", error);
+      res.status(500).json({ error: "Erro ao atualizar julgamento" });
+    }
+  });
+
+  app.delete("/api/julgamentos/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      await storage.deleteJulgamento(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting julgamento:", error);
+      res.status(500).json({ error: "Erro ao excluir julgamento" });
+    }
+  });
+
+  // ========== Favorabilidade Routes ==========
+  app.get("/api/juizes/:id/favorabilidade", isAuthenticated, async (req, res) => {
+    try {
+      const favorabilidade = await storage.getJuizFavorabilidade(req.params.id);
+      res.json(favorabilidade);
+    } catch (error) {
+      console.error("Error fetching favorabilidade:", error);
+      res.status(500).json({ error: "Erro ao buscar favorabilidade" });
+    }
+  });
+
+  app.get("/api/favorabilidade/juizes", isAuthenticated, async (req, res) => {
+    try {
+      const juizes = await storage.getAllJuizesComFavorabilidade();
+      res.json(juizes);
+    } catch (error) {
+      console.error("Error fetching juizes com favorabilidade:", error);
+      res.status(500).json({ error: "Erro ao buscar juízes com favorabilidade" });
+    }
+  });
+
+  app.get("/api/favorabilidade/trts", isAuthenticated, async (req, res) => {
+    try {
+      const trts = await storage.getAllTRTsComFavorabilidade();
+      res.json(trts);
+    } catch (error) {
+      console.error("Error fetching TRTs com favorabilidade:", error);
+      res.status(500).json({ error: "Erro ao buscar TRTs com favorabilidade" });
     }
   });
 
