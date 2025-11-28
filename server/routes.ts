@@ -1,10 +1,9 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated, isAdmin } from "./replitAuth";
+import { setupAuth, isAuthenticated, isAdmin, hashPassword, verifyPassword } from "./auth";
+import { loginSchema, createUserSchema, updatePasswordSchema, updateRoleSchema } from "@shared/schema";
 import XLSX from "xlsx";
-import * as fs from "fs";
-import * as path from "path";
 import { randomUUID } from "crypto";
 import multer from "multer";
 import type { ProcessoRaw, FaseProcessual, ClassificacaoRisco, Empresa } from "@shared/schema";
@@ -67,48 +66,186 @@ export async function registerRoutes(
 ): Promise<Server> {
   await setupAuth(app);
 
-  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
+  // Login route
+  app.post('/api/login', async (req, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const parsed = loginSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Dados inválidos" });
+      }
+
+      const { username, password } = parsed.data;
+      const user = await storage.getUserByUsername(username);
+      
+      if (!user) {
+        return res.status(401).json({ error: "Usuário ou senha incorretos" });
+      }
+
+      const isValid = await verifyPassword(password, user.passwordHash);
+      if (!isValid) {
+        return res.status(401).json({ error: "Usuário ou senha incorretos" });
+      }
+
+      // Set session
+      req.session.user = {
+        id: user.id,
+        username: user.username,
+        role: user.role,
+      };
+
+      res.json({
+        id: user.id,
+        username: user.username,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+      });
+    } catch (error) {
+      console.error("Login error:", error);
+      res.status(500).json({ error: "Erro no servidor" });
+    }
+  });
+
+  // Logout route
+  app.post('/api/logout', (req, res) => {
+    req.session.destroy((err) => {
+      if (err) {
+        return res.status(500).json({ error: "Erro ao sair" });
+      }
+      res.json({ success: true });
+    });
+  });
+
+  // Get current user
+  app.get('/api/auth/user', isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.session.user!.id;
       const user = await storage.getUser(userId);
-      res.json(user);
+      if (!user) {
+        return res.status(404).json({ error: "Usuário não encontrado" });
+      }
+      res.json({
+        id: user.id,
+        username: user.username,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+      });
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
     }
   });
 
+  // Get all users (admin only)
   app.get("/api/users", isAuthenticated, isAdmin, async (req, res) => {
     try {
       const users = await storage.getAllUsers();
-      res.json(users);
+      res.json(users.map(u => ({
+        id: u.id,
+        username: u.username,
+        firstName: u.firstName,
+        lastName: u.lastName,
+        role: u.role,
+        createdAt: u.createdAt,
+      })));
     } catch (error) {
       console.error("Error fetching users:", error);
       res.status(500).json({ error: "Failed to fetch users" });
     }
   });
 
-  app.patch("/api/users/:id/role", isAuthenticated, isAdmin, async (req, res) => {
+  // Create user (admin only)
+  app.post("/api/users", isAuthenticated, isAdmin, async (req, res) => {
     try {
-      const { id } = req.params;
-      const { role } = req.body;
-
-      if (!["admin", "viewer"].includes(role)) {
-        return res.status(400).json({ error: "Invalid role" });
+      const parsed = createUserSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.errors[0]?.message || "Dados inválidos" });
       }
 
-      const user = await storage.updateUserRole(id, role);
-      if (!user) {
-        return res.status(404).json({ error: "User not found" });
+      const { username, password, firstName, lastName, role } = parsed.data;
+
+      // Check if username already exists
+      const existingUser = await storage.getUserByUsername(username);
+      if (existingUser) {
+        return res.status(400).json({ error: "Nome de usuário já existe" });
       }
 
-      res.json(user);
+      const passwordHash = await hashPassword(password);
+      const user = await storage.createUser({
+        username,
+        passwordHash,
+        firstName: firstName || null,
+        lastName: lastName || null,
+        role: role || "viewer",
+      });
+
+      res.json({
+        id: user.id,
+        username: user.username,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+      });
     } catch (error) {
-      console.error("Error updating user role:", error);
-      res.status(500).json({ error: "Failed to update user role" });
+      console.error("Error creating user:", error);
+      res.status(500).json({ error: "Erro ao criar usuário" });
     }
   });
 
+  // Update user role (admin only)
+  app.patch("/api/users/:id/role", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const parsed = updateRoleSchema.safeParse(req.body);
+      
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Dados inválidos" });
+      }
+
+      const user = await storage.updateUserRole(id, parsed.data.role);
+      if (!user) {
+        return res.status(404).json({ error: "Usuário não encontrado" });
+      }
+
+      res.json({
+        id: user.id,
+        username: user.username,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+      });
+    } catch (error) {
+      console.error("Error updating user role:", error);
+      res.status(500).json({ error: "Erro ao atualizar função" });
+    }
+  });
+
+  // Update user password (admin only)
+  app.patch("/api/users/:id/password", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const parsed = updatePasswordSchema.safeParse(req.body);
+      
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.errors[0]?.message || "Dados inválidos" });
+      }
+
+      const passwordHash = await hashPassword(parsed.data.newPassword);
+      const user = await storage.updateUserPassword(id, passwordHash);
+      
+      if (!user) {
+        return res.status(404).json({ error: "Usuário não encontrado" });
+      }
+
+      res.json({ success: true, message: "Senha atualizada com sucesso" });
+    } catch (error) {
+      console.error("Error updating password:", error);
+      res.status(500).json({ error: "Erro ao atualizar senha" });
+    }
+  });
+
+  // Passivo data routes (authenticated)
   app.get("/api/passivo", isAuthenticated, async (req, res) => {
     try {
       const data = await storage.getPassivoData();
@@ -129,6 +266,7 @@ export async function registerRoutes(
     }
   });
 
+  // Upload Excel (admin only)
   app.post("/api/passivo/upload", isAuthenticated, isAdmin, upload.single("file"), async (req, res) => {
     try {
       if (!req.file) {

@@ -1,7 +1,7 @@
 import { Link, useLocation } from "wouter";
-import { BarChart3, Database, ChevronDown, Building2, Scale, Users, LogOut, Shield, Eye } from "lucide-react";
+import { BarChart3, Database, ChevronDown, Building2, Scale, Users, LogOut, Shield, Eye, Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -41,14 +41,14 @@ const menuItems = [
 
 export function AppSidebar() {
   const [location] = useLocation();
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, logout, isLoggingOut } = useAuth();
 
   const getInitials = () => {
     if (user?.firstName && user?.lastName) {
       return `${user.firstName[0]}${user.lastName[0]}`.toUpperCase();
     }
-    if (user?.email) {
-      return user.email[0].toUpperCase();
+    if (user?.username) {
+      return user.username[0].toUpperCase();
     }
     return "U";
   };
@@ -57,7 +57,7 @@ export function AppSidebar() {
     if (user?.firstName && user?.lastName) {
       return `${user.firstName} ${user.lastName}`;
     }
-    return user?.email || "Usuário";
+    return user?.username || "Usuário";
   };
 
   return (
@@ -170,7 +170,6 @@ export function AppSidebar() {
           <div className="space-y-3">
             <div className="flex items-center gap-3 px-2">
               <Avatar className="h-8 w-8">
-                <AvatarImage src={user.profileImageUrl || undefined} className="object-cover" />
                 <AvatarFallback className="text-xs">{getInitials()}</AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
@@ -192,17 +191,21 @@ export function AppSidebar() {
                 </div>
               </div>
             </div>
-            <a href="/api/logout" className="block">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="w-full justify-start text-sidebar-foreground/70 hover:text-sidebar-foreground"
-                data-testid="button-logout"
-              >
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full justify-start text-sidebar-foreground/70 hover:text-sidebar-foreground"
+              onClick={() => logout()}
+              disabled={isLoggingOut}
+              data-testid="button-logout"
+            >
+              {isLoggingOut ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
                 <LogOut className="h-4 w-4 mr-2" />
-                Sair
-              </Button>
-            </a>
+              )}
+              Sair
+            </Button>
           </div>
         )}
         <div className="flex items-center gap-2 px-2 pt-3 border-t border-sidebar-accent mt-3">
