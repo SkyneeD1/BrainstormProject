@@ -12,7 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { Plus, User, Gavel, Trash2, CheckCircle, XCircle, MinusCircle } from "lucide-react";
+import { Plus, User, Gavel, Trash2, Edit, CheckCircle, XCircle, MinusCircle } from "lucide-react";
 import { JudgeAvatar, FavorabilidadeBar, FavorabilidadeBadge } from "@/components/judge-avatar";
 import type { TRT, TRTComFavorabilidade, Julgamento, JuizComFavorabilidade } from "@shared/schema";
 
@@ -26,6 +26,7 @@ export default function JuizesPage() {
   const [selectedVaraId, setSelectedVaraId] = useState<string>("");
   const [selectedJuizId, setSelectedJuizId] = useState<string | null>(null);
   const [selectedJuiz, setSelectedJuiz] = useState<JuizComFavorabilidade | null>(null);
+  const [editingJulgamento, setEditingJulgamento] = useState<Julgamento | null>(null);
 
   const { data: trtsData, isLoading: isLoadingTRTs } = useQuery<TRTComFavorabilidade[]>({
     queryKey: ["/api/favorabilidade/trts"],
@@ -75,6 +76,20 @@ export default function JuizesPage() {
     onError: () => toast({ title: "Erro ao registrar julgamento", variant: "destructive" }),
   });
 
+  const updateJulgamentoMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: { resultado: string; dataJulgamento?: string; parte?: string } }) =>
+      apiRequest("PATCH", `/api/julgamentos/${id}`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/favorabilidade/juizes"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/favorabilidade/trts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/juizes", selectedJuizId, "julgamentos"] });
+      setEditingJulgamento(null);
+      setShowJulgamentoDialog(false);
+      toast({ title: "Julgamento atualizado com sucesso" });
+    },
+    onError: () => toast({ title: "Erro ao atualizar julgamento", variant: "destructive" }),
+  });
+
   const deleteJulgamentoMutation = useMutation({
     mutationFn: (id: string) => apiRequest("DELETE", `/api/julgamentos/${id}`),
     onSuccess: () => {
@@ -100,13 +115,37 @@ export default function JuizesPage() {
     e.preventDefault();
     if (!selectedJuizId) return;
     const formData = new FormData(e.currentTarget);
-    createJulgamentoMutation.mutate({
-      juizId: selectedJuizId,
-      numeroProcesso: formData.get("numeroProcesso") as string,
-      resultado: formData.get("resultado") as string,
-      dataJulgamento: formData.get("dataJulgamento") as string || undefined,
-      parte: formData.get("parte") as string || undefined,
-    });
+    
+    if (editingJulgamento) {
+      updateJulgamentoMutation.mutate({
+        id: editingJulgamento.id,
+        data: {
+          resultado: formData.get("resultado") as string,
+          dataJulgamento: formData.get("dataJulgamento") as string || undefined,
+          parte: formData.get("parte") as string || undefined,
+        },
+      });
+    } else {
+      createJulgamentoMutation.mutate({
+        juizId: selectedJuizId,
+        numeroProcesso: formData.get("numeroProcesso") as string,
+        resultado: formData.get("resultado") as string,
+        dataJulgamento: formData.get("dataJulgamento") as string || undefined,
+        parte: formData.get("parte") as string || undefined,
+      });
+    }
+  };
+
+  const handleEditJulgamento = (julgamento: Julgamento) => {
+    setEditingJulgamento(julgamento);
+    setShowJulgamentoDialog(true);
+  };
+
+  const handleCloseJulgamentoDialog = (open: boolean) => {
+    if (!open) {
+      setEditingJulgamento(null);
+    }
+    setShowJulgamentoDialog(open);
   };
 
   const getResultadoIcon = (resultado: string) => {
@@ -352,18 +391,28 @@ export default function JuizesPage() {
                           <TableCell className="text-sm">{j.parte || "-"}</TableCell>
                           {isAdmin && (
                             <TableCell>
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                onClick={() => {
-                                  if (confirm("Excluir este julgamento?")) {
-                                    deleteJulgamentoMutation.mutate(j.id);
-                                  }
-                                }}
-                                data-testid={`button-delete-julgamento-${j.id}`}
-                              >
-                                <Trash2 className="h-3 w-3" />
-                              </Button>
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  onClick={() => handleEditJulgamento(j)}
+                                  data-testid={`button-edit-julgamento-${j.id}`}
+                                >
+                                  <Edit className="h-3 w-3" />
+                                </Button>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    if (confirm("Excluir este julgamento?")) {
+                                      deleteJulgamentoMutation.mutate(j.id);
+                                    }
+                                  }}
+                                  data-testid={`button-delete-julgamento-${j.id}`}
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              </div>
                             </TableCell>
                           )}
                         </TableRow>
@@ -379,19 +428,27 @@ export default function JuizesPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={showJulgamentoDialog} onOpenChange={setShowJulgamentoDialog}>
+      <Dialog open={showJulgamentoDialog} onOpenChange={handleCloseJulgamentoDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Registrar Julgamento</DialogTitle>
+            <DialogTitle>{editingJulgamento ? "Editar Julgamento" : "Registrar Julgamento"}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleCreateJulgamento} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="numeroProcesso">Número do Processo</Label>
-              <Input id="numeroProcesso" name="numeroProcesso" placeholder="0000000-00.0000.0.00.0000" required data-testid="input-julgamento-processo" />
-            </div>
+            {!editingJulgamento && (
+              <div className="space-y-2">
+                <Label htmlFor="numeroProcesso">Número do Processo</Label>
+                <Input id="numeroProcesso" name="numeroProcesso" placeholder="0000000-00.0000.0.00.0000" required data-testid="input-julgamento-processo" />
+              </div>
+            )}
+            {editingJulgamento && (
+              <div className="p-3 bg-muted/50 rounded-lg">
+                <p className="text-sm text-muted-foreground">Processo</p>
+                <p className="font-mono">{editingJulgamento.numeroProcesso}</p>
+              </div>
+            )}
             <div className="space-y-2">
               <Label htmlFor="resultado">Resultado</Label>
-              <Select name="resultado" required>
+              <Select name="resultado" defaultValue={editingJulgamento?.resultado} required>
                 <SelectTrigger data-testid="select-julgamento-resultado">
                   <SelectValue placeholder="Selecione o resultado" />
                 </SelectTrigger>
@@ -404,14 +461,33 @@ export default function JuizesPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="dataJulgamento">Data do Julgamento</Label>
-              <Input id="dataJulgamento" name="dataJulgamento" type="date" data-testid="input-julgamento-data" />
+              <Input 
+                id="dataJulgamento" 
+                name="dataJulgamento" 
+                type="date" 
+                defaultValue={editingJulgamento?.dataJulgamento ? new Date(editingJulgamento.dataJulgamento).toISOString().split('T')[0] : undefined}
+                data-testid="input-julgamento-data" 
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="parte">Parte (Reclamante)</Label>
-              <Input id="parte" name="parte" placeholder="Nome da parte" data-testid="input-julgamento-parte" />
+              <Input 
+                id="parte" 
+                name="parte" 
+                placeholder="Nome da parte" 
+                defaultValue={editingJulgamento?.parte || ""}
+                data-testid="input-julgamento-parte" 
+              />
             </div>
-            <Button type="submit" className="w-full" disabled={createJulgamentoMutation.isPending} data-testid="button-submit-julgamento">
-              {createJulgamentoMutation.isPending ? "Registrando..." : "Registrar Julgamento"}
+            <Button 
+              type="submit" 
+              className="w-full" 
+              disabled={createJulgamentoMutation.isPending || updateJulgamentoMutation.isPending} 
+              data-testid="button-submit-julgamento"
+            >
+              {(createJulgamentoMutation.isPending || updateJulgamentoMutation.isPending) 
+                ? (editingJulgamento ? "Atualizando..." : "Registrando...") 
+                : (editingJulgamento ? "Atualizar Julgamento" : "Registrar Julgamento")}
             </Button>
           </form>
         </DialogContent>
