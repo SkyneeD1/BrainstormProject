@@ -77,12 +77,12 @@ export default function FavorabilidadePage() {
   ].filter(d => d.value > 0);
 
   const topJuizes = [...(juizesData || [])]
-    .filter(j => j.favorabilidade.totalJulgamentos >= 5)
+    .filter(j => j.favorabilidade.totalJulgamentos >= 2)
     .sort((a, b) => b.favorabilidade.percentualFavoravel - a.favorabilidade.percentualFavoravel)
     .slice(0, 5);
 
   const worstJuizes = [...(juizesData || [])]
-    .filter(j => j.favorabilidade.totalJulgamentos >= 5)
+    .filter(j => j.favorabilidade.totalJulgamentos >= 2)
     .sort((a, b) => a.favorabilidade.percentualFavoravel - b.favorabilidade.percentualFavoravel)
     .slice(0, 5);
 
@@ -224,7 +224,7 @@ export default function FavorabilidadePage() {
                   <TrendingUp className="h-5 w-5 text-green-500" />
                   Top 5 Juízes Favoráveis
                 </CardTitle>
-                <CardDescription>Magistrados com maior taxa de decisões favoráveis (min. 5 julgamentos)</CardDescription>
+                <CardDescription>Magistrados com maior taxa de decisões favoráveis (min. 2 julgamentos)</CardDescription>
               </CardHeader>
               <CardContent>
                 {topJuizes.length > 0 ? (
@@ -235,7 +235,9 @@ export default function FavorabilidadePage() {
                         <JudgeAvatar nome={juiz.nome} favorabilidade={juiz.favorabilidade} size="sm" />
                         <div className="flex-1 min-w-0">
                           <p className="font-medium truncate">{juiz.nome}</p>
-                          <p className="text-xs text-muted-foreground truncate">{juiz.varaNome} - {juiz.trtNome}</p>
+                          <p className="text-xs text-muted-foreground truncate">
+                            {juiz.varaNome} - {juiz.trtNome} ({juiz.trtUF})
+                          </p>
                         </div>
                         <FavorabilidadeBadge percentual={juiz.favorabilidade.percentualFavoravel} variant="compact" />
                       </div>
@@ -243,7 +245,7 @@ export default function FavorabilidadePage() {
                   </div>
                 ) : (
                   <p className="text-center text-muted-foreground py-8">
-                    Nenhum juiz com 5+ julgamentos.
+                    Nenhum juiz com 2+ julgamentos.
                   </p>
                 )}
               </CardContent>
@@ -255,7 +257,7 @@ export default function FavorabilidadePage() {
                   <TrendingDown className="h-5 w-5 text-red-500" />
                   Top 5 Juízes Menos Favoráveis
                 </CardTitle>
-                <CardDescription>Magistrados com menor taxa de decisões favoráveis (min. 5 julgamentos)</CardDescription>
+                <CardDescription>Magistrados com menor taxa de decisões favoráveis (min. 2 julgamentos)</CardDescription>
               </CardHeader>
               <CardContent>
                 {worstJuizes.length > 0 ? (
@@ -266,7 +268,9 @@ export default function FavorabilidadePage() {
                         <JudgeAvatar nome={juiz.nome} favorabilidade={juiz.favorabilidade} size="sm" />
                         <div className="flex-1 min-w-0">
                           <p className="font-medium truncate">{juiz.nome}</p>
-                          <p className="text-xs text-muted-foreground truncate">{juiz.varaNome} - {juiz.trtNome}</p>
+                          <p className="text-xs text-muted-foreground truncate">
+                            {juiz.varaNome} - {juiz.trtNome} ({juiz.trtUF})
+                          </p>
                         </div>
                         <FavorabilidadeBadge percentual={juiz.favorabilidade.percentualFavoravel} variant="compact" />
                       </div>
@@ -274,7 +278,7 @@ export default function FavorabilidadePage() {
                   </div>
                 ) : (
                   <p className="text-center text-muted-foreground py-8">
-                    Nenhum juiz com 5+ julgamentos.
+                    Nenhum juiz com 2+ julgamentos.
                   </p>
                 )}
               </CardContent>

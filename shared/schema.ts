@@ -285,6 +285,7 @@ export const juizComFavorabilidadeSchema = z.object({
   varaNome: z.string(),
   trtId: z.string(),
   trtNome: z.string(),
+  trtUF: z.string(),
   favorabilidade: favorabilidadeSchema,
 });
 

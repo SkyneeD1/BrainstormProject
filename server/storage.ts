@@ -420,6 +420,7 @@ export class MemStorage implements IStorage {
             varaNome: vara.nome,
             trtId: trt.id,
             trtNome: trt.nome,
+            trtUF: trt.uf,
             favorabilidade,
           });
         }
@@ -456,6 +457,7 @@ export class MemStorage implements IStorage {
             varaNome: vara.nome,
             trtId: trt.id,
             trtNome: trt.nome,
+            trtUF: trt.uf,
             favorabilidade: this.calculateFavorabilidade(julgamentosJuiz),
           });
         }
