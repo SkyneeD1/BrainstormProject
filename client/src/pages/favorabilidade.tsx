@@ -445,33 +445,29 @@ export default function FavorabilidadePage() {
                               </div>
                               
                               {vara.juizes.length > 0 ? (
-                                <div className="space-y-3 pl-4 border-l-2 border-muted">
+                                <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                                   {vara.juizes.map((juiz) => (
                                     <div
                                       key={juiz.id}
-                                      className="flex items-center gap-3 py-2"
+                                      className="p-3 rounded-lg border hover-elevate"
                                       data-testid={`juiz-item-${juiz.id}`}
                                     >
-                                      <JudgeAvatar nome={juiz.nome} favorabilidade={juiz.favorabilidade} size="sm" />
-                                      <div className="flex-1 min-w-0">
-                                        <p className="font-medium truncate">{juiz.nome}</p>
-                                        <div className="flex items-center gap-2">
+                                      <div className="flex items-center gap-2 mb-2">
+                                        <JudgeAvatar nome={juiz.nome} favorabilidade={juiz.favorabilidade} size="sm" />
+                                        <div className="flex-1 min-w-0">
+                                          <p className="font-medium text-sm truncate">{juiz.nome}</p>
                                           <Badge variant={juiz.tipo === "titular" ? "default" : "secondary"} className="text-xs">
                                             {juiz.tipo === "titular" ? "Titular" : "Substituto"}
                                           </Badge>
-                                          <span className="text-xs text-muted-foreground">
-                                            {juiz.favorabilidade.totalJulgamentos} julgamentos
-                                          </span>
                                         </div>
                                       </div>
-                                      {juiz.favorabilidade.totalJulgamentos > 0 && (
-                                        <div className="flex items-center gap-2">
-                                          <div className="w-24 hidden sm:block">
-                                            <FavorabilidadeBar favorabilidade={juiz.favorabilidade} />
-                                          </div>
+                                      <div className="space-y-1">
+                                        <FavorabilidadeBar favorabilidade={juiz.favorabilidade} />
+                                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                          <span>{juiz.favorabilidade.totalJulgamentos} julg.</span>
                                           <FavorabilidadeBadge percentual={juiz.favorabilidade.percentualFavoravel} variant="compact" />
                                         </div>
-                                      )}
+                                      </div>
                                     </div>
                                   ))}
                                 </div>
