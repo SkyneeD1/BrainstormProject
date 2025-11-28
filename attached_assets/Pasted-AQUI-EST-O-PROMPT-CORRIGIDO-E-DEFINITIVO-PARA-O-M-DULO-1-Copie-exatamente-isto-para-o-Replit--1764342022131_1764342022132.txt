@@ -1,0 +1,265 @@
+AQUI ESTÁ O PROMPT CORRIGIDO E DEFINITIVO PARA O MÓDULO 1
+
+Copie exatamente isto para o Replit:
+
+🚀 PROMPT DEFINITIVO – MÓDULO 1 (CORRIGIDO)
+Proibição TOTAL de dados inventados e foco nos dados reais
+
+Quero que você desenvolva APENAS o primeiro módulo do meu ecossistema, chamado Passivo Sob Gestão, dentro da categoria Brainstorm.
+
+⚠️ IMPORTANTE — NÃO INVENTE NENHUM DADO.
+⚠️ Todos os dados DEVEM vir exclusivamente da planilha que enviei (“brainstorm.xlsx”).
+⚠️ Não utilize “tipo de ação”, “ambiental”, “tributária”, “cível”, “consumidor”, etc. Esses campos NÃO EXISTEM no meu projeto.
+
+O módulo deve replicar EXATAMENTE as informações que aparecem nos slides da V.TAL que eu enviei.
+QUALQUER coisa diferente disso está errado.
+
+📌 1. Estrutura do sistema (base do ecossistema)
+
+Criar:
+
+✔ Menu lateral fixo (sidebar)
+
+Título: CONTENCIOSO – ECOSSISTEMA DE GESTÃO
+
+Categoria: Brainstorm
+
+Subitem: Passivo Sob Gestão (Base Dez/24)
+(OUTROS MODULOS serão criados depois, deixe preparado)
+
+✔ Área principal à direita
+
+Onde o conteúdo do módulo será exibido.
+
+✔ Design estilo Power BI / Tableau
+
+Moderno, elegante, animado.
+
+📌 2. A fonte dos dados: OBRIGATORIAMENTE a planilha real
+
+Você deve:
+
+✔ Importar e ler o arquivo brainstorm.xlsx
+✔ Usar SOMENTE os dados reais
+✔ Nenhum dado pode ser inventado ou estimado
+✔ Nenhuma categoria jurídica pode ser criada
+
+Os únicos agrupadores existentes no módulo são:
+
+A) FASES PROCESSUAIS
+
+Conhecimento
+
+Recursal
+
+Execução
+
+B) CLASSIFICAÇÃO DO RISCO
+
+Remoto
+
+Possível
+
+Provável
+
+C) ORIGEM / EMPRESAS
+
+V.tal
+
+OI
+
+Serede
+
+Sprink
+
+Outros Terceiros
+
+⚠️ Não existe: ambiental, cível, consumidor, tributária, trabalhista, etc.
+
+📌 3. Tabela interna estilo Excel (apenas para ADMIN)
+
+Criar tabela com as colunas:
+
+Empresa
+
+Fase processual
+
+Classificação do risco
+
+Número de processos
+
+Valor total de risco
+
+Ticket médio (autocalculado)
+
+Essa tabela será alimentada automaticamente pelos dados da planilha.
+
+📌 4. Dashboard “Passivo Sob Gestão” (igual ao slide que enviei)
+
+Reproduzir EXATAMENTE as telas dos slides, contendo:
+
+▶ A. Visão por Fase Processual
+
+Para cada fase:
+
+Nº de processos
+
+% sobre total
+
+Valor total (em milhares/milhões)
+
+% sobre total
+
+Ticket médio
+
+▶ B. Visão por Classificação de Risco
+
+Remoto
+
+Possível
+
+Provável
+
+Com:
+
+Quantidade
+
+% sobre total
+
+Valor total
+
+Ticket médio
+
+▶ C. Consolidados
+
+Total de processos
+
+Total do passivo
+
+Ticket médio global
+
+Formatação obrigatória:
+
+144.000 → 144 M
+537.000 → 537 k
+
+📌 5. Gráficos obrigatórios (estilo Power BI)
+✔ Barras verticais
+
+Nº de processos por fase
+
+✔ Barras horizontais
+
+Valor total por fase
+
+✔ Pizza (camembert)
+
+Distribuição de Remoto / Possível / Provável
+
+✔ Colunas agrupadas
+
+Ticket médio por fase
+
+✔ KPIs individuais
+
+Total de processos
+
+Total do passivo
+
+% de risco provável
+
+% na fase recursal
+
+Todos animados, responsivos e modernos.
+
+📌 6. Dashboard “Detalhamento por Origem / Empresa”
+
+Reproduzir a segunda imagem que enviei:
+
+Para cada empresa:
+
+Nº de processos
+
+% do total
+
+Valor total
+
+% do total
+
+Quebrado em:
+
+Conhecimento
+
+Recursal
+
+Execução
+
+Total geral
+
+Gráficos obrigatórios:
+
+Pizza
+
+Barras Horizontais
+
+Comparação entre empresas
+
+Formato idêntico ao PPT:
+
+Linhas alternadas
+
+Cabeçalho azul
+
+Totais em cinza escuro
+
+Percentuais entre parênteses
+
+📌 7. Cálculos obrigatórios
+
+O sistema deve calcular automaticamente:
+
+Percentual por fase
+
+Percentual por risco
+
+Percentual por empresa
+
+Ticket médio
+
+Totais
+
+Participação no passivo
+
+📌 8. Design obrigatório
+
+Estilo Power BI
+
+Layout moderno
+
+Tipografia: Roboto ou Inter
+
+Cores inspiradas na V.tal:
+
+Amarelo
+
+Fundo Cinza claro
+
+Branco
+
+Amarelo para destaques
+
+✔ IMPORTANTE – QUALQUER DASHBOARD COM “AMBIENTAL / CIVIL / CONSUMIDOR / TRIBUTÁRIA” ESTÁ ERRADO.
+
+Esse módulo só contém:
+
+Fase
+
+Risco
+
+Origem
+
+Valor
+
+Nº de processos
+
+Nada mais.
