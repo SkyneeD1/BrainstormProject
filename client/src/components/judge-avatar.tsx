@@ -1,4 +1,3 @@
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { Favorabilidade } from "@shared/schema";
 
@@ -9,60 +8,113 @@ interface JudgeAvatarProps {
   showTooltip?: boolean;
 }
 
-const sizeClasses = {
-  sm: "h-8 w-8 text-xs",
-  md: "h-12 w-12 text-sm",
-  lg: "h-16 w-16 text-base",
-};
-
-const ringClasses = {
-  sm: "h-10 w-10",
-  md: "h-14 w-14",
-  lg: "h-20 w-20",
+const sizeMap = {
+  sm: { width: 32, height: 32 },
+  md: { width: 48, height: 48 },
+  lg: { width: 64, height: 64 },
 };
 
 export function JudgeAvatar({ nome, favorabilidade, size = "md", showTooltip = true }: JudgeAvatarProps) {
-  const initials = nome
-    .split(" ")
-    .map((n) => n[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
-
   const favoravelPercent = favorabilidade.percentualFavoravel;
-  const desfavoravelPercent = favorabilidade.percentualDesfavoravel;
-
-  const gradientId = `gradient-${nome.replace(/\s+/g, "-")}-${Math.random().toString(36).substr(2, 9)}`;
+  const dimensions = sizeMap[size];
+  const gradientId = `judge-fill-${nome.replace(/\s+/g, "-")}-${Math.random().toString(36).substr(2, 9)}`;
 
   const avatarContent = (
-    <div className="relative flex items-center justify-center">
-      <svg className={`absolute ${ringClasses[size]}`} viewBox="0 0 100 100">
+    <div 
+      className="relative flex items-center justify-center"
+      style={{ width: dimensions.width, height: dimensions.height }}
+    >
+      <svg 
+        viewBox="0 0 100 100" 
+        width={dimensions.width} 
+        height={dimensions.height}
+        className="drop-shadow-sm"
+      >
         <defs>
-          <linearGradient id={gradientId} gradientUnits="userSpaceOnUse" x1="0" y1="50" x2="100" y2="50">
-            <stop offset={`${favoravelPercent}%`} stopColor="hsl(142, 71%, 45%)" />
-            <stop offset={`${favoravelPercent}%`} stopColor="hsl(0, 84%, 60%)" />
+          <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset={`${favoravelPercent}%`} stopColor="#22c55e" />
+            <stop offset={`${favoravelPercent}%`} stopColor="#ef4444" />
           </linearGradient>
+          <clipPath id={`judge-clip-${gradientId}`}>
+            <path d="
+              M50 8
+              C35 8 28 15 25 22
+              C22 29 20 32 15 35
+              C10 38 8 42 10 46
+              C12 50 18 52 22 52
+              C20 55 18 58 18 62
+              L18 68
+              C18 72 22 76 28 78
+              L28 85
+              L22 88
+              C18 90 16 94 18 98
+              L82 98
+              C84 94 82 90 78 88
+              L72 85
+              L72 78
+              C78 76 82 72 82 68
+              L82 62
+              C82 58 80 55 78 52
+              C82 52 88 50 90 46
+              C92 42 90 38 85 35
+              C80 32 78 29 75 22
+              C72 15 65 8 50 8
+              Z
+            " />
+          </clipPath>
         </defs>
-        <circle
-          cx="50"
-          cy="50"
-          r="46"
+        
+        <rect 
+          x="0" 
+          y="0" 
+          width="100" 
+          height="100" 
+          fill={`url(#${gradientId})`}
+          clipPath={`url(#judge-clip-${gradientId})`}
+        />
+        
+        <path
+          d="
+            M50 8
+            C35 8 28 15 25 22
+            C22 29 20 32 15 35
+            C10 38 8 42 10 46
+            C12 50 18 52 22 52
+            C20 55 18 58 18 62
+            L18 68
+            C18 72 22 76 28 78
+            L28 85
+            L22 88
+            C18 90 16 94 18 98
+            L82 98
+            C84 94 82 90 78 88
+            L72 85
+            L72 78
+            C78 76 82 72 82 68
+            L82 62
+            C82 58 80 55 78 52
+            C82 52 88 50 90 46
+            C92 42 90 38 85 35
+            C80 32 78 29 75 22
+            C72 15 65 8 50 8
+            Z
+          "
           fill="none"
-          stroke={`url(#${gradientId})`}
-          strokeWidth="6"
-          strokeLinecap="round"
-          transform="rotate(-90 50 50)"
-          style={{
-            strokeDasharray: "289",
-            strokeDashoffset: "0",
-          }}
+          stroke="currentColor"
+          strokeWidth="2"
+          className="text-foreground/70"
+        />
+        
+        <ellipse cx="50" cy="58" rx="18" ry="20" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-foreground/50" />
+        
+        <path
+          d="M32 72 Q35 80 40 82 L40 90 L60 90 L60 82 Q65 80 68 72"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          className="text-foreground/50"
         />
       </svg>
-      <Avatar className={`${sizeClasses[size]} border-2 border-background`}>
-        <AvatarFallback className="bg-muted text-muted-foreground font-medium">
-          {initials}
-        </AvatarFallback>
-      </Avatar>
     </div>
   );
 
@@ -85,7 +137,7 @@ export function JudgeAvatar({ nome, favorabilidade, size = "md", showTooltip = t
             </div>
             <div className="flex items-center gap-2">
               <span className="inline-block h-2 w-2 rounded-full bg-red-500" />
-              <span>Desfavorável: {desfavoravelPercent}%</span>
+              <span>Desfavorável: {favorabilidade.percentualDesfavoravel}%</span>
             </div>
             <div className="text-muted-foreground pt-1">
               Total: {favorabilidade.totalJulgamentos} julgamentos
