@@ -16,6 +16,8 @@ import { EmpresaBarChart } from "@/components/charts/empresa-bar-chart";
 import { EmpresaPieChart } from "@/components/charts/empresa-pie-chart";
 import { formatProcessos, formatCurrency, formatPercentage } from "@/lib/formatters";
 import { useToast } from "@/hooks/use-toast";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
 import type { PassivoData } from "@shared/schema";
 
 function DashboardSkeleton() {
@@ -51,15 +53,6 @@ export default function Dashboard() {
   });
 
   const exportToPDF = async () => {
-    if (!visaoGeralRef.current || !detalhamentoRef.current) {
-      toast({
-        title: "Erro",
-        description: "Elementos não encontrados para exportação",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setIsExporting(true);
     toast({
       title: "Gerando PDF...",
@@ -67,9 +60,6 @@ export default function Dashboard() {
     });
 
     try {
-      const html2canvas = (await import("html2canvas")).default;
-      const jsPDF = (await import("jspdf")).default;
-
       const pdf = new jsPDF({
         orientation: "landscape",
         unit: "mm",
@@ -80,58 +70,61 @@ export default function Dashboard() {
       const pageHeight = pdf.internal.pageSize.getHeight();
       const margin = 10;
 
-      pdf.setFontSize(16);
-      pdf.setTextColor(40, 40, 40);
-      pdf.text("Contencioso - Passivo sob Gestao", margin, margin + 5);
-      pdf.setFontSize(10);
-      pdf.setTextColor(100, 100, 100);
-      pdf.text("Visao Geral - Base Dez/24", margin, margin + 12);
+      if (visaoGeralRef.current) {
+        pdf.setFontSize(16);
+        pdf.setTextColor(40, 40, 40);
+        pdf.text("Contencioso - Passivo sob Gestao", margin, margin + 5);
+        pdf.setFontSize(10);
+        pdf.setTextColor(100, 100, 100);
+        pdf.text("Visao Geral - Base Dez/24", margin, margin + 12);
 
-      const canvas1 = await html2canvas(visaoGeralRef.current, {
-        scale: 1.5,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: "#f5f5f7",
-        logging: false,
-        windowWidth: 1400,
-      });
+        const canvas1 = await html2canvas(visaoGeralRef.current, {
+          scale: 2,
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: "#ebedef",
+          logging: false,
+        });
 
-      const imgData1 = canvas1.toDataURL("image/jpeg", 0.8);
-      const imgWidth = pageWidth - margin * 2;
-      const imgHeight1 = (canvas1.height * imgWidth) / canvas1.width;
-      const maxHeight = pageHeight - margin * 2 - 15;
-      const scaledHeight1 = Math.min(imgHeight1, maxHeight);
-      const scaledWidth1 = (imgWidth * scaledHeight1) / imgHeight1;
+        const imgData1 = canvas1.toDataURL("image/png");
+        const imgWidth = pageWidth - margin * 2;
+        const imgHeight1 = (canvas1.height * imgWidth) / canvas1.width;
+        const maxHeight = pageHeight - margin * 2 - 20;
+        const finalHeight1 = Math.min(imgHeight1, maxHeight);
 
-      pdf.addImage(imgData1, "JPEG", margin, margin + 18, scaledWidth1, scaledHeight1);
+        pdf.addImage(imgData1, "PNG", margin, margin + 18, imgWidth, finalHeight1);
+      }
 
-      pdf.addPage();
+      if (detalhamentoRef.current) {
+        pdf.addPage();
 
-      pdf.setFontSize(16);
-      pdf.setTextColor(40, 40, 40);
-      pdf.text("Contencioso - Passivo sob Gestao", margin, margin + 5);
-      pdf.setFontSize(10);
-      pdf.setTextColor(100, 100, 100);
-      pdf.text("Detalhamento por Origem - Base Dez/24", margin, margin + 12);
+        pdf.setFontSize(16);
+        pdf.setTextColor(40, 40, 40);
+        pdf.text("Contencioso - Passivo sob Gestao", margin, margin + 5);
+        pdf.setFontSize(10);
+        pdf.setTextColor(100, 100, 100);
+        pdf.text("Detalhamento por Origem - Base Dez/24", margin, margin + 12);
 
-      const canvas2 = await html2canvas(detalhamentoRef.current, {
-        scale: 1.5,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: "#f5f5f7",
-        logging: false,
-        windowWidth: 1400,
-      });
+        const canvas2 = await html2canvas(detalhamentoRef.current, {
+          scale: 2,
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: "#ebedef",
+          logging: false,
+        });
 
-      const imgData2 = canvas2.toDataURL("image/jpeg", 0.8);
-      const imgHeight2 = (canvas2.height * imgWidth) / canvas2.width;
-      const scaledHeight2 = Math.min(imgHeight2, maxHeight);
-      const scaledWidth2 = (imgWidth * scaledHeight2) / imgHeight2;
+        const imgData2 = canvas2.toDataURL("image/png");
+        const imgWidth = pageWidth - margin * 2;
+        const imgHeight2 = (canvas2.height * imgWidth) / canvas2.width;
+        const maxHeight = pageHeight - margin * 2 - 20;
+        const finalHeight2 = Math.min(imgHeight2, maxHeight);
 
-      pdf.addImage(imgData2, "JPEG", margin, margin + 18, scaledWidth2, scaledHeight2);
+        pdf.addImage(imgData2, "PNG", margin, margin + 18, imgWidth, finalHeight2);
+      }
 
       const now = new Date();
       const timestamp = `${now.getDate().toString().padStart(2, '0')}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getFullYear()}_${now.getHours().toString().padStart(2, '0')}${now.getMinutes().toString().padStart(2, '0')}`;
+      
       pdf.save(`Contencioso_PassivoSobGestao_${timestamp}.pdf`);
 
       toast({
@@ -142,7 +135,7 @@ export default function Dashboard() {
       console.error("Erro ao exportar PDF:", err);
       toast({
         title: "Erro ao exportar PDF",
-        description: "Não foi possível gerar o PDF. Tente novamente.",
+        description: String(err),
         variant: "destructive",
       });
     } finally {
