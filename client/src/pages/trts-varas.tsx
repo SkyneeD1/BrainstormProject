@@ -31,7 +31,7 @@ export default function TRTsVarasPage() {
   });
 
   const createTRTMutation = useMutation({
-    mutationFn: (data: { numero: number; nome: string; uf: string }) =>
+    mutationFn: (data: { numero: string; nome: string; uf: string }) =>
       apiRequest("POST", "/api/trts", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/favorabilidade/trts"] });
@@ -86,7 +86,7 @@ export default function TRTsVarasPage() {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     createTRTMutation.mutate({
-      numero: parseInt(formData.get("numero") as string),
+      numero: formData.get("numero") as string,
       nome: formData.get("nome") as string,
       uf: formData.get("uf") as string,
     });
