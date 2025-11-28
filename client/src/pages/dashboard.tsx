@@ -1,6 +1,8 @@
+import { useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { FileText, TrendingUp, AlertTriangle, Scale } from "lucide-react";
+import { FileText, TrendingUp, AlertTriangle, Scale, Download, Loader2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { KPICard } from "@/components/kpi-card";
@@ -13,6 +15,9 @@ import { GroupedBarChart } from "@/components/charts/grouped-bar-chart";
 import { EmpresaBarChart } from "@/components/charts/empresa-bar-chart";
 import { EmpresaPieChart } from "@/components/charts/empresa-pie-chart";
 import { formatProcessos, formatCurrency, formatPercentage } from "@/lib/formatters";
+import { useToast } from "@/hooks/use-toast";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
 import type { PassivoData } from "@shared/schema";
 
 function DashboardSkeleton() {
@@ -38,9 +43,103 @@ function DashboardSkeleton() {
 }
 
 export default function Dashboard() {
+  const visaoGeralRef = useRef<HTMLDivElement>(null);
+  const detalhamentoRef = useRef<HTMLDivElement>(null);
+  const [isExporting, setIsExporting] = useState(false);
+  const { toast } = useToast();
+
   const { data: passivoData, isLoading, error } = useQuery<PassivoData>({
     queryKey: ["/api/passivo"],
   });
+
+  const exportToPDF = async () => {
+    if (!visaoGeralRef.current || !detalhamentoRef.current) return;
+
+    setIsExporting(true);
+    toast({
+      title: "Gerando PDF...",
+      description: "Aguarde enquanto capturamos as telas",
+    });
+
+    try {
+      const pdf = new jsPDF({
+        orientation: "landscape",
+        unit: "mm",
+        format: "a4",
+      });
+
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const margin = 10;
+
+      const captureElement = async (element: HTMLElement, title: string) => {
+        const canvas = await html2canvas(element, {
+          scale: 2,
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--background') || '#ffffff',
+          logging: false,
+        });
+        
+        const imgData = canvas.toDataURL("image/png");
+        const imgWidth = pageWidth - margin * 2;
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        
+        return { imgData, imgWidth, imgHeight };
+      };
+
+      pdf.setFontSize(16);
+      pdf.setTextColor(40, 40, 40);
+      pdf.text("Contencioso - Passivo sob Gestão", margin, margin + 5);
+      pdf.setFontSize(10);
+      pdf.setTextColor(100, 100, 100);
+      pdf.text("Visão Geral - Base Dez/24", margin, margin + 12);
+
+      const visaoGeral = await captureElement(visaoGeralRef.current, "Visão Geral");
+      
+      let yPosition = margin + 18;
+      const maxHeight = pageHeight - yPosition - margin;
+      const scaledHeight = Math.min(visaoGeral.imgHeight, maxHeight);
+      const scaledWidth = (visaoGeral.imgWidth * scaledHeight) / visaoGeral.imgHeight;
+      
+      pdf.addImage(visaoGeral.imgData, "PNG", margin, yPosition, scaledWidth, scaledHeight);
+
+      pdf.addPage();
+      
+      pdf.setFontSize(16);
+      pdf.setTextColor(40, 40, 40);
+      pdf.text("Contencioso - Passivo sob Gestão", margin, margin + 5);
+      pdf.setFontSize(10);
+      pdf.setTextColor(100, 100, 100);
+      pdf.text("Detalhamento por Origem - Base Dez/24", margin, margin + 12);
+
+      const detalhamento = await captureElement(detalhamentoRef.current, "Detalhamento por Origem");
+      
+      const detMaxHeight = pageHeight - (margin + 18) - margin;
+      const detScaledHeight = Math.min(detalhamento.imgHeight, detMaxHeight);
+      const detScaledWidth = (detalhamento.imgWidth * detScaledHeight) / detalhamento.imgHeight;
+      
+      pdf.addImage(detalhamento.imgData, "PNG", margin, margin + 18, detScaledWidth, detScaledHeight);
+
+      const now = new Date();
+      const timestamp = `${now.getDate().toString().padStart(2, '0')}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getFullYear()}_${now.getHours().toString().padStart(2, '0')}${now.getMinutes().toString().padStart(2, '0')}`;
+      pdf.save(`Contencioso_PassivoSobGestao_${timestamp}.pdf`);
+
+      toast({
+        title: "PDF exportado com sucesso!",
+        description: "O arquivo foi baixado para seu computador",
+      });
+    } catch (err) {
+      console.error("Erro ao exportar PDF:", err);
+      toast({
+        title: "Erro ao exportar PDF",
+        description: "Não foi possível gerar o PDF. Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -109,7 +208,19 @@ export default function Dashboard() {
             Baseado nos dados de Dezembro/24
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+          <Button
+            onClick={exportToPDF}
+            disabled={isExporting}
+            data-testid="button-export-pdf"
+          >
+            {isExporting ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Download className="h-4 w-4 mr-2" />
+            )}
+            Exportar PDF
+          </Button>
           <span className="px-3 py-1 text-xs font-medium bg-primary/10 text-primary rounded-full">
             V.tal
           </span>
@@ -154,73 +265,77 @@ export default function Dashboard() {
         </TabsList>
 
         <TabsContent value="visao-geral" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="space-y-4">
-              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                <div className="w-2 h-2 bg-chart-2 rounded-full" />
-                Visão por Fase Processual
-              </h2>
-              <DataTableFase data={fases} totals={faseTotals} />
+          <div ref={visaoGeralRef} className="space-y-6 bg-background p-4 rounded-lg">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="space-y-4">
+                <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                  <div className="w-2 h-2 bg-chart-2 rounded-full" />
+                  Visão por Fase Processual
+                </h2>
+                <DataTableFase data={fases} totals={faseTotals} />
+              </div>
+
+              <div className="space-y-4">
+                <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                  <div className="w-2 h-2 bg-chart-4 rounded-full" />
+                  Visão por Classificação de Risco
+                </h2>
+                <DataTableRisco data={riscos} totals={riscoTotals} />
+              </div>
             </div>
 
-            <div className="space-y-4">
-              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                <div className="w-2 h-2 bg-chart-4 rounded-full" />
-                Visão por Classificação de Risco
-              </h2>
-              <DataTableRisco data={riscos} totals={riscoTotals} />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <BarChartFase
+                data={fases}
+                title="Nº de Processos por Fase"
+                dataKey="processos"
+              />
+              <BarChartFase
+                data={fases}
+                title="Valor Total por Fase (R$)"
+                dataKey="valorTotal"
+                formatValue={(v) => `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+              />
             </div>
-          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <BarChartFase
-              data={fases}
-              title="Nº de Processos por Fase"
-              dataKey="processos"
-            />
-            <BarChartFase
-              data={fases}
-              title="Valor Total por Fase (mi R$)"
-              dataKey="valorTotal"
-              formatValue={(v) => `R$ ${v.toFixed(0)} mi`}
-            />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <PieChartRisco
-              data={riscos}
-              title="Distribuição por Classificação de Risco"
-            />
-            <GroupedBarChart
-              data={fases}
-              title="Ticket Médio por Fase (k R$)"
-            />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <PieChartRisco
+                data={riscos}
+                title="Distribuição por Classificação de Risco"
+              />
+              <GroupedBarChart
+                data={fases}
+                title="Ticket Médio por Fase (R$)"
+              />
+            </div>
           </div>
         </TabsContent>
 
         <TabsContent value="por-origem" className="space-y-6">
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                <div className="w-2 h-2 bg-primary rounded-full" />
-                Detalhamento por Origem / Empresa
-              </h2>
-              <p className="text-xs text-muted-foreground">
-                A SEREDE representa 58% do valor total estimado do passivo trabalhista
-              </p>
+          <div ref={detalhamentoRef} className="space-y-6 bg-background p-4 rounded-lg">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                  <div className="w-2 h-2 bg-primary rounded-full" />
+                  Detalhamento por Origem / Empresa
+                </h2>
+                <p className="text-xs text-muted-foreground">
+                  A SEREDE representa 58% do valor total estimado do passivo trabalhista
+                </p>
+              </div>
+              <DataTableOrigem data={empresas} totals={empresaTotals} />
             </div>
-            <DataTableOrigem data={empresas} totals={empresaTotals} />
-          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <EmpresaPieChart
-              data={empresas}
-              title="Distribuição por Empresa (Valor)"
-            />
-            <EmpresaBarChart
-              data={empresas}
-              title="Valor Total por Empresa (mi R$)"
-            />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <EmpresaPieChart
+                data={empresas}
+                title="Distribuição por Empresa (Valor)"
+              />
+              <EmpresaBarChart
+                data={empresas}
+                title="Valor Total por Empresa (R$)"
+              />
+            </div>
           </div>
         </TabsContent>
       </Tabs>
