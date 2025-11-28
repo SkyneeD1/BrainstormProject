@@ -1,5 +1,5 @@
 import type { 
-  Processo, 
+  ProcessoRaw, 
   FaseData, 
   RiscoData, 
   EmpresaFaseData, 
@@ -13,12 +13,12 @@ import { parseExcelFile } from "./excel-parser";
 
 export interface IStorage {
   getPassivoData(): Promise<PassivoData>;
-  setRawData(data: Processo[]): Promise<void>;
-  getRawData(): Promise<Processo[]>;
+  setRawData(data: ProcessoRaw[]): Promise<void>;
+  getRawData(): Promise<ProcessoRaw[]>;
 }
 
 export class MemStorage implements IStorage {
-  private rawData: Processo[] = [];
+  private rawData: ProcessoRaw[] = [];
 
   constructor() {
     this.initializeFromExcel();
@@ -33,11 +33,11 @@ export class MemStorage implements IStorage {
     }
   }
 
-  async setRawData(data: Processo[]): Promise<void> {
+  async setRawData(data: ProcessoRaw[]): Promise<void> {
     this.rawData = data;
   }
 
-  async getRawData(): Promise<Processo[]> {
+  async getRawData(): Promise<ProcessoRaw[]> {
     return this.rawData;
   }
 
@@ -65,12 +65,12 @@ export class MemStorage implements IStorage {
     this.rawData.forEach(p => {
       const current = faseMap.get(p.faseProcessual) || { processos: 0, valor: 0 };
       current.processos += 1;
-      current.valor += p.valorTotalRisco;
+      current.valor += p.valorTotal;
       faseMap.set(p.faseProcessual, current);
     });
 
     const totalProcessos = this.rawData.length;
-    const totalValor = this.rawData.reduce((sum, p) => sum + p.valorTotalRisco, 0);
+    const totalValor = this.rawData.reduce((sum, p) => sum + p.valorTotal, 0);
 
     return fases.map(fase => {
       const data = faseMap.get(fase)!;
@@ -94,12 +94,12 @@ export class MemStorage implements IStorage {
     this.rawData.forEach(p => {
       const current = riscoMap.get(p.classificacaoRisco) || { processos: 0, valor: 0 };
       current.processos += 1;
-      current.valor += p.valorTotalRisco;
+      current.valor += p.valorTotal;
       riscoMap.set(p.classificacaoRisco, current);
     });
 
     const totalProcessos = this.rawData.length;
-    const totalValor = this.rawData.reduce((sum, p) => sum + p.valorTotalRisco, 0);
+    const totalValor = this.rawData.reduce((sum, p) => sum + p.valorTotal, 0);
 
     return riscos.map(risco => {
       const data = riscoMap.get(risco)!;
@@ -131,13 +131,13 @@ export class MemStorage implements IStorage {
       if (faseMap) {
         const current = faseMap.get(p.faseProcessual) || { processos: 0, valor: 0 };
         current.processos += 1;
-        current.valor += p.valorTotalRisco;
+        current.valor += p.valorTotal;
         faseMap.set(p.faseProcessual, current);
       }
     });
 
     const totalProcessos = this.rawData.length;
-    const totalValor = this.rawData.reduce((sum, p) => sum + p.valorTotalRisco, 0);
+    const totalValor = this.rawData.reduce((sum, p) => sum + p.valorTotal, 0);
 
     return empresas.map(empresa => {
       const faseMap = empresaMap.get(empresa)!;
@@ -177,7 +177,7 @@ export class MemStorage implements IStorage {
 
   private calculateSummary(): DashboardSummary {
     const totalProcessos = this.rawData.length;
-    const totalValor = this.rawData.reduce((sum, p) => sum + p.valorTotalRisco, 0);
+    const totalValor = this.rawData.reduce((sum, p) => sum + p.valorTotal, 0);
     
     const riscoProvavel = this.rawData.filter(p => p.classificacaoRisco === "Provável").length;
     const faseRecursal = this.rawData.filter(p => p.faseProcessual === "Recursal").length;

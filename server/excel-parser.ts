@@ -1,7 +1,7 @@
 import XLSX from "xlsx";
 import * as fs from "fs";
 import * as path from "path";
-import type { Processo, FaseProcessual, ClassificacaoRisco, Empresa } from "@shared/schema";
+import type { ProcessoRaw, FaseProcessual, ClassificacaoRisco, Empresa } from "@shared/schema";
 import { randomUUID } from "crypto";
 
 function normalizeEmpresa(empresaOriginal: string, tipoOrigem: string): Empresa {
@@ -51,7 +51,7 @@ function normalizeRisco(prognostico: string): ClassificacaoRisco {
   return "Remoto";
 }
 
-export function parseExcelFile(filePath: string): Processo[] {
+export function parseExcelFile(filePath: string): ProcessoRaw[] {
   const absolutePath = path.resolve(filePath);
   
   if (!fs.existsSync(absolutePath)) {
@@ -70,7 +70,7 @@ export function parseExcelFile(filePath: string): Processo[] {
     return [];
   }
 
-  const processos: Processo[] = [];
+  const processos: ProcessoRaw[] = [];
 
   for (let i = 1; i < rawData.length; i++) {
     const row = rawData[i] as any[];
@@ -86,13 +86,18 @@ export function parseExcelFile(filePath: string): Processo[] {
 
     if (!numeroProcesso || numeroProcesso === "") continue;
 
-    const processo: Processo = {
+    const processo: ProcessoRaw = {
       id: randomUUID(),
+      numeroProcesso,
+      tipoOrigem,
+      empresaOriginal,
+      status,
+      fase,
+      valorTotal: Math.round(valorTotal * 100) / 100,
+      prognostico,
       empresa: normalizeEmpresa(empresaOriginal, tipoOrigem),
       faseProcessual: normalizeFase(fase),
       classificacaoRisco: normalizeRisco(prognostico),
-      numeroProcessos: 1,
-      valorTotalRisco: Math.round(valorTotal),
     };
 
     processos.push(processo);

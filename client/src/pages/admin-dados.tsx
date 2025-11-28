@@ -11,13 +11,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import type { PassivoData, Processo } from "@shared/schema";
+import type { PassivoData } from "@shared/schema";
 
 function TableSkeleton() {
   return (
     <div className="space-y-3">
       {[1, 2, 3, 4, 5].map((i) => (
         <div key={i} className="flex gap-4">
+          <Skeleton className="h-8 flex-1" />
           <Skeleton className="h-8 flex-1" />
           <Skeleton className="h-8 flex-1" />
           <Skeleton className="h-8 flex-1" />
@@ -39,18 +40,19 @@ export default function AdminDados() {
     if (!passivoData) return;
     
     const csvContent = [
-      ["Empresa", "Fase Processual", "Classificação do Risco", "Nº Processos", "Valor Total Risco", "Ticket Médio"].join(","),
+      ["NÚMERO DO PROCESSO (PADRÃO CNJ)", "PRÓPRIO/OI/TERCEIRO", "EMPRESA EMPREGADORA / TERCEIRA", "STATUS", "FASE", "VALOR TOTAL (NOVO)", "PROGNÓSTICO DE PERDA"].join(";"),
       ...passivoData.rawData.map((row) => [
-        row.empresa,
-        row.faseProcessual,
-        row.classificacaoRisco,
-        row.numeroProcessos,
-        row.valorTotalRisco,
-        (row.valorTotalRisco / row.numeroProcessos).toFixed(2),
-      ].join(","))
+        row.numeroProcesso,
+        row.tipoOrigem,
+        row.empresaOriginal,
+        row.status,
+        row.fase,
+        row.valorTotal.toFixed(2).replace(".", ","),
+        row.prognostico,
+      ].join(";"))
     ].join("\n");
 
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
     link.download = "passivo_dados.csv";
@@ -59,7 +61,7 @@ export default function AdminDados() {
 
   if (isLoading) {
     return (
-      <div className="p-6 space-y-6 max-w-[1600px] mx-auto">
+      <div className="p-6 space-y-6 max-w-[1800px] mx-auto">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-foreground tracking-tight">
@@ -96,7 +98,7 @@ export default function AdminDados() {
   }
 
   return (
-    <div className="p-6 space-y-6 max-w-[1600px] mx-auto">
+    <div className="p-6 space-y-6 max-w-[1800px] mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-foreground tracking-tight flex items-center gap-3">
@@ -104,7 +106,7 @@ export default function AdminDados() {
             Administração de Dados
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Dados extraídos do arquivo brainstorm.xlsx - Base Dez/24
+            Dados extraídos da planilha brainstorm.xlsx - Base Dez/24
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -127,7 +129,7 @@ export default function AdminDados() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card className="p-4">
           <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Total de Registros</p>
-          <p className="text-2xl font-bold">{passivoData.rawData.length}</p>
+          <p className="text-2xl font-bold">{passivoData.rawData.length.toLocaleString('pt-BR')}</p>
         </Card>
         <Card className="p-4">
           <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Total de Processos</p>
@@ -135,7 +137,7 @@ export default function AdminDados() {
         </Card>
         <Card className="p-4">
           <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Valor Total do Passivo</p>
-          <p className="text-2xl font-bold">R$ {(passivoData.summary.totalPassivo / 1000000).toFixed(0)} mi</p>
+          <p className="text-2xl font-bold">R$ {passivoData.summary.totalPassivo.toLocaleString('pt-BR')}</p>
         </Card>
       </div>
 
@@ -145,30 +147,33 @@ export default function AdminDados() {
             Tabela de Dados (Estilo Excel)
           </h2>
           <p className="text-xs text-muted-foreground mt-1">
-            Visualização detalhada de todos os registros do passivo
+            Visualização detalhada de todos os registros do passivo - exatamente como na planilha original
           </p>
         </div>
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow className="bg-secondary hover:bg-secondary">
-                <TableHead className="text-secondary-foreground font-semibold text-xs uppercase tracking-wider">
-                  Empresa
+                <TableHead className="text-secondary-foreground font-semibold text-xs uppercase tracking-wider min-w-[280px]">
+                  Número do Processo (Padrão CNJ)
                 </TableHead>
-                <TableHead className="text-secondary-foreground font-semibold text-xs uppercase tracking-wider">
-                  Fase Processual
+                <TableHead className="text-secondary-foreground font-semibold text-xs uppercase tracking-wider min-w-[120px]">
+                  Próprio/OI/Terceiro
                 </TableHead>
-                <TableHead className="text-secondary-foreground font-semibold text-xs uppercase tracking-wider">
-                  Classificação do Risco
+                <TableHead className="text-secondary-foreground font-semibold text-xs uppercase tracking-wider min-w-[180px]">
+                  Empresa Empregadora / Terceira
                 </TableHead>
-                <TableHead className="text-secondary-foreground font-semibold text-xs uppercase tracking-wider text-right">
-                  Nº Processos
+                <TableHead className="text-secondary-foreground font-semibold text-xs uppercase tracking-wider min-w-[100px]">
+                  Status
                 </TableHead>
-                <TableHead className="text-secondary-foreground font-semibold text-xs uppercase tracking-wider text-right">
-                  Valor Total Risco (R$)
+                <TableHead className="text-secondary-foreground font-semibold text-xs uppercase tracking-wider min-w-[120px]">
+                  Fase
                 </TableHead>
-                <TableHead className="text-secondary-foreground font-semibold text-xs uppercase tracking-wider text-right">
-                  Ticket Médio (R$)
+                <TableHead className="text-secondary-foreground font-semibold text-xs uppercase tracking-wider text-right min-w-[150px]">
+                  Valor Total (Novo)
+                </TableHead>
+                <TableHead className="text-secondary-foreground font-semibold text-xs uppercase tracking-wider min-w-[120px]">
+                  Prognóstico de Perda
                 </TableHead>
               </TableRow>
             </TableHeader>
@@ -179,25 +184,39 @@ export default function AdminDados() {
                   className={index % 2 === 0 ? "bg-card" : "bg-muted/30"}
                   data-testid={`row-data-${index}`}
                 >
-                  <TableCell className="font-medium">{row.empresa}</TableCell>
-                  <TableCell>{row.faseProcessual}</TableCell>
+                  <TableCell className="font-mono text-sm">{row.numeroProcesso}</TableCell>
+                  <TableCell>{row.tipoOrigem}</TableCell>
+                  <TableCell className="font-medium">{row.empresaOriginal}</TableCell>
                   <TableCell>
                     <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                      row.classificacaoRisco === "Remoto" ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" :
-                      row.classificacaoRisco === "Possível" ? "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400" :
-                      "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                      row.status === "ACORDO" ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" :
+                      row.status === "ATIVO" ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" :
+                      row.status === "ENCERRADO" ? "bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400" :
+                      "bg-muted text-muted-foreground"
                     }`}>
-                      {row.classificacaoRisco}
+                      {row.status}
                     </span>
                   </TableCell>
-                  <TableCell className="text-right font-medium">
-                    {row.numeroProcessos.toLocaleString('pt-BR')}
+                  <TableCell>
+                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                      row.fase.toUpperCase().includes("CONHECIMENTO") ? "bg-primary/20 text-primary" :
+                      row.fase.toUpperCase().includes("RECURSAL") ? "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400" :
+                      "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                    }`}>
+                      {row.fase}
+                    </span>
                   </TableCell>
-                  <TableCell className="text-right font-medium">
-                    {row.valorTotalRisco.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  <TableCell className="text-right font-medium tabular-nums">
+                    R$ {row.valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </TableCell>
-                  <TableCell className="text-right text-muted-foreground">
-                    {(row.valorTotalRisco / row.numeroProcessos).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  <TableCell>
+                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                      row.prognostico.toUpperCase().includes("REMOTO") ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" :
+                      row.prognostico.toUpperCase().includes("POSS") ? "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400" :
+                      "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                    }`}>
+                      {row.prognostico}
+                    </span>
                   </TableCell>
                 </TableRow>
               ))}

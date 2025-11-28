@@ -8,6 +8,22 @@ export type FaseProcessual = z.infer<typeof faseProcessualEnum>;
 export type ClassificacaoRisco = z.infer<typeof classificacaoRiscoEnum>;
 export type Empresa = z.infer<typeof empresaEnum>;
 
+export const processoRawSchema = z.object({
+  id: z.string(),
+  numeroProcesso: z.string(),
+  tipoOrigem: z.string(),
+  empresaOriginal: z.string(),
+  status: z.string(),
+  fase: z.string(),
+  valorTotal: z.number(),
+  prognostico: z.string(),
+  empresa: empresaEnum,
+  faseProcessual: faseProcessualEnum,
+  classificacaoRisco: classificacaoRiscoEnum,
+});
+
+export type ProcessoRaw = z.infer<typeof processoRawSchema>;
+
 export const processoSchema = z.object({
   id: z.string(),
   empresa: empresaEnum,
@@ -83,7 +99,7 @@ export const passivoDataSchema = z.object({
   riscos: z.array(riscoDataSchema),
   empresas: z.array(empresaFaseDataSchema),
   summary: dashboardSummarySchema,
-  rawData: z.array(processoSchema),
+  rawData: z.array(processoRawSchema),
 });
 
 export type PassivoData = z.infer<typeof passivoDataSchema>;
