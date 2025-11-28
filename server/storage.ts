@@ -7,14 +7,23 @@ import type {
   PassivoData,
   FaseProcessual,
   ClassificacaoRisco,
-  Empresa
+  Empresa,
+  User,
+  UpsertUser
 } from "@shared/schema";
+import { users } from "@shared/schema";
 import { parseExcelFile } from "./excel-parser";
+import { db } from "./db";
+import { eq } from "drizzle-orm";
 
 export interface IStorage {
   getPassivoData(): Promise<PassivoData>;
   setRawData(data: ProcessoRaw[]): Promise<void>;
   getRawData(): Promise<ProcessoRaw[]>;
+  getUser(id: string): Promise<User | undefined>;
+  upsertUser(user: UpsertUser): Promise<User>;
+  updateUserRole(id: string, role: string): Promise<User | undefined>;
+  getAllUsers(): Promise<User[]>;
 }
 
 export class MemStorage implements IStorage {
@@ -39,6 +48,47 @@ export class MemStorage implements IStorage {
 
   async getRawData(): Promise<ProcessoRaw[]> {
     return this.rawData;
+  }
+
+  async getUser(id: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
+  }
+
+  async upsertUser(userData: UpsertUser): Promise<User> {
+    const existingUser = await this.getUser(userData.id!);
+    
+    const [user] = await db
+      .insert(users)
+      .values({
+        ...userData,
+        role: existingUser?.role || "viewer",
+      })
+      .onConflictDoUpdate({
+        target: users.id,
+        set: {
+          email: userData.email,
+          firstName: userData.firstName,
+          lastName: userData.lastName,
+          profileImageUrl: userData.profileImageUrl,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return user;
+  }
+
+  async updateUserRole(id: string, role: string): Promise<User | undefined> {
+    const [user] = await db
+      .update(users)
+      .set({ role, updatedAt: new Date() })
+      .where(eq(users.id, id))
+      .returning();
+    return user;
+  }
+
+  async getAllUsers(): Promise<User[]> {
+    return await db.select().from(users);
   }
 
   async getPassivoData(): Promise<PassivoData> {

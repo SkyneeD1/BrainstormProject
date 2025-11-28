@@ -1,4 +1,12 @@
 import { z } from "zod";
+import { sql } from 'drizzle-orm';
+import {
+  index,
+  jsonb,
+  pgTable,
+  timestamp,
+  varchar,
+} from "drizzle-orm/pg-core";
 
 export const faseProcessualEnum = z.enum(["Conhecimento", "Recursal", "Execução"]);
 export const classificacaoRiscoEnum = z.enum(["Remoto", "Possível", "Provável"]);
@@ -104,10 +112,40 @@ export const passivoDataSchema = z.object({
 
 export type PassivoData = z.infer<typeof passivoDataSchema>;
 
-export const users = { id: "", username: "", password: "" };
-export const insertUserSchema = z.object({
-  username: z.string(),
-  password: z.string(),
+export const roleEnum = z.enum(["admin", "viewer"]);
+export type Role = z.infer<typeof roleEnum>;
+
+export const sessions = pgTable(
+  "sessions",
+  {
+    sid: varchar("sid").primaryKey(),
+    sess: jsonb("sess").notNull(),
+    expire: timestamp("expire").notNull(),
+  },
+  (table) => [index("IDX_session_expire").on(table.expire)],
+);
+
+export const users = pgTable("users", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  email: varchar("email").unique(),
+  firstName: varchar("first_name"),
+  lastName: varchar("last_name"),
+  profileImageUrl: varchar("profile_image_url"),
+  role: varchar("role").default("viewer").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
+
+export type UpsertUser = typeof users.$inferInsert;
+export type User = typeof users.$inferSelect;
+
+export const insertUserSchema = z.object({
+  id: z.string(),
+  email: z.string().nullable().optional(),
+  firstName: z.string().nullable().optional(),
+  lastName: z.string().nullable().optional(),
+  profileImageUrl: z.string().nullable().optional(),
+  role: roleEnum.optional().default("viewer"),
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
-export type User = typeof users;
