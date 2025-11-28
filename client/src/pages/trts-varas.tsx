@@ -135,17 +135,15 @@ export default function TRTsVarasPage() {
         </div>
         {isAdmin && (
           <div className="flex flex-wrap items-center gap-2">
-            {(!trtsData || trtsData.length === 0) && (
-              <Button 
-                variant="outline"
-                onClick={() => seedDemoMutation.mutate()}
-                disabled={seedDemoMutation.isPending}
-                data-testid="button-seed-demo"
-              >
-                <Database className="h-4 w-4 mr-2" />
-                {seedDemoMutation.isPending ? "Inserindo..." : "Carregar Dados Demo"}
-              </Button>
-            )}
+            <Button 
+              variant="outline"
+              onClick={() => seedDemoMutation.mutate()}
+              disabled={seedDemoMutation.isPending}
+              data-testid="button-seed-demo"
+            >
+              <Database className="h-4 w-4 mr-2" />
+              {seedDemoMutation.isPending ? "Inserindo..." : "Carregar Dados Demo"}
+            </Button>
             <Dialog open={showTRTDialog} onOpenChange={setShowTRTDialog}>
               <DialogTrigger asChild>
                 <Button data-testid="button-add-trt">

@@ -484,12 +484,6 @@ export class MemStorage implements IStorage {
   }
 
   async seedDemoData(): Promise<void> {
-    const existingTRTs = await this.getAllTRTs();
-    if (existingTRTs.length > 0) {
-      console.log("Dados de demonstração já existem, pulando seed...");
-      return;
-    }
-
     console.log("Inserindo dados de demonstração...");
 
     const trtData = [
