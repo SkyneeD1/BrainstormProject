@@ -167,3 +167,58 @@ export const updateRoleSchema = z.object({
 });
 
 export type UpdateRoleInput = z.infer<typeof updateRoleSchema>;
+
+// Report configuration schemas
+export const reportWidgetTypeEnum = z.enum(["kpi", "table", "barChart", "pieChart", "lineChart"]);
+export type ReportWidgetType = z.infer<typeof reportWidgetTypeEnum>;
+
+export const reportMetricEnum = z.enum([
+  "totalProcessos",
+  "totalPassivo", 
+  "ticketMedio",
+  "processosPorFase",
+  "processosPorRisco",
+  "processosPorEmpresa",
+  "valorPorFase",
+  "valorPorRisco",
+  "valorPorEmpresa",
+  "percentualRisco",
+  "percentualFase",
+  "detalhamentoEmpresa"
+]);
+export type ReportMetric = z.infer<typeof reportMetricEnum>;
+
+export const reportWidgetSchema = z.object({
+  id: z.string(),
+  type: reportWidgetTypeEnum,
+  metric: reportMetricEnum,
+  title: z.string(),
+  width: z.enum(["full", "half", "third"]).default("full"),
+});
+
+export type ReportWidget = z.infer<typeof reportWidgetSchema>;
+
+export const customReports = pgTable("custom_reports", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name").notNull(),
+  description: varchar("description"),
+  widgets: jsonb("widgets").notNull().$type<ReportWidget[]>(),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  isPublic: varchar("is_public").default("false"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type CustomReport = typeof customReports.$inferSelect;
+export type InsertCustomReport = typeof customReports.$inferInsert;
+
+export const createReportSchema = z.object({
+  name: z.string().min(1, "Nome do relatório obrigatório"),
+  description: z.string().optional(),
+  widgets: z.array(reportWidgetSchema).min(1, "Adicione pelo menos um widget"),
+  isPublic: z.boolean().default(false),
+});
+
+export type CreateReportInput = z.infer<typeof createReportSchema>;
+
+export const updateReportSchema = createReportSchema.partial();

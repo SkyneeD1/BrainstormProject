@@ -9,12 +9,14 @@ import type {
   ClassificacaoRisco,
   Empresa,
   User,
-  InsertUser
+  InsertUser,
+  CustomReport,
+  InsertCustomReport
 } from "@shared/schema";
-import { users } from "@shared/schema";
+import { users, customReports } from "@shared/schema";
 import { parseExcelFile } from "./excel-parser";
 import { db } from "./db";
-import { eq } from "drizzle-orm";
+import { eq, or } from "drizzle-orm";
 
 export interface IStorage {
   getPassivoData(): Promise<PassivoData>;
@@ -26,6 +28,11 @@ export interface IStorage {
   updateUserRole(id: string, role: string): Promise<User | undefined>;
   updateUserPassword(id: string, passwordHash: string): Promise<User | undefined>;
   getAllUsers(): Promise<User[]>;
+  getReports(userId: string): Promise<CustomReport[]>;
+  getReport(id: string): Promise<CustomReport | undefined>;
+  createReport(report: InsertCustomReport): Promise<CustomReport>;
+  updateReport(id: string, data: Partial<InsertCustomReport>): Promise<CustomReport | undefined>;
+  deleteReport(id: string): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -240,6 +247,40 @@ export class MemStorage implements IStorage {
       percentualRiscoProvavel: totalProcessos > 0 ? Math.round((riscoProvavel / totalProcessos) * 100) : 0,
       percentualFaseRecursal: totalProcessos > 0 ? Math.round((faseRecursal / totalProcessos) * 100) : 0,
     };
+  }
+
+  async getReports(userId: string): Promise<CustomReport[]> {
+    return await db
+      .select()
+      .from(customReports)
+      .where(or(eq(customReports.createdBy, userId), eq(customReports.isPublic, "true")));
+  }
+
+  async getReport(id: string): Promise<CustomReport | undefined> {
+    const [report] = await db.select().from(customReports).where(eq(customReports.id, id));
+    return report;
+  }
+
+  async createReport(reportData: InsertCustomReport): Promise<CustomReport> {
+    const [report] = await db
+      .insert(customReports)
+      .values(reportData)
+      .returning();
+    return report;
+  }
+
+  async updateReport(id: string, data: Partial<InsertCustomReport>): Promise<CustomReport | undefined> {
+    const [report] = await db
+      .update(customReports)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(customReports.id, id))
+      .returning();
+    return report;
+  }
+
+  async deleteReport(id: string): Promise<boolean> {
+    const result = await db.delete(customReports).where(eq(customReports.id, id));
+    return true;
   }
 }
 
