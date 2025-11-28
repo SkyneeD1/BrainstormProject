@@ -227,7 +227,7 @@ export default function AdminDados() {
         </Card>
         <Card className="p-4">
           <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Valor Total do Passivo</p>
-          <p className="text-2xl font-bold">R$ {passivoData.summary.totalPassivo.toLocaleString('pt-BR')}</p>
+          <p className="text-2xl font-bold">R$ {passivoData.summary.totalPassivo.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
         </Card>
       </div>
 
