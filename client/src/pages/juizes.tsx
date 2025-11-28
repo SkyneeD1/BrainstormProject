@@ -12,7 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { Plus, User, Gavel, Trash2, Edit, CheckCircle, XCircle, MinusCircle } from "lucide-react";
+import { Plus, User, Gavel, Trash2, Edit, CheckCircle, XCircle, MinusCircle, MapPin, Building2, Filter } from "lucide-react";
 import { JudgeAvatar, FavorabilidadeBar, FavorabilidadeBadge } from "@/components/judge-avatar";
 import type { TRT, TRTComFavorabilidade, Julgamento, JuizComFavorabilidade } from "@shared/schema";
 
@@ -27,6 +27,9 @@ export default function JuizesPage() {
   const [selectedJuizId, setSelectedJuizId] = useState<string | null>(null);
   const [selectedJuiz, setSelectedJuiz] = useState<JuizComFavorabilidade | null>(null);
   const [editingJulgamento, setEditingJulgamento] = useState<Julgamento | null>(null);
+  
+  const [filterUF, setFilterUF] = useState<string>("");
+  const [filterVaraId, setFilterVaraId] = useState<string>("");
 
   const { data: trtsData, isLoading: isLoadingTRTs } = useQuery<TRTComFavorabilidade[]>({
     queryKey: ["/api/favorabilidade/trts"],
@@ -179,8 +182,26 @@ export default function JuizesPage() {
       ...vara,
       trtNome: trt.nome,
       trtNumero: trt.numero,
+      trtUF: trt.uf,
     }))
   ) || [];
+
+  const uniqueUFs = Array.from(new Set(trtsData?.map(trt => trt.uf) || [])).sort();
+
+  const filteredVaras = filterUF 
+    ? allVaras.filter(vara => vara.trtUF === filterUF)
+    : [];
+
+  const filteredJuizes = filterVaraId
+    ? juizesData?.filter(juiz => juiz.varaId === filterVaraId)
+    : [];
+
+  const selectedFilterVara = allVaras.find(v => v.id === filterVaraId);
+
+  const handleUFChange = (uf: string) => {
+    setFilterUF(uf);
+    setFilterVaraId("");
+  };
 
   if (isLoadingTRTs || isLoadingJuizes) {
     return (
@@ -255,78 +276,151 @@ export default function JuizesPage() {
         )}
       </div>
 
-      {(!juizesData || juizesData.length === 0) ? (
+      <Card className="p-4">
+        <div className="flex flex-wrap items-end gap-4">
+          <div className="space-y-2 min-w-[200px]">
+            <Label className="flex items-center gap-2">
+              <MapPin className="h-4 w-4" />
+              Estado (UF)
+            </Label>
+            <Select value={filterUF} onValueChange={handleUFChange}>
+              <SelectTrigger data-testid="select-filter-uf">
+                <SelectValue placeholder="Selecione o estado" />
+              </SelectTrigger>
+              <SelectContent>
+                {uniqueUFs.map((uf) => (
+                  <SelectItem key={uf} value={uf}>{uf}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2 min-w-[300px]">
+            <Label className="flex items-center gap-2">
+              <Building2 className="h-4 w-4" />
+              Vara
+            </Label>
+            <Select value={filterVaraId} onValueChange={setFilterVaraId} disabled={!filterUF}>
+              <SelectTrigger data-testid="select-filter-vara">
+                <SelectValue placeholder={filterUF ? "Selecione a vara" : "Selecione um estado primeiro"} />
+              </SelectTrigger>
+              <SelectContent>
+                {filteredVaras.map((vara) => (
+                  <SelectItem key={vara.id} value={vara.id}>
+                    {vara.nome} - {vara.cidade}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {(filterUF || filterVaraId) && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setFilterUF("");
+                setFilterVaraId("");
+              }}
+              data-testid="button-clear-filters"
+            >
+              Limpar filtros
+            </Button>
+          )}
+        </div>
+      </Card>
+
+      {!filterVaraId ? (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <Filter className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+            <p className="text-lg font-medium">Selecione um Estado e uma Vara</p>
+            <p className="text-muted-foreground mt-2">
+              Para visualizar os magistrados, primeiro selecione o estado (UF) e depois a vara.
+            </p>
+            {allVaras.length === 0 && (
+              <p className="text-sm text-muted-foreground mt-4">
+                Nenhuma vara cadastrada. Acesse "TRTs e Varas" para cadastrar.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      ) : filteredJuizes && filteredJuizes.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
             <User className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <p className="text-muted-foreground">Nenhum juiz cadastrado ainda.</p>
-            {isAdmin && allVaras.length > 0 && (
+            <p className="text-muted-foreground">Nenhum juiz cadastrado nesta vara.</p>
+            {selectedFilterVara && (
+              <p className="text-sm font-medium mt-2">
+                {selectedFilterVara.nome} - {selectedFilterVara.cidade}
+              </p>
+            )}
+            {isAdmin && (
               <Button className="mt-4" onClick={() => setShowJuizDialog(true)} data-testid="button-add-first-juiz">
                 Cadastrar primeiro juiz
               </Button>
             )}
-            {allVaras.length === 0 && (
-              <p className="text-sm text-muted-foreground mt-2">Cadastre TRTs e Varas primeiro.</p>
-            )}
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {juizesData.map((juiz) => (
-            <Card key={juiz.id} className="hover-elevate" data-testid={`card-juiz-${juiz.id}`}>
-              <CardHeader className="pb-2">
-                <div className="flex items-start gap-4">
-                  <JudgeAvatar nome={juiz.nome} favorabilidade={juiz.favorabilidade} />
-                  <div className="flex-1 min-w-0">
-                    <CardTitle className="text-base truncate">{juiz.nome}</CardTitle>
-                    <div className="flex flex-wrap items-center gap-1 mt-1">
-                      <Badge variant={juiz.tipo === "titular" ? "default" : "secondary"} className="text-xs">
-                        {juiz.tipo === "titular" ? "Titular" : "Substituto"}
-                      </Badge>
+        <>
+          {selectedFilterVara && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Building2 className="h-4 w-4" />
+              <span>Exibindo juízes de: <strong className="text-foreground">{selectedFilterVara.nome}</strong> ({selectedFilterVara.cidade}) - TRT-{selectedFilterVara.trtNumero}</span>
+            </div>
+          )}
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {filteredJuizes?.map((juiz) => (
+              <Card key={juiz.id} className="hover-elevate" data-testid={`card-juiz-${juiz.id}`}>
+                <CardHeader className="pb-2">
+                  <div className="flex items-start gap-4">
+                    <JudgeAvatar nome={juiz.nome} favorabilidade={juiz.favorabilidade} />
+                    <div className="flex-1 min-w-0">
+                      <CardTitle className="text-base truncate">{juiz.nome}</CardTitle>
+                      <div className="flex flex-wrap items-center gap-1 mt-1">
+                        <Badge variant={juiz.tipo === "titular" ? "default" : "secondary"} className="text-xs">
+                          {juiz.tipo === "titular" ? "Titular" : "Substituto"}
+                        </Badge>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="text-sm text-muted-foreground">
-                  <p>{juiz.varaNome}</p>
-                  <p className="text-xs">{juiz.trtNome}</p>
-                </div>
-                
-                <FavorabilidadeBar favorabilidade={juiz.favorabilidade} />
-                
-                <div className="flex flex-wrap gap-2 pt-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      setSelectedJuiz(juiz);
-                      setSelectedJuizId(juiz.id);
-                    }}
-                    data-testid={`button-view-juiz-${juiz.id}`}
-                  >
-                    <Gavel className="h-3 w-3 mr-1" />
-                    Ver Julgamentos
-                  </Button>
-                  {isAdmin && (
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <FavorabilidadeBar favorabilidade={juiz.favorabilidade} />
+                  <div className="flex flex-wrap gap-2 pt-2">
                     <Button
                       size="sm"
-                      variant="destructive"
+                      variant="outline"
                       onClick={() => {
-                        if (confirm("Deseja excluir este juiz e todos os seus julgamentos?")) {
-                          deleteJuizMutation.mutate(juiz.id);
-                        }
+                        setSelectedJuiz(juiz);
+                        setSelectedJuizId(juiz.id);
                       }}
-                      data-testid={`button-delete-juiz-${juiz.id}`}
+                      data-testid={`button-view-juiz-${juiz.id}`}
                     >
-                      <Trash2 className="h-3 w-3" />
+                      <Gavel className="h-3 w-3 mr-1" />
+                      Ver Julgamentos
                     </Button>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                    {isAdmin && (
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => {
+                          if (confirm("Deseja excluir este juiz e todos os seus julgamentos?")) {
+                            deleteJuizMutation.mutate(juiz.id);
+                          }
+                        }}
+                        data-testid={`button-delete-juiz-${juiz.id}`}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </>
       )}
 
       <Dialog open={!!selectedJuiz} onOpenChange={(open) => {
