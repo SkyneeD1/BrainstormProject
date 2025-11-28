@@ -11,6 +11,9 @@ import { useAuth } from "@/hooks/useAuth";
 import Dashboard from "@/pages/dashboard";
 import AdminDados from "@/pages/admin-dados";
 import AdminUsers from "@/pages/admin-users";
+import TRTsVaras from "@/pages/trts-varas";
+import Juizes from "@/pages/juizes";
+import Favorabilidade from "@/pages/favorabilidade";
 import Landing from "@/pages/landing";
 import NotFound from "@/pages/not-found";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -21,6 +24,9 @@ function AuthenticatedRouter() {
       <Route path="/" component={Dashboard} />
       <Route path="/admin/dados" component={AdminDados} />
       <Route path="/admin/usuarios" component={AdminUsers} />
+      <Route path="/mapas/trts-varas" component={TRTsVaras} />
+      <Route path="/mapas/juizes" component={Juizes} />
+      <Route path="/mapas/favorabilidade" component={Favorabilidade} />
       <Route component={NotFound} />
     </Switch>
   );

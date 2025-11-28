@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { BarChart3, Database, ChevronDown, Building2, Scale, Users, LogOut, Shield, Eye, Loader2 } from "lucide-react";
+import { BarChart3, Database, ChevronDown, Building2, Scale, Users, LogOut, Shield, Eye, Loader2, Map, Gavel, User, TrendingUp } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -34,6 +34,27 @@ const menuItems = [
         title: "Passivo Sob Gestão (Base Dez/24)",
         url: "/",
         icon: Scale,
+      },
+    ],
+  },
+  {
+    title: "Mapas Estratégicos",
+    icon: Map,
+    subItems: [
+      {
+        title: "TRTs e Varas",
+        url: "/mapas/trts-varas",
+        icon: Building2,
+      },
+      {
+        title: "Diretório de Juízes",
+        url: "/mapas/juizes",
+        icon: User,
+      },
+      {
+        title: "Dashboard Favorabilidade",
+        url: "/mapas/favorabilidade",
+        icon: TrendingUp,
       },
     ],
   },
