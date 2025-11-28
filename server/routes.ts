@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated, isAdmin, hashPassword, verifyPassword } from "./auth";
-import { loginSchema, createUserSchema, updatePasswordSchema, updateRoleSchema, createReportSchema, updateReportSchema } from "@shared/schema";
+import { loginSchema, createUserSchema, updatePasswordSchema, updateRoleSchema } from "@shared/schema";
 import XLSX from "xlsx";
 import { randomUUID } from "crypto";
 import multer from "multer";
@@ -326,111 +326,6 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error processing Excel file:", error);
       res.status(500).json({ error: "Falha ao processar arquivo Excel" });
-    }
-  });
-
-  // Custom Reports API
-  app.get("/api/reports", isAuthenticated, async (req, res) => {
-    try {
-      const userId = req.session.user!.id;
-      const reports = await storage.getReports(userId);
-      res.json(reports);
-    } catch (error) {
-      console.error("Error fetching reports:", error);
-      res.status(500).json({ error: "Erro ao buscar relatórios" });
-    }
-  });
-
-  app.get("/api/reports/:id", isAuthenticated, async (req, res) => {
-    try {
-      const report = await storage.getReport(req.params.id);
-      if (!report) {
-        return res.status(404).json({ error: "Relatório não encontrado" });
-      }
-      
-      const userId = req.session.user!.id;
-      if (report.createdBy !== userId && report.isPublic !== "true") {
-        return res.status(403).json({ error: "Sem permissão para acessar este relatório" });
-      }
-      
-      res.json(report);
-    } catch (error) {
-      console.error("Error fetching report:", error);
-      res.status(500).json({ error: "Erro ao buscar relatório" });
-    }
-  });
-
-  app.post("/api/reports", isAuthenticated, async (req, res) => {
-    try {
-      const parsed = createReportSchema.safeParse(req.body);
-      if (!parsed.success) {
-        return res.status(400).json({ error: parsed.error.errors[0]?.message || "Dados inválidos" });
-      }
-
-      const userId = req.session.user!.id;
-      const report = await storage.createReport({
-        name: parsed.data.name,
-        description: parsed.data.description || null,
-        widgets: parsed.data.widgets,
-        createdBy: userId,
-        isPublic: parsed.data.isPublic ? "true" : "false",
-      });
-
-      res.json(report);
-    } catch (error) {
-      console.error("Error creating report:", error);
-      res.status(500).json({ error: "Erro ao criar relatório" });
-    }
-  });
-
-  app.patch("/api/reports/:id", isAuthenticated, async (req, res) => {
-    try {
-      const report = await storage.getReport(req.params.id);
-      if (!report) {
-        return res.status(404).json({ error: "Relatório não encontrado" });
-      }
-
-      const userId = req.session.user!.id;
-      if (report.createdBy !== userId) {
-        return res.status(403).json({ error: "Sem permissão para editar este relatório" });
-      }
-
-      const parsed = updateReportSchema.safeParse(req.body);
-      if (!parsed.success) {
-        return res.status(400).json({ error: parsed.error.errors[0]?.message || "Dados inválidos" });
-      }
-
-      const updated = await storage.updateReport(req.params.id, {
-        name: parsed.data.name,
-        description: parsed.data.description,
-        widgets: parsed.data.widgets,
-        isPublic: parsed.data.isPublic ? "true" : "false",
-      });
-
-      res.json(updated);
-    } catch (error) {
-      console.error("Error updating report:", error);
-      res.status(500).json({ error: "Erro ao atualizar relatório" });
-    }
-  });
-
-  app.delete("/api/reports/:id", isAuthenticated, async (req, res) => {
-    try {
-      const report = await storage.getReport(req.params.id);
-      if (!report) {
-        return res.status(404).json({ error: "Relatório não encontrado" });
-      }
-
-      const userId = req.session.user!.id;
-      if (report.createdBy !== userId) {
-        return res.status(403).json({ error: "Sem permissão para excluir este relatório" });
-      }
-
-      await storage.deleteReport(req.params.id);
-      res.json({ success: true });
-    } catch (error) {
-      console.error("Error deleting report:", error);
-      res.status(500).json({ error: "Erro ao excluir relatório" });
     }
   });
 
