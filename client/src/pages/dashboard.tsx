@@ -56,6 +56,8 @@ export default function Dashboard() {
 
   const exportToPDF = async () => {
     setIsExporting(true);
+    const originalTab = activeTab;
+    
     toast({
       title: "Gerando PDF...",
       description: "Aguarde enquanto capturamos as telas",
@@ -78,8 +80,11 @@ export default function Dashboard() {
         allowTaint: true,
         backgroundColor: "#ebedef",
         logging: false,
-        imageTimeout: 0,
       };
+
+      // Garantir que estamos na aba Visão Geral
+      setActiveTab("visao-geral");
+      await new Promise(resolve => setTimeout(resolve, 500));
 
       // Página 1: KPIs + Visão Geral
       pdf.setFontSize(14);
@@ -94,7 +99,7 @@ export default function Dashboard() {
       // Capturar KPIs
       if (kpisRef.current) {
         const canvasKpis = await html2canvas(kpisRef.current, captureOptions);
-        const imgDataKpis = canvasKpis.toDataURL("image/jpeg", 0.95);
+        const imgDataKpis = canvasKpis.toDataURL("image/jpeg", 0.92);
         const imgWidth = pageWidth - margin * 2;
         const imgHeightKpis = (canvasKpis.height * imgWidth) / canvasKpis.width;
         const kpiHeight = Math.min(imgHeightKpis, 35);
@@ -106,7 +111,7 @@ export default function Dashboard() {
       // Capturar Visão Geral
       if (visaoGeralRef.current) {
         const canvas1 = await html2canvas(visaoGeralRef.current, captureOptions);
-        const imgData1 = canvas1.toDataURL("image/jpeg", 0.95);
+        const imgData1 = canvas1.toDataURL("image/jpeg", 0.92);
         const imgWidth = pageWidth - margin * 2;
         const imgHeight1 = (canvas1.height * imgWidth) / canvas1.width;
         const maxHeight = pageHeight - yOffset - margin;
@@ -114,6 +119,10 @@ export default function Dashboard() {
 
         pdf.addImage(imgData1, "JPEG", margin, yOffset, imgWidth, finalHeight1);
       }
+
+      // Mudar para aba Detalhamento por Origem
+      setActiveTab("por-origem");
+      await new Promise(resolve => setTimeout(resolve, 500));
 
       // Página 2: KPIs + Detalhamento por Origem
       pdf.addPage();
@@ -130,7 +139,7 @@ export default function Dashboard() {
       // Capturar KPIs novamente na página 2
       if (kpisRef.current) {
         const canvasKpis2 = await html2canvas(kpisRef.current, captureOptions);
-        const imgDataKpis2 = canvasKpis2.toDataURL("image/jpeg", 0.95);
+        const imgDataKpis2 = canvasKpis2.toDataURL("image/jpeg", 0.92);
         const imgWidth = pageWidth - margin * 2;
         const imgHeightKpis2 = (canvasKpis2.height * imgWidth) / canvasKpis2.width;
         const kpiHeight2 = Math.min(imgHeightKpis2, 35);
@@ -142,7 +151,7 @@ export default function Dashboard() {
       // Capturar Detalhamento por Origem
       if (detalhamentoRef.current) {
         const canvas2 = await html2canvas(detalhamentoRef.current, captureOptions);
-        const imgData2 = canvas2.toDataURL("image/jpeg", 0.95);
+        const imgData2 = canvas2.toDataURL("image/jpeg", 0.92);
         const imgWidth = pageWidth - margin * 2;
         const imgHeight2 = (canvas2.height * imgWidth) / canvas2.width;
         const maxHeight = pageHeight - yOffset - margin;
@@ -150,6 +159,9 @@ export default function Dashboard() {
 
         pdf.addImage(imgData2, "JPEG", margin, yOffset, imgWidth, finalHeight2);
       }
+
+      // Restaurar aba original
+      setActiveTab(originalTab);
 
       const now = new Date();
       const timestamp = `${now.getDate().toString().padStart(2, '0')}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getFullYear()}_${now.getHours().toString().padStart(2, '0')}${now.getMinutes().toString().padStart(2, '0')}`;
@@ -162,6 +174,7 @@ export default function Dashboard() {
       });
     } catch (err) {
       console.error("Erro ao exportar PDF:", err);
+      setActiveTab(originalTab);
       toast({
         title: "Erro ao exportar PDF",
         description: String(err),
@@ -295,7 +308,7 @@ export default function Dashboard() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="visao-geral" className="space-y-6" forceMount style={{ display: activeTab === "visao-geral" ? "block" : "none" }}>
+        <TabsContent value="visao-geral" className="space-y-6">
           <div ref={visaoGeralRef} className="space-y-6 bg-background p-4 rounded-lg">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div className="space-y-4">
@@ -342,7 +355,7 @@ export default function Dashboard() {
           </div>
         </TabsContent>
 
-        <TabsContent value="por-origem" className="space-y-6" forceMount style={{ display: activeTab === "por-origem" ? "block" : "none" }}>
+        <TabsContent value="por-origem" className="space-y-6">
           <div ref={detalhamentoRef} className="space-y-6 bg-background p-4 rounded-lg">
             <div className="space-y-4">
               <div className="flex items-center justify-between flex-wrap gap-2">
