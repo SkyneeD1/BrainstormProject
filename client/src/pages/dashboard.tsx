@@ -43,9 +43,11 @@ function DashboardSkeleton() {
 }
 
 export default function Dashboard() {
+  const kpisRef = useRef<HTMLDivElement>(null);
   const visaoGeralRef = useRef<HTMLDivElement>(null);
   const detalhamentoRef = useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [activeTab, setActiveTab] = useState("visao-geral");
   const { toast } = useToast();
 
   const { data: passivoData, isLoading, error } = useQuery<PassivoData>({
@@ -68,16 +70,39 @@ export default function Dashboard() {
 
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
-      const margin = 10;
+      const margin = 8;
 
+      // Página 1: KPIs + Visão Geral
+      pdf.setFontSize(14);
+      pdf.setTextColor(40, 40, 40);
+      pdf.text("Modulo 1: Passivo sob Gestao - Visao Geral", margin, margin + 5);
+      pdf.setFontSize(9);
+      pdf.setTextColor(100, 100, 100);
+      pdf.text("Base Dez/24 | V.tal", margin, margin + 10);
+
+      let yOffset = margin + 14;
+
+      // Capturar KPIs
+      if (kpisRef.current) {
+        const canvasKpis = await html2canvas(kpisRef.current, {
+          scale: 2,
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: "#ebedef",
+          logging: false,
+        });
+
+        const imgDataKpis = canvasKpis.toDataURL("image/png");
+        const imgWidth = pageWidth - margin * 2;
+        const imgHeightKpis = (canvasKpis.height * imgWidth) / canvasKpis.width;
+        const kpiHeight = Math.min(imgHeightKpis, 35);
+
+        pdf.addImage(imgDataKpis, "PNG", margin, yOffset, imgWidth, kpiHeight);
+        yOffset += kpiHeight + 4;
+      }
+
+      // Capturar Visão Geral
       if (visaoGeralRef.current) {
-        pdf.setFontSize(16);
-        pdf.setTextColor(40, 40, 40);
-        pdf.text("Contencioso - Passivo sob Gestao", margin, margin + 5);
-        pdf.setFontSize(10);
-        pdf.setTextColor(100, 100, 100);
-        pdf.text("Visao Geral - Base Dez/24", margin, margin + 12);
-
         const canvas1 = await html2canvas(visaoGeralRef.current, {
           scale: 2,
           useCORS: true,
@@ -89,22 +114,45 @@ export default function Dashboard() {
         const imgData1 = canvas1.toDataURL("image/png");
         const imgWidth = pageWidth - margin * 2;
         const imgHeight1 = (canvas1.height * imgWidth) / canvas1.width;
-        const maxHeight = pageHeight - margin * 2 - 20;
+        const maxHeight = pageHeight - yOffset - margin;
         const finalHeight1 = Math.min(imgHeight1, maxHeight);
 
-        pdf.addImage(imgData1, "PNG", margin, margin + 18, imgWidth, finalHeight1);
+        pdf.addImage(imgData1, "PNG", margin, yOffset, imgWidth, finalHeight1);
       }
 
+      // Página 2: KPIs + Detalhamento por Origem
+      pdf.addPage();
+
+      pdf.setFontSize(14);
+      pdf.setTextColor(40, 40, 40);
+      pdf.text("Modulo 1: Passivo sob Gestao - Detalhamento por Origem", margin, margin + 5);
+      pdf.setFontSize(9);
+      pdf.setTextColor(100, 100, 100);
+      pdf.text("Base Dez/24 | V.tal", margin, margin + 10);
+
+      yOffset = margin + 14;
+
+      // Capturar KPIs novamente na página 2
+      if (kpisRef.current) {
+        const canvasKpis2 = await html2canvas(kpisRef.current, {
+          scale: 2,
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: "#ebedef",
+          logging: false,
+        });
+
+        const imgDataKpis2 = canvasKpis2.toDataURL("image/png");
+        const imgWidth = pageWidth - margin * 2;
+        const imgHeightKpis2 = (canvasKpis2.height * imgWidth) / canvasKpis2.width;
+        const kpiHeight2 = Math.min(imgHeightKpis2, 35);
+
+        pdf.addImage(imgDataKpis2, "PNG", margin, yOffset, imgWidth, kpiHeight2);
+        yOffset += kpiHeight2 + 4;
+      }
+
+      // Capturar Detalhamento por Origem
       if (detalhamentoRef.current) {
-        pdf.addPage();
-
-        pdf.setFontSize(16);
-        pdf.setTextColor(40, 40, 40);
-        pdf.text("Contencioso - Passivo sob Gestao", margin, margin + 5);
-        pdf.setFontSize(10);
-        pdf.setTextColor(100, 100, 100);
-        pdf.text("Detalhamento por Origem - Base Dez/24", margin, margin + 12);
-
         const canvas2 = await html2canvas(detalhamentoRef.current, {
           scale: 2,
           useCORS: true,
@@ -116,16 +164,16 @@ export default function Dashboard() {
         const imgData2 = canvas2.toDataURL("image/png");
         const imgWidth = pageWidth - margin * 2;
         const imgHeight2 = (canvas2.height * imgWidth) / canvas2.width;
-        const maxHeight = pageHeight - margin * 2 - 20;
+        const maxHeight = pageHeight - yOffset - margin;
         const finalHeight2 = Math.min(imgHeight2, maxHeight);
 
-        pdf.addImage(imgData2, "PNG", margin, margin + 18, imgWidth, finalHeight2);
+        pdf.addImage(imgData2, "PNG", margin, yOffset, imgWidth, finalHeight2);
       }
 
       const now = new Date();
       const timestamp = `${now.getDate().toString().padStart(2, '0')}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getFullYear()}_${now.getHours().toString().padStart(2, '0')}${now.getMinutes().toString().padStart(2, '0')}`;
       
-      pdf.save(`Contencioso_PassivoSobGestao_${timestamp}.pdf`);
+      pdf.save(`Contencioso_Modulo1_PassivoSobGestao_${timestamp}.pdf`);
 
       toast({
         title: "PDF exportado com sucesso!",
@@ -229,7 +277,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div ref={kpisRef} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <KPICard
           title="Total de Processos"
           value={formatProcessos(summary.totalProcessos)}
@@ -256,7 +304,7 @@ export default function Dashboard() {
         />
       </div>
 
-      <Tabs defaultValue="visao-geral" className="space-y-6">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList className="bg-muted/50 p-1">
           <TabsTrigger value="visao-geral" data-testid="tab-visao-geral" className="data-[state=active]:bg-card">
             Visão Geral
@@ -266,7 +314,7 @@ export default function Dashboard() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="visao-geral" className="space-y-6">
+        <TabsContent value="visao-geral" className="space-y-6" forceMount style={{ display: activeTab === "visao-geral" ? "block" : "none" }}>
           <div ref={visaoGeralRef} className="space-y-6 bg-background p-4 rounded-lg">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div className="space-y-4">
@@ -313,7 +361,7 @@ export default function Dashboard() {
           </div>
         </TabsContent>
 
-        <TabsContent value="por-origem" className="space-y-6">
+        <TabsContent value="por-origem" className="space-y-6" forceMount style={{ display: activeTab === "por-origem" ? "block" : "none" }}>
           <div ref={detalhamentoRef} className="space-y-6 bg-background p-4 rounded-lg">
             <div className="space-y-4">
               <div className="flex items-center justify-between flex-wrap gap-2">
