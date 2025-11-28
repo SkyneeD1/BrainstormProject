@@ -1,10 +1,12 @@
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { JudgeAvatar, FavorabilidadeBar, FavorabilidadeBadge } from "@/components/judge-avatar";
-import { Building2, Scale, User, TrendingUp, TrendingDown, BarChart3, PieChart } from "lucide-react";
+import { Building2, Scale, User, TrendingUp, TrendingDown, BarChart3, PieChart, MapPin, ChevronDown } from "lucide-react";
 import {
   ResponsiveContainer,
   BarChart,
@@ -17,7 +19,7 @@ import {
   Pie,
   Cell,
 } from "recharts";
-import type { TRTComFavorabilidade, JuizComFavorabilidade } from "@shared/schema";
+import type { TRTComFavorabilidade, JuizComFavorabilidade, VaraComFavorabilidade } from "@shared/schema";
 
 export default function FavorabilidadePage() {
   const { data: trtsData, isLoading: isLoadingTRTs } = useQuery<TRTComFavorabilidade[]>({
@@ -85,6 +87,54 @@ export default function FavorabilidadePage() {
     .filter(j => j.favorabilidade.totalJulgamentos >= 2)
     .sort((a, b) => a.favorabilidade.percentualFavoravel - b.favorabilidade.percentualFavoravel)
     .slice(0, 5);
+
+  const estadosData = useMemo(() => {
+    if (!trtsData) return [];
+    
+    const estadosMap = new Map<string, {
+      uf: string;
+      varas: Array<VaraComFavorabilidade & { trtNumero: string; trtNome: string }>;
+      totalJulgamentos: number;
+      favoraveis: number;
+      desfavoraveis: number;
+      parciais: number;
+    }>();
+
+    for (const trt of trtsData) {
+      const existing = estadosMap.get(trt.uf) || {
+        uf: trt.uf,
+        varas: [],
+        totalJulgamentos: 0,
+        favoraveis: 0,
+        desfavoraveis: 0,
+        parciais: 0,
+      };
+
+      for (const vara of trt.varas) {
+        existing.varas.push({
+          ...vara,
+          trtNumero: trt.numero,
+          trtNome: trt.nome,
+        });
+        existing.totalJulgamentos += vara.favorabilidade.totalJulgamentos;
+        existing.favoraveis += vara.favorabilidade.favoraveis;
+        existing.desfavoraveis += vara.favorabilidade.desfavoraveis;
+        existing.parciais += vara.favorabilidade.parciais;
+      }
+
+      estadosMap.set(trt.uf, existing);
+    }
+
+    return Array.from(estadosMap.values())
+      .map(estado => ({
+        ...estado,
+        percentualFavoravel: estado.totalJulgamentos > 0
+          ? Math.round(((estado.favoraveis + estado.parciais * 0.5) / estado.totalJulgamentos) * 100)
+          : 0,
+        varas: estado.varas.sort((a, b) => a.nome.localeCompare(b.nome)),
+      }))
+      .sort((a, b) => a.uf.localeCompare(b.uf));
+  }, [trtsData]);
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -329,6 +379,119 @@ export default function FavorabilidadePage() {
                   </div>
                 ))}
               </div>
+            </CardContent>
+          </Card>
+
+          <Card data-testid="card-estados-view">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <MapPin className="h-5 w-5" />
+                Visão Geral por Estado
+              </CardTitle>
+              <CardDescription>Hierarquia completa: Estado → Vara → Juízes (clique para expandir/minimizar)</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {estadosData.length > 0 ? (
+                <Accordion type="multiple" className="space-y-3">
+                  {estadosData.map((estado) => (
+                    <AccordionItem
+                      key={estado.uf}
+                      value={estado.uf}
+                      className="border rounded-lg overflow-hidden"
+                      data-testid={`accordion-estado-${estado.uf}`}
+                    >
+                      <AccordionTrigger className="px-4 py-3 hover:no-underline hover-elevate">
+                        <div className="flex flex-wrap items-center gap-4 flex-1 mr-4">
+                          <div className="flex items-center gap-2">
+                            <MapPin className="h-5 w-5 text-primary" />
+                            <span className="text-lg font-bold">{estado.uf}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="secondary">{estado.varas.length} varas</Badge>
+                            <Badge variant="outline">
+                              {estado.varas.reduce((acc, v) => acc + v.juizes.length, 0)} juízes
+                            </Badge>
+                          </div>
+                          {estado.totalJulgamentos > 0 && (
+                            <div className="flex items-center gap-2 ml-auto">
+                              <span className="text-sm text-muted-foreground">
+                                {estado.totalJulgamentos} julgamentos
+                              </span>
+                              <FavorabilidadeBadge percentual={estado.percentualFavoravel} variant="compact" />
+                            </div>
+                          )}
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent className="px-4 pb-4">
+                        <div className="space-y-4 pt-2">
+                          {estado.varas.map((vara) => (
+                            <div
+                              key={vara.id}
+                              className="border rounded-lg p-4"
+                              data-testid={`vara-section-${vara.id}`}
+                            >
+                              <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                                <div className="flex items-center gap-2">
+                                  <Scale className="h-4 w-4 text-muted-foreground" />
+                                  <span className="font-semibold">{vara.nome}</span>
+                                  <span className="text-sm text-muted-foreground">- {vara.cidade}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Badge variant="outline" className="text-xs">TRT-{vara.trtNumero}</Badge>
+                                  {vara.favorabilidade.totalJulgamentos > 0 && (
+                                    <FavorabilidadeBadge percentual={vara.favorabilidade.percentualFavoravel} variant="compact" />
+                                  )}
+                                </div>
+                              </div>
+                              
+                              {vara.juizes.length > 0 ? (
+                                <div className="space-y-3 pl-4 border-l-2 border-muted">
+                                  {vara.juizes.map((juiz) => (
+                                    <div
+                                      key={juiz.id}
+                                      className="flex items-center gap-3 py-2"
+                                      data-testid={`juiz-item-${juiz.id}`}
+                                    >
+                                      <JudgeAvatar nome={juiz.nome} favorabilidade={juiz.favorabilidade} size="sm" />
+                                      <div className="flex-1 min-w-0">
+                                        <p className="font-medium truncate">{juiz.nome}</p>
+                                        <div className="flex items-center gap-2">
+                                          <Badge variant={juiz.tipo === "titular" ? "default" : "secondary"} className="text-xs">
+                                            {juiz.tipo === "titular" ? "Titular" : "Substituto"}
+                                          </Badge>
+                                          <span className="text-xs text-muted-foreground">
+                                            {juiz.favorabilidade.totalJulgamentos} julgamentos
+                                          </span>
+                                        </div>
+                                      </div>
+                                      {juiz.favorabilidade.totalJulgamentos > 0 && (
+                                        <div className="flex items-center gap-2">
+                                          <div className="w-24 hidden sm:block">
+                                            <FavorabilidadeBar favorabilidade={juiz.favorabilidade} />
+                                          </div>
+                                          <FavorabilidadeBadge percentual={juiz.favorabilidade.percentualFavoravel} variant="compact" />
+                                        </div>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <p className="text-sm text-muted-foreground text-center py-4">
+                                  Nenhum juiz cadastrado nesta vara
+                                </p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  ))}
+                </Accordion>
+              ) : (
+                <p className="text-center text-muted-foreground py-8">
+                  Nenhum estado com dados cadastrados.
+                </p>
+              )}
             </CardContent>
           </Card>
         </>
