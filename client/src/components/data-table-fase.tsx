@@ -1,5 +1,5 @@
 import type { FaseData } from "@shared/schema";
-import { formatPercentageParens, formatCurrencyMi, formatTicketMedio } from "@/lib/formatters";
+import { formatPercentageParens, formatCurrencyValue, formatTicketMedio } from "@/lib/formatters";
 
 interface DataTableFaseProps {
   data: FaseData[];
@@ -24,11 +24,11 @@ export function DataTableFase({ data, totals }: DataTableFaseProps) {
             </th>
             <th className="px-4 py-3 text-center font-semibold text-xs uppercase tracking-wider bg-primary/20">
               <span className="text-primary-foreground">Valor total risco -<br />NOVO</span>
-              <br /><span className="text-[10px] opacity-70">(mi R$)</span>
+              <br /><span className="text-[10px] opacity-70">(R$)</span>
             </th>
             <th className="px-4 py-3 text-center font-semibold text-xs uppercase tracking-wider">
               TM risco<br />CONTADOR +<br />PROJEÇÃO
-              <br /><span className="text-[10px] opacity-70">(k R$ / processo)</span>
+              <br /><span className="text-[10px] opacity-70">(R$ / processo)</span>
             </th>
           </tr>
         </thead>
@@ -48,7 +48,7 @@ export function DataTableFase({ data, totals }: DataTableFaseProps) {
                 <span className="text-xs text-muted-foreground">{formatPercentageParens(row.percentualProcessos)}</span>
               </td>
               <td className="px-4 py-3 text-center">
-                <span className="font-semibold text-base">{formatCurrencyMi(row.valorTotal)}</span>
+                <span className="font-semibold text-base">{formatCurrencyValue(row.valorTotal)}</span>
                 <br />
                 <span className="text-xs text-muted-foreground">{formatPercentageParens(row.percentualValor)}</span>
               </td>
@@ -65,7 +65,7 @@ export function DataTableFase({ data, totals }: DataTableFaseProps) {
               <span className="text-xs text-muted-foreground">(100%)</span>
             </td>
             <td className="px-4 py-3 text-center">
-              <span className="text-base">{formatCurrencyMi(totals.valorTotal)}</span>
+              <span className="text-base">{formatCurrencyValue(totals.valorTotal)}</span>
               <br />
               <span className="text-xs text-muted-foreground">(100%)</span>
             </td>

@@ -1,5 +1,5 @@
 import type { RiscoData } from "@shared/schema";
-import { formatPercentageParens, formatCurrencyMi, formatTicketMedio } from "@/lib/formatters";
+import { formatPercentageParens, formatCurrencyValue, formatTicketMedio } from "@/lib/formatters";
 
 interface DataTableRiscoProps {
   data: RiscoData[];
@@ -30,11 +30,11 @@ export function DataTableRisco({ data, totals }: DataTableRiscoProps) {
             </th>
             <th className="px-4 py-3 text-center font-semibold text-xs uppercase tracking-wider">
               Valor total risco -<br />NOVO
-              <br /><span className="text-[10px] opacity-70">(mi R$)</span>
+              <br /><span className="text-[10px] opacity-70">(R$)</span>
             </th>
             <th className="px-4 py-3 text-center font-semibold text-xs uppercase tracking-wider">
               TM risco<br />CONTADOR +<br />PROJEÇÃO
-              <br /><span className="text-[10px] opacity-70">(k R$ / processo)</span>
+              <br /><span className="text-[10px] opacity-70">(R$ / processo)</span>
             </th>
           </tr>
         </thead>
@@ -54,7 +54,7 @@ export function DataTableRisco({ data, totals }: DataTableRiscoProps) {
                 <span className="text-xs text-muted-foreground">{formatPercentageParens(row.percentualProcessos)}</span>
               </td>
               <td className="px-4 py-3 text-center">
-                <span className="font-semibold text-base">{formatCurrencyMi(row.valorTotal)}</span>
+                <span className="font-semibold text-base">{formatCurrencyValue(row.valorTotal)}</span>
                 <br />
                 <span className="text-xs text-muted-foreground">{formatPercentageParens(row.percentualValor)}</span>
               </td>
@@ -71,7 +71,7 @@ export function DataTableRisco({ data, totals }: DataTableRiscoProps) {
               <span className="text-xs text-muted-foreground">(100%)</span>
             </td>
             <td className="px-4 py-3 text-center">
-              <span className="text-base">{formatCurrencyMi(totals.valorTotal)}</span>
+              <span className="text-base">{formatCurrencyValue(totals.valorTotal)}</span>
               <br />
               <span className="text-xs text-muted-foreground">(100%)</span>
             </td>
