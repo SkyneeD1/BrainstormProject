@@ -622,5 +622,16 @@ export async function registerRoutes(
     }
   });
 
+  // ========== Demo Data Seed ==========
+  app.post("/api/seed-demo", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      await storage.seedDemoData();
+      res.json({ success: true, message: "Dados de demonstração inseridos com sucesso" });
+    } catch (error) {
+      console.error("Error seeding demo data:", error);
+      res.status(500).json({ error: "Erro ao inserir dados de demonstração" });
+    }
+  });
+
   return httpServer;
 }

@@ -482,6 +482,156 @@ export class MemStorage implements IStorage {
 
     return result;
   }
+
+  async seedDemoData(): Promise<void> {
+    const existingTRTs = await this.getAllTRTs();
+    if (existingTRTs.length > 0) {
+      console.log("Dados de demonstração já existem, pulando seed...");
+      return;
+    }
+
+    console.log("Inserindo dados de demonstração...");
+
+    const trtData = [
+      { numero: "1", nome: "TRT da 1ª Região", uf: "RJ" },
+      { numero: "2", nome: "TRT da 2ª Região", uf: "SP" },
+      { numero: "3", nome: "TRT da 3ª Região", uf: "MG" },
+      { numero: "4", nome: "TRT da 4ª Região", uf: "RS" },
+      { numero: "5", nome: "TRT da 5ª Região", uf: "BA" },
+      { numero: "15", nome: "TRT da 15ª Região", uf: "SP" },
+    ];
+
+    const createdTRTs: TRT[] = [];
+    for (const t of trtData) {
+      const trt = await this.createTRT(t);
+      createdTRTs.push(trt);
+    }
+
+    const varaData = [
+      { nome: "1ª Vara do Trabalho", cidade: "Rio de Janeiro", trtId: createdTRTs[0].id },
+      { nome: "2ª Vara do Trabalho", cidade: "Rio de Janeiro", trtId: createdTRTs[0].id },
+      { nome: "3ª Vara do Trabalho", cidade: "Niterói", trtId: createdTRTs[0].id },
+      { nome: "1ª Vara do Trabalho", cidade: "São Paulo", trtId: createdTRTs[1].id },
+      { nome: "2ª Vara do Trabalho", cidade: "São Paulo", trtId: createdTRTs[1].id },
+      { nome: "5ª Vara do Trabalho", cidade: "Guarulhos", trtId: createdTRTs[1].id },
+      { nome: "1ª Vara do Trabalho", cidade: "Belo Horizonte", trtId: createdTRTs[2].id },
+      { nome: "3ª Vara do Trabalho", cidade: "Belo Horizonte", trtId: createdTRTs[2].id },
+      { nome: "1ª Vara do Trabalho", cidade: "Porto Alegre", trtId: createdTRTs[3].id },
+      { nome: "2ª Vara do Trabalho", cidade: "Caxias do Sul", trtId: createdTRTs[3].id },
+      { nome: "1ª Vara do Trabalho", cidade: "Salvador", trtId: createdTRTs[4].id },
+      { nome: "2ª Vara do Trabalho", cidade: "Salvador", trtId: createdTRTs[4].id },
+      { nome: "1ª Vara do Trabalho", cidade: "Campinas", trtId: createdTRTs[5].id },
+      { nome: "2ª Vara do Trabalho", cidade: "Ribeirão Preto", trtId: createdTRTs[5].id },
+    ];
+
+    const createdVaras: Vara[] = [];
+    for (const v of varaData) {
+      const vara = await this.createVara(v);
+      createdVaras.push(vara);
+    }
+
+    const juizData = [
+      { nome: "Dr. Carlos Alberto Mendes", varaId: createdVaras[0].id, tipo: "titular" as const },
+      { nome: "Dra. Maria Helena Souza", varaId: createdVaras[0].id, tipo: "substituto" as const },
+      { nome: "Dr. João Pedro Oliveira", varaId: createdVaras[1].id, tipo: "titular" as const },
+      { nome: "Dra. Ana Beatriz Costa", varaId: createdVaras[2].id, tipo: "titular" as const },
+      { nome: "Dr. Roberto Silva Santos", varaId: createdVaras[3].id, tipo: "titular" as const },
+      { nome: "Dra. Fernanda Lima Pereira", varaId: createdVaras[3].id, tipo: "substituto" as const },
+      { nome: "Dr. Marcos Antônio Ribeiro", varaId: createdVaras[4].id, tipo: "titular" as const },
+      { nome: "Dra. Claudia Rodrigues", varaId: createdVaras[5].id, tipo: "titular" as const },
+      { nome: "Dr. Ricardo Ferreira Alves", varaId: createdVaras[6].id, tipo: "titular" as const },
+      { nome: "Dra. Patricia Gomes Dias", varaId: createdVaras[7].id, tipo: "titular" as const },
+      { nome: "Dr. Eduardo Martins Costa", varaId: createdVaras[8].id, tipo: "titular" as const },
+      { nome: "Dra. Luciana Barbosa", varaId: createdVaras[9].id, tipo: "titular" as const },
+      { nome: "Dr. Thiago Nascimento", varaId: createdVaras[10].id, tipo: "titular" as const },
+      { nome: "Dra. Camila Andrade", varaId: createdVaras[11].id, tipo: "substituto" as const },
+      { nome: "Dr. Felipe Moreira", varaId: createdVaras[12].id, tipo: "titular" as const },
+      { nome: "Dra. Juliana Carvalho", varaId: createdVaras[13].id, tipo: "titular" as const },
+    ];
+
+    const createdJuizes: Juiz[] = [];
+    for (const j of juizData) {
+      const juiz = await this.createJuiz(j);
+      createdJuizes.push(juiz);
+    }
+
+    const resultados: DecisionResult[] = ["favoravel", "desfavoravel", "parcial"];
+    const partes = ["V.tal", "OI", "Serede", "Sprink", "Empreiteira ABC", "Telecom XYZ"];
+    
+    const generateProcessNumber = (index: number, year: number) => {
+      const seq = String(index).padStart(7, '0');
+      const dig = String(Math.floor(Math.random() * 100)).padStart(2, '0');
+      const vara = String(Math.floor(Math.random() * 50) + 1).padStart(4, '0');
+      const trt = String(Math.floor(Math.random() * 24) + 1).padStart(2, '0');
+      return `${seq}-${dig}.${year}.5.${trt}.${vara}`;
+    };
+
+    const julgamentoPatterns: { juizIndex: number; favoraveis: number; desfavoraveis: number; parciais: number }[] = [
+      { juizIndex: 0, favoraveis: 8, desfavoraveis: 2, parciais: 2 },
+      { juizIndex: 1, favoraveis: 5, desfavoraveis: 4, parciais: 3 },
+      { juizIndex: 2, favoraveis: 3, desfavoraveis: 7, parciais: 2 },
+      { juizIndex: 3, favoraveis: 6, desfavoraveis: 2, parciais: 4 },
+      { juizIndex: 4, favoraveis: 9, desfavoraveis: 1, parciais: 2 },
+      { juizIndex: 5, favoraveis: 4, desfavoraveis: 5, parciais: 3 },
+      { juizIndex: 6, favoraveis: 2, desfavoraveis: 8, parciais: 2 },
+      { juizIndex: 7, favoraveis: 7, desfavoraveis: 3, parciais: 2 },
+      { juizIndex: 8, favoraveis: 5, desfavoraveis: 5, parciais: 2 },
+      { juizIndex: 9, favoraveis: 10, desfavoraveis: 1, parciais: 1 },
+      { juizIndex: 10, favoraveis: 3, desfavoraveis: 6, parciais: 3 },
+      { juizIndex: 11, favoraveis: 6, desfavoraveis: 4, parciais: 2 },
+      { juizIndex: 12, favoraveis: 8, desfavoraveis: 2, parciais: 4 },
+      { juizIndex: 13, favoraveis: 4, desfavoraveis: 6, parciais: 2 },
+      { juizIndex: 14, favoraveis: 7, desfavoraveis: 2, parciais: 3 },
+      { juizIndex: 15, favoraveis: 5, desfavoraveis: 3, parciais: 4 },
+    ];
+
+    let processIndex = 1;
+    for (const pattern of julgamentoPatterns) {
+      const juiz = createdJuizes[pattern.juizIndex];
+      if (!juiz) continue;
+
+      for (let i = 0; i < pattern.favoraveis; i++) {
+        const year = 2022 + Math.floor(Math.random() * 3);
+        const month = Math.floor(Math.random() * 12);
+        const day = Math.floor(Math.random() * 28) + 1;
+        await this.createJulgamento({
+          juizId: juiz.id,
+          numeroProcesso: generateProcessNumber(processIndex++, year),
+          resultado: "favoravel",
+          dataJulgamento: new Date(year, month, day),
+          parte: partes[Math.floor(Math.random() * partes.length)],
+        });
+      }
+
+      for (let i = 0; i < pattern.desfavoraveis; i++) {
+        const year = 2022 + Math.floor(Math.random() * 3);
+        const month = Math.floor(Math.random() * 12);
+        const day = Math.floor(Math.random() * 28) + 1;
+        await this.createJulgamento({
+          juizId: juiz.id,
+          numeroProcesso: generateProcessNumber(processIndex++, year),
+          resultado: "desfavoravel",
+          dataJulgamento: new Date(year, month, day),
+          parte: partes[Math.floor(Math.random() * partes.length)],
+        });
+      }
+
+      for (let i = 0; i < pattern.parciais; i++) {
+        const year = 2022 + Math.floor(Math.random() * 3);
+        const month = Math.floor(Math.random() * 12);
+        const day = Math.floor(Math.random() * 28) + 1;
+        await this.createJulgamento({
+          juizId: juiz.id,
+          numeroProcesso: generateProcessNumber(processIndex++, year),
+          resultado: "parcial",
+          dataJulgamento: new Date(year, month, day),
+          parte: partes[Math.floor(Math.random() * partes.length)],
+        });
+      }
+    }
+
+    console.log(`Dados de demonstração inseridos: ${createdTRTs.length} TRTs, ${createdVaras.length} Varas, ${createdJuizes.length} Juízes, ${processIndex - 1} Julgamentos`);
+  }
 }
 
 export const storage = new MemStorage();

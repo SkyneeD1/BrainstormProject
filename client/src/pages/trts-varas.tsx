@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { Plus, Building2, Scale, Trash2, Edit, MapPin } from "lucide-react";
+import { Plus, Building2, Scale, Trash2, Edit, MapPin, Database } from "lucide-react";
 import { FavorabilidadeBar, FavorabilidadeBadge } from "@/components/judge-avatar";
 import type { TRT, Vara, TRTComFavorabilidade } from "@shared/schema";
 
@@ -82,6 +82,16 @@ export default function TRTsVarasPage() {
     onError: () => toast({ title: "Erro ao excluir Vara", variant: "destructive" }),
   });
 
+  const seedDemoMutation = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/seed-demo", {}),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/favorabilidade/trts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/favorabilidade/juizes"] });
+      toast({ title: "Dados de demonstração inseridos com sucesso" });
+    },
+    onError: () => toast({ title: "Dados já existem ou erro ao inserir", variant: "destructive" }),
+  });
+
   const handleCreateTRT = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
@@ -124,13 +134,25 @@ export default function TRTsVarasPage() {
           <p className="text-muted-foreground">Gestão de Tribunais Regionais do Trabalho e Varas</p>
         </div>
         {isAdmin && (
-          <Dialog open={showTRTDialog} onOpenChange={setShowTRTDialog}>
-            <DialogTrigger asChild>
-              <Button data-testid="button-add-trt">
-                <Plus className="h-4 w-4 mr-2" />
-                Novo TRT
+          <div className="flex flex-wrap items-center gap-2">
+            {(!trtsData || trtsData.length === 0) && (
+              <Button 
+                variant="outline"
+                onClick={() => seedDemoMutation.mutate()}
+                disabled={seedDemoMutation.isPending}
+                data-testid="button-seed-demo"
+              >
+                <Database className="h-4 w-4 mr-2" />
+                {seedDemoMutation.isPending ? "Inserindo..." : "Carregar Dados Demo"}
               </Button>
-            </DialogTrigger>
+            )}
+            <Dialog open={showTRTDialog} onOpenChange={setShowTRTDialog}>
+              <DialogTrigger asChild>
+                <Button data-testid="button-add-trt">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Novo TRT
+                </Button>
+              </DialogTrigger>
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Adicionar TRT</DialogTitle>
@@ -153,7 +175,8 @@ export default function TRTsVarasPage() {
                 </Button>
               </form>
             </DialogContent>
-          </Dialog>
+            </Dialog>
+          </div>
         )}
       </div>
 
