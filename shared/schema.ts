@@ -127,25 +127,43 @@ export const sessions = pgTable(
 
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  email: varchar("email").unique(),
+  username: varchar("username").unique().notNull(),
+  passwordHash: varchar("password_hash").notNull(),
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
-  profileImageUrl: varchar("profile_image_url"),
   role: varchar("role").default("viewer").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
+export type InsertUser = typeof users.$inferInsert;
 
-export const insertUserSchema = z.object({
-  id: z.string(),
-  email: z.string().nullable().optional(),
-  firstName: z.string().nullable().optional(),
-  lastName: z.string().nullable().optional(),
-  profileImageUrl: z.string().nullable().optional(),
-  role: roleEnum.optional().default("viewer"),
+export const loginSchema = z.object({
+  username: z.string().min(1, "Nome de usuário obrigatório"),
+  password: z.string().min(1, "Senha obrigatória"),
 });
 
-export type InsertUser = z.infer<typeof insertUserSchema>;
+export type LoginInput = z.infer<typeof loginSchema>;
+
+export const createUserSchema = z.object({
+  username: z.string().min(3, "Nome de usuário deve ter pelo menos 3 caracteres"),
+  password: z.string().min(4, "Senha deve ter pelo menos 4 caracteres"),
+  firstName: z.string().optional(),
+  lastName: z.string().optional(),
+  role: roleEnum.default("viewer"),
+});
+
+export type CreateUserInput = z.infer<typeof createUserSchema>;
+
+export const updatePasswordSchema = z.object({
+  newPassword: z.string().min(4, "Senha deve ter pelo menos 4 caracteres"),
+});
+
+export type UpdatePasswordInput = z.infer<typeof updatePasswordSchema>;
+
+export const updateRoleSchema = z.object({
+  role: roleEnum,
+});
+
+export type UpdateRoleInput = z.infer<typeof updateRoleSchema>;
