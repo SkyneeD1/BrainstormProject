@@ -44,7 +44,8 @@ export default function JuizesPage() {
     mutationFn: (data: { nome: string; varaId: string; tipo: string }) =>
       apiRequest("POST", "/api/juizes", data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/favorabilidade"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/favorabilidade/juizes"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/favorabilidade/trts"] });
       setShowJuizDialog(false);
       toast({ title: "Juiz cadastrado com sucesso" });
     },
@@ -54,7 +55,8 @@ export default function JuizesPage() {
   const deleteJuizMutation = useMutation({
     mutationFn: (id: string) => apiRequest("DELETE", `/api/juizes/${id}`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/favorabilidade"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/favorabilidade/juizes"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/favorabilidade/trts"] });
       toast({ title: "Juiz excluído com sucesso" });
     },
     onError: () => toast({ title: "Erro ao excluir juiz", variant: "destructive" }),
@@ -64,7 +66,8 @@ export default function JuizesPage() {
     mutationFn: (data: { juizId: string; numeroProcesso: string; resultado: string; dataJulgamento?: string; parte?: string }) =>
       apiRequest("POST", "/api/julgamentos", data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/favorabilidade"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/favorabilidade/juizes"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/favorabilidade/trts"] });
       queryClient.invalidateQueries({ queryKey: ["/api/juizes", selectedJuizId, "julgamentos"] });
       setShowJulgamentoDialog(false);
       toast({ title: "Julgamento registrado com sucesso" });
@@ -75,7 +78,8 @@ export default function JuizesPage() {
   const deleteJulgamentoMutation = useMutation({
     mutationFn: (id: string) => apiRequest("DELETE", `/api/julgamentos/${id}`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/favorabilidade"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/favorabilidade/juizes"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/favorabilidade/trts"] });
       queryClient.invalidateQueries({ queryKey: ["/api/juizes", selectedJuizId, "julgamentos"] });
       toast({ title: "Julgamento excluído" });
     },
