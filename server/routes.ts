@@ -109,7 +109,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/passivo", async (req, res) => {
+  app.get("/api/passivo", isAuthenticated, async (req, res) => {
     try {
       const data = await storage.getPassivoData();
       res.json(data);
@@ -119,7 +119,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/passivo/raw", async (req, res) => {
+  app.get("/api/passivo/raw", isAuthenticated, async (req, res) => {
     try {
       const data = await storage.getRawData();
       res.json(data);
