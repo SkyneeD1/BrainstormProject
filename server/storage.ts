@@ -253,7 +253,8 @@ export class MemStorage implements IStorage {
     return await db
       .select()
       .from(customReports)
-      .where(or(eq(customReports.createdBy, userId), eq(customReports.isPublic, "true")));
+      .where(or(eq(customReports.createdBy, userId), eq(customReports.isPublic, "true")))
+      .orderBy(customReports.createdAt);
   }
 
   async getReport(id: string): Promise<CustomReport | undefined> {

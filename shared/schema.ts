@@ -169,31 +169,17 @@ export const updateRoleSchema = z.object({
 export type UpdateRoleInput = z.infer<typeof updateRoleSchema>;
 
 // Report configuration schemas
-export const reportWidgetTypeEnum = z.enum(["kpi", "table", "barChart", "pieChart", "lineChart"]);
-export type ReportWidgetType = z.infer<typeof reportWidgetTypeEnum>;
-
-export const reportMetricEnum = z.enum([
-  "totalProcessos",
-  "totalPassivo", 
-  "ticketMedio",
-  "processosPorFase",
-  "processosPorRisco",
-  "processosPorEmpresa",
-  "valorPorFase",
-  "valorPorRisco",
-  "valorPorEmpresa",
-  "percentualRisco",
-  "percentualFase",
-  "detalhamentoEmpresa"
+export const reportWidgetTypeEnum = z.enum([
+  "kpi-total", "kpi-passivo", "kpi-ticket", "kpi-risco", "kpi-recursal",
+  "table-fase", "table-risco",
+  "chart-fase", "chart-risco", "chart-empresa"
 ]);
-export type ReportMetric = z.infer<typeof reportMetricEnum>;
+export type ReportWidgetType = z.infer<typeof reportWidgetTypeEnum>;
 
 export const reportWidgetSchema = z.object({
   id: z.string(),
   type: reportWidgetTypeEnum,
-  metric: reportMetricEnum,
   title: z.string(),
-  width: z.enum(["full", "half", "third"]).default("full"),
 });
 
 export type ReportWidget = z.infer<typeof reportWidgetSchema>;

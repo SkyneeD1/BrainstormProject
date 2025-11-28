@@ -11,6 +11,7 @@ import { useAuth } from "@/hooks/useAuth";
 import Dashboard from "@/pages/dashboard";
 import AdminDados from "@/pages/admin-dados";
 import AdminUsers from "@/pages/admin-users";
+import Reports from "@/pages/reports";
 import Landing from "@/pages/landing";
 import NotFound from "@/pages/not-found";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -19,6 +20,7 @@ function AuthenticatedRouter() {
   return (
     <Switch>
       <Route path="/" component={Dashboard} />
+      <Route path="/relatorios" component={Reports} />
       <Route path="/admin/dados" component={AdminDados} />
       <Route path="/admin/usuarios" component={AdminUsers} />
       <Route component={NotFound} />

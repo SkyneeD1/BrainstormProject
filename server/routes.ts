@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated, isAdmin, hashPassword, verifyPassword } from "./auth";
-import { loginSchema, createUserSchema, updatePasswordSchema, updateRoleSchema, createReportSchema } from "@shared/schema";
+import { loginSchema, createUserSchema, updatePasswordSchema, updateRoleSchema, createReportSchema, updateReportSchema } from "@shared/schema";
 import XLSX from "xlsx";
 import { randomUUID } from "crypto";
 import multer from "multer";
@@ -347,6 +347,12 @@ export async function registerRoutes(
       if (!report) {
         return res.status(404).json({ error: "Relatório não encontrado" });
       }
+      
+      const userId = req.session.user!.id;
+      if (report.createdBy !== userId && report.isPublic !== "true") {
+        return res.status(403).json({ error: "Sem permissão para acessar este relatório" });
+      }
+      
       res.json(report);
     } catch (error) {
       console.error("Error fetching report:", error);
@@ -389,11 +395,16 @@ export async function registerRoutes(
         return res.status(403).json({ error: "Sem permissão para editar este relatório" });
       }
 
+      const parsed = updateReportSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.errors[0]?.message || "Dados inválidos" });
+      }
+
       const updated = await storage.updateReport(req.params.id, {
-        name: req.body.name,
-        description: req.body.description,
-        widgets: req.body.widgets,
-        isPublic: req.body.isPublic ? "true" : "false",
+        name: parsed.data.name,
+        description: parsed.data.description,
+        widgets: parsed.data.widgets,
+        isPublic: parsed.data.isPublic ? "true" : "false",
       });
 
       res.json(updated);
