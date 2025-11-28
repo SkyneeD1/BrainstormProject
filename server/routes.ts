@@ -1,11 +1,64 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import * as XLSX from "xlsx";
+import XLSX from "xlsx";
 import * as fs from "fs";
 import * as path from "path";
 import { randomUUID } from "crypto";
-import type { Processo, FaseProcessual, ClassificacaoRisco, Empresa } from "@shared/schema";
+import multer from "multer";
+import type { ProcessoRaw, FaseProcessual, ClassificacaoRisco, Empresa } from "@shared/schema";
+
+const upload = multer({ 
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 }
+});
+
+function normalizeEmpresa(empresaOriginal: string, tipoOrigem: string): Empresa {
+  const emp = empresaOriginal?.toUpperCase().trim() || "";
+  const tipo = tipoOrigem?.toUpperCase().trim() || "";
+  
+  if (tipo === "PRÓPRIO" || emp.includes("V.TAL") || emp.includes("VTAL")) {
+    return "V.tal";
+  }
+  if (tipo === "OI" || emp.includes("OI")) {
+    return "OI";
+  }
+  if (emp.includes("SEREDE")) {
+    return "Serede";
+  }
+  if (emp.includes("SPRINK")) {
+    return "Sprink";
+  }
+  return "Outros Terceiros";
+}
+
+function normalizeFase(fase: string): FaseProcessual {
+  const f = fase?.toUpperCase().trim() || "";
+  if (f.includes("CONHECIMENTO")) {
+    return "Conhecimento";
+  }
+  if (f.includes("RECURSAL")) {
+    return "Recursal";
+  }
+  if (f.includes("EXECU")) {
+    return "Execução";
+  }
+  return "Conhecimento";
+}
+
+function normalizeRisco(prognostico: string): ClassificacaoRisco {
+  const p = prognostico?.toUpperCase().trim() || "";
+  if (p.includes("REMOTO")) {
+    return "Remoto";
+  }
+  if (p.includes("POSS")) {
+    return "Possível";
+  }
+  if (p.includes("PROV")) {
+    return "Provável";
+  }
+  return "Remoto";
+}
 
 export async function registerRoutes(
   httpServer: Server,
@@ -31,54 +84,65 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/passivo/upload", async (req, res) => {
+  app.post("/api/passivo/upload", upload.single("file"), async (req, res) => {
     try {
-      const excelPath = path.join(process.cwd(), "attached_assets", "planilha brainstorm_1764342046398.xlsx");
-      
-      if (!fs.existsSync(excelPath)) {
-        return res.status(404).json({ error: "Excel file not found" });
+      if (!req.file) {
+        return res.status(400).json({ error: "Nenhum arquivo enviado" });
       }
 
-      const workbook = XLSX.readFile(excelPath);
+      const workbook = XLSX.read(req.file.buffer, { type: "buffer" });
       const sheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[sheetName];
-      const jsonData = XLSX.utils.sheet_to_json(worksheet);
+      const sheet = workbook.Sheets[sheetName];
+      const rawData = XLSX.utils.sheet_to_json<any[]>(sheet, { header: 1 });
 
-      const validFases: FaseProcessual[] = ["Conhecimento", "Recursal", "Execução"];
-      const validRiscos: ClassificacaoRisco[] = ["Remoto", "Possível", "Provável"];
-      const validEmpresas: Empresa[] = ["V.tal", "OI", "Serede", "Sprink", "Outros Terceiros"];
+      if (rawData.length < 2) {
+        return res.status(400).json({ error: "Planilha vazia ou sem dados" });
+      }
 
-      const processos: Processo[] = jsonData.map((row: any) => {
-        let empresa = row.empresa || row.Empresa || "Outros Terceiros";
-        if (!validEmpresas.includes(empresa)) {
-          empresa = "Outros Terceiros";
-        }
+      const processos: ProcessoRaw[] = [];
 
-        let fase = row.fase || row.Fase || row.faseProcessual || "Conhecimento";
-        if (!validFases.includes(fase)) {
-          fase = "Conhecimento";
-        }
+      for (let i = 1; i < rawData.length; i++) {
+        const row = rawData[i] as any[];
+        if (!row || row.length < 7) continue;
 
-        let risco = row.risco || row.Risco || row.classificacaoRisco || "Remoto";
-        if (!validRiscos.includes(risco)) {
-          risco = "Remoto";
-        }
+        const numeroProcesso = String(row[0] || "").trim();
+        const tipoOrigem = String(row[1] || "").trim();
+        const empresaOriginal = String(row[2] || "").trim();
+        const status = String(row[3] || "").trim();
+        const fase = String(row[4] || "").trim();
+        const valorTotal = typeof row[5] === "number" ? row[5] : parseFloat(row[5]) || 0;
+        const prognostico = String(row[6] || "").trim();
 
-        return {
+        if (!numeroProcesso || numeroProcesso === "") continue;
+
+        const processo: ProcessoRaw = {
           id: randomUUID(),
-          empresa: empresa as Empresa,
-          faseProcessual: fase as FaseProcessual,
-          classificacaoRisco: risco as ClassificacaoRisco,
-          numeroProcessos: Number(row.processos || row.numeroProcessos || row.Processos || 0),
-          valorTotalRisco: Number(row.valor || row.valorTotalRisco || row.Valor || 0),
+          numeroProcesso,
+          tipoOrigem,
+          empresaOriginal,
+          status,
+          fase,
+          valorTotal: Math.round(valorTotal * 100) / 100,
+          prognostico,
+          empresa: normalizeEmpresa(empresaOriginal, tipoOrigem),
+          faseProcessual: normalizeFase(fase),
+          classificacaoRisco: normalizeRisco(prognostico),
         };
-      });
+
+        processos.push(processo);
+      }
 
       await storage.setRawData(processos);
-      res.json({ success: true, count: processos.length });
+      console.log(`Upload: ${processos.length} processos importados`);
+      
+      res.json({ 
+        success: true, 
+        count: processos.length,
+        message: `${processos.length} processos importados com sucesso`
+      });
     } catch (error) {
       console.error("Error processing Excel file:", error);
-      res.status(500).json({ error: "Failed to process Excel file" });
+      res.status(500).json({ error: "Falha ao processar arquivo Excel" });
     }
   });
 
