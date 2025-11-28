@@ -1,0 +1,196 @@
+Quero que você desenvolva um módulo chamado MAPA DE JUÍZES E FAVORABILIDADE, dentro do meu ecossistema jurídico.
+
+Esse módulo deve permitir:
+
+Cadastrar TRTs (1 a 25)
+
+Cadastrar Comarcas / Varas dentro de cada TRT
+
+Cadastrar Juízes dentro de cada Vara
+
+Cadastrar Processos julgados por cada juiz
+
+Classificar cada processo como Procedente / Improcedente / Parcialmente Procedente
+
+O sistema deve calcular automaticamente a taxa de favorabilidade
+
+E exibir um ícone do juiz (imagem enviada)
+
+Dividido em verde/vermelho proporcionalmente às decisões
+
+Exemplo: 3 favoráveis e 2 desfavoráveis → 60% verde, 40% vermelho
+
+Exemplo: 0 favorável e 10 desfavoráveis → 100% vermelho
+
+Exemplo: 10 favoráveis e 0 desfavoráveis → 100% verde
+
+📌 1. Estrutura do Módulo no Menu
+
+Criar no menu lateral:
+
+📍 MAPAS ESTRATÉGICOS
+
+TRTs e Varas
+
+Juízes
+
+Favorabilidade (Dashboard)
+
+📌 2. Cadastro de TRTs (1 a 25)
+
+Criar uma tela onde o ADMIN pode:
+
+Cadastrar cada TRT (1ª Região até 25ª Região)
+
+Nome da Região (ex.: TRT 1 – Rio de Janeiro)
+
+UF (ex.: RJ)
+
+Cada TRT deve ser exibido como uma lista expandível.
+
+📌 3. Cadastro de Comarcas / Varas dentro do TRT
+
+Ao clicar em um TRT:
+
+Permitir cadastrar Varas do Trabalho
+
+Campos:
+
+Nome da Vara (ex.: VT 22)
+
+Cidade / Comarca
+
+Endereço (opcional)
+
+Latitude / Longitude (para mapa futuro)
+
+📌 4. Cadastro de Juízes dentro da Vara
+
+Ao clicar em uma Vara:
+
+Criar funcionalidade para cadastrar juízes:
+
+Nome completo do juiz
+
+Tipo:
+
+Titular
+
+Substituto
+
+Data de entrada na Vara
+
+Data de saída (opcional)
+
+Observações (ex.: histórico)
+
+📌 5. Cadastro de Processos dentro do Juiz
+
+Quando o usuário abre um juiz:
+
+Criar tabela estilo planilha contendo:
+
+Número do processo
+
+Data de julgamento
+
+Parte (reclamante/reclamada – opcional)
+
+Resultado:
+
+✓ Favorável
+
+✗ Desfavorável
+
+~ Parcialmente procedente
+
+O ADMIN pode adicionar quantos processos quiser.
+
+📌 6. Cálculo Automático da Favorabilidade
+
+O sistema deve calcular automaticamente:
+
+favoravel = quantidade de decisões favoráveis
+desfavoravel = quantidade de decisões desfavoráveis
+parcial = quantidade parcialmente procedente (contar como 0.5 favorável)
+
+total = favoravel + desfavoravel + parcial
+
+percentual_favoravel = favoravel / total
+percentual_desfavoravel = desfavoravel / total
+percentual_parcial = parcial / total
+
+📌 7. Exibir o Ícone do Juiz com as Cores Divididas
+
+O ícone enviado deve ser usado como base.
+
+Criar uma versão colorida dele:
+
+✔ A parte do corpo deve ser preenchida proporcionalmente:
+
+Exemplo 1
+5 julgados:
+
+3 favoráveis
+
+2 desfavoráveis
+
+➡ 60% verde / 40% vermelho
+
+Exemplo 2
+10 julgados:
+
+1 favorável
+
+9 desfavoráveis
+
+➡ 10% verde / 90% vermelho
+
+Exemplo 3
+4 julgados:
+
+2 favoráveis
+
+1 desfavorável
+
+1 parcial
+
+Parcial conta como 0.5:
+
+→ 2.5 favorável
+→ 1 desfavorável
+
+Favorabilidade: 71%
+
+➡ 71% verde
+➡ 29% vermelho
+
+📌 8. Tela “Favorabilidade – Dashboard”
+
+Criar um dashboard completo exibindo:
+
+✔ Lista de TRTs com caixas coloridas de favorabilidade média
+✔ Dentro de cada TRT, listar Varas com o quadrado indicador
+✔ Dentro de cada Vara, listar juízes com seus bonecos coloridos
+✔ Gráficos:
+
+Barras: Favoráveis x Desfavoráveis por TRT
+
+Pizza: % Favorável / % Desfavorável geral
+
+Barras horizontais: Juízes mais favoráveis
+
+Barras horizontais: Juízes mais desfavoráveis
+
+📌 9. Regras Visuais (Obrigatórias)
+✔ Verde → decisões favoráveis
+✔ Vermelho → decisões desfavoráveis
+✔ cinza → parcialmente procedente (opcional)
+✔ Ícone do juiz DIVIDIDO verticalmente proporcionalmente
+
+O estilo deve ser profissional, no padrão dos mapas da V.TAL.
+
+irei enviar uma imagem de como deve ser o avatar do juiz
+
+
+se dentro de uma vara existir varios juizes mostrar todos agrupado dentro dessa vara conforme a imagem que irei te mandar
