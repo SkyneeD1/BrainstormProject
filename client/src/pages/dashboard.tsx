@@ -72,6 +72,15 @@ export default function Dashboard() {
       const pageHeight = pdf.internal.pageSize.getHeight();
       const margin = 8;
 
+      const captureOptions = {
+        scale: 1.5,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: "#ebedef",
+        logging: false,
+        imageTimeout: 0,
+      };
+
       // Página 1: KPIs + Visão Geral
       pdf.setFontSize(14);
       pdf.setTextColor(40, 40, 40);
@@ -84,40 +93,26 @@ export default function Dashboard() {
 
       // Capturar KPIs
       if (kpisRef.current) {
-        const canvasKpis = await html2canvas(kpisRef.current, {
-          scale: 2,
-          useCORS: true,
-          allowTaint: true,
-          backgroundColor: "#ebedef",
-          logging: false,
-        });
-
-        const imgDataKpis = canvasKpis.toDataURL("image/png");
+        const canvasKpis = await html2canvas(kpisRef.current, captureOptions);
+        const imgDataKpis = canvasKpis.toDataURL("image/jpeg", 0.95);
         const imgWidth = pageWidth - margin * 2;
         const imgHeightKpis = (canvasKpis.height * imgWidth) / canvasKpis.width;
         const kpiHeight = Math.min(imgHeightKpis, 35);
 
-        pdf.addImage(imgDataKpis, "PNG", margin, yOffset, imgWidth, kpiHeight);
+        pdf.addImage(imgDataKpis, "JPEG", margin, yOffset, imgWidth, kpiHeight);
         yOffset += kpiHeight + 4;
       }
 
       // Capturar Visão Geral
       if (visaoGeralRef.current) {
-        const canvas1 = await html2canvas(visaoGeralRef.current, {
-          scale: 2,
-          useCORS: true,
-          allowTaint: true,
-          backgroundColor: "#ebedef",
-          logging: false,
-        });
-
-        const imgData1 = canvas1.toDataURL("image/png");
+        const canvas1 = await html2canvas(visaoGeralRef.current, captureOptions);
+        const imgData1 = canvas1.toDataURL("image/jpeg", 0.95);
         const imgWidth = pageWidth - margin * 2;
         const imgHeight1 = (canvas1.height * imgWidth) / canvas1.width;
         const maxHeight = pageHeight - yOffset - margin;
         const finalHeight1 = Math.min(imgHeight1, maxHeight);
 
-        pdf.addImage(imgData1, "PNG", margin, yOffset, imgWidth, finalHeight1);
+        pdf.addImage(imgData1, "JPEG", margin, yOffset, imgWidth, finalHeight1);
       }
 
       // Página 2: KPIs + Detalhamento por Origem
@@ -134,40 +129,26 @@ export default function Dashboard() {
 
       // Capturar KPIs novamente na página 2
       if (kpisRef.current) {
-        const canvasKpis2 = await html2canvas(kpisRef.current, {
-          scale: 2,
-          useCORS: true,
-          allowTaint: true,
-          backgroundColor: "#ebedef",
-          logging: false,
-        });
-
-        const imgDataKpis2 = canvasKpis2.toDataURL("image/png");
+        const canvasKpis2 = await html2canvas(kpisRef.current, captureOptions);
+        const imgDataKpis2 = canvasKpis2.toDataURL("image/jpeg", 0.95);
         const imgWidth = pageWidth - margin * 2;
         const imgHeightKpis2 = (canvasKpis2.height * imgWidth) / canvasKpis2.width;
         const kpiHeight2 = Math.min(imgHeightKpis2, 35);
 
-        pdf.addImage(imgDataKpis2, "PNG", margin, yOffset, imgWidth, kpiHeight2);
+        pdf.addImage(imgDataKpis2, "JPEG", margin, yOffset, imgWidth, kpiHeight2);
         yOffset += kpiHeight2 + 4;
       }
 
       // Capturar Detalhamento por Origem
       if (detalhamentoRef.current) {
-        const canvas2 = await html2canvas(detalhamentoRef.current, {
-          scale: 2,
-          useCORS: true,
-          allowTaint: true,
-          backgroundColor: "#ebedef",
-          logging: false,
-        });
-
-        const imgData2 = canvas2.toDataURL("image/png");
+        const canvas2 = await html2canvas(detalhamentoRef.current, captureOptions);
+        const imgData2 = canvas2.toDataURL("image/jpeg", 0.95);
         const imgWidth = pageWidth - margin * 2;
         const imgHeight2 = (canvas2.height * imgWidth) / canvas2.width;
         const maxHeight = pageHeight - yOffset - margin;
         const finalHeight2 = Math.min(imgHeight2, maxHeight);
 
-        pdf.addImage(imgData2, "PNG", margin, yOffset, imgWidth, finalHeight2);
+        pdf.addImage(imgData2, "JPEG", margin, yOffset, imgWidth, finalHeight2);
       }
 
       const now = new Date();
