@@ -1,12 +1,14 @@
 import { useState, useMemo, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Database, Download, RefreshCw, AlertTriangle, Search, Upload, FileSpreadsheet, X } from "lucide-react";
+import { Database, Download, RefreshCw, AlertTriangle, Search, Upload, FileSpreadsheet, X, Shield } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import { queryClient } from "@/lib/queryClient";
+import { isUnauthorizedError } from "@/lib/authUtils";
 import {
   Table,
   TableBody,
@@ -40,6 +42,7 @@ export default function AdminDados() {
   const [searchTerm, setSearchTerm] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const { isAdmin } = useAuth();
 
   const { data: passivoData, isLoading, error, refetch, isRefetching } = useQuery<PassivoData>({
     queryKey: ["/api/passivo"],
@@ -70,6 +73,14 @@ export default function AdminDados() {
       queryClient.invalidateQueries({ queryKey: ["/api/passivo"] });
     },
     onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Sem permissão",
+          description: "Você precisa ser administrador para fazer upload",
+          variant: "destructive",
+        });
+        return;
+      }
       toast({
         title: "Erro no upload",
         description: error.message,
@@ -188,19 +199,21 @@ export default function AdminDados() {
             className="hidden"
             data-testid="input-file-upload"
           />
-          <Button
-            variant="outline"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploadMutation.isPending}
-            data-testid="button-upload"
-          >
-            {uploadMutation.isPending ? (
-              <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <Upload className="h-4 w-4 mr-2" />
-            )}
-            Importar XLSX
-          </Button>
+          {isAdmin && (
+            <Button
+              variant="outline"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploadMutation.isPending}
+              data-testid="button-upload"
+            >
+              {uploadMutation.isPending ? (
+                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Upload className="h-4 w-4 mr-2" />
+              )}
+              Importar XLSX
+            </Button>
+          )}
           <Button
             variant="outline"
             onClick={() => refetch()}

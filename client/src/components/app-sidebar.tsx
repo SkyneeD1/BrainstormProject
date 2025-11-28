@@ -1,5 +1,9 @@
 import { Link, useLocation } from "wouter";
-import { BarChart3, Database, FileSpreadsheet, ChevronDown, Building2, Scale } from "lucide-react";
+import { BarChart3, Database, ChevronDown, Building2, Scale, Users, LogOut, Shield, Eye } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Sidebar,
   SidebarContent,
@@ -35,16 +39,26 @@ const menuItems = [
   },
 ];
 
-const adminItems = [
-  {
-    title: "Dados",
-    url: "/admin/dados",
-    icon: Database,
-  },
-];
-
 export function AppSidebar() {
   const [location] = useLocation();
+  const { user, isAdmin } = useAuth();
+
+  const getInitials = () => {
+    if (user?.firstName && user?.lastName) {
+      return `${user.firstName[0]}${user.lastName[0]}`.toUpperCase();
+    }
+    if (user?.email) {
+      return user.email[0].toUpperCase();
+    }
+    return "U";
+  };
+
+  const getUserName = () => {
+    if (user?.firstName && user?.lastName) {
+      return `${user.firstName} ${user.lastName}`;
+    }
+    return user?.email || "Usuário";
+  };
 
   return (
     <Sidebar className="border-r-0">
@@ -113,30 +127,85 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {adminItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  className={`${
+                    location === "/admin/dados"
+                      ? "bg-primary/10 text-primary"
+                      : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent"
+                  }`}
+                >
+                  <Link href="/admin/dados" data-testid="link-admin-dados">
+                    <Database className="h-4 w-4" />
+                    <span className="font-medium">Dados</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+
+              {isAdmin && (
+                <SidebarMenuItem>
                   <SidebarMenuButton
                     asChild
                     className={`${
-                      location === item.url
+                      location === "/admin/usuarios"
                         ? "bg-primary/10 text-primary"
                         : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent"
                     }`}
                   >
-                    <Link href={item.url} data-testid={`link-admin-${item.title.toLowerCase()}`}>
-                      <item.icon className="h-4 w-4" />
-                      <span className="font-medium">{item.title}</span>
+                    <Link href="/admin/usuarios" data-testid="link-admin-usuarios">
+                      <Users className="h-4 w-4" />
+                      <span className="font-medium">Usuários</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
-              ))}
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="p-4 mt-auto">
-        <div className="flex items-center gap-2 px-2">
+      <SidebarFooter className="p-4 mt-auto border-t border-sidebar-accent">
+        {user && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-3 px-2">
+              <Avatar className="h-8 w-8">
+                <AvatarImage src={user.profileImageUrl || undefined} className="object-cover" />
+                <AvatarFallback className="text-xs">{getInitials()}</AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-sidebar-foreground truncate">
+                  {getUserName()}
+                </p>
+                <div className="flex items-center gap-1">
+                  {isAdmin ? (
+                    <Badge variant="default" className="text-[10px] px-1.5 py-0 h-4">
+                      <Shield className="w-2.5 h-2.5 mr-0.5" />
+                      Admin
+                    </Badge>
+                  ) : (
+                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">
+                      <Eye className="w-2.5 h-2.5 mr-0.5" />
+                      Viewer
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            </div>
+            <a href="/api/logout" className="block">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full justify-start text-sidebar-foreground/70 hover:text-sidebar-foreground"
+                data-testid="button-logout"
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                Sair
+              </Button>
+            </a>
+          </div>
+        )}
+        <div className="flex items-center gap-2 px-2 pt-3 border-t border-sidebar-accent mt-3">
           <Building2 className="h-4 w-4 text-primary" />
           <span className="text-xs text-sidebar-foreground/60 font-medium">V.tal</span>
         </div>
