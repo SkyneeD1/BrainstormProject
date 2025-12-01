@@ -30,6 +30,54 @@ export default function FavorabilidadePage() {
     queryKey: ["/api/favorabilidade/juizes"],
   });
 
+  const estadosData = useMemo(() => {
+    if (!trtsData) return [];
+    
+    const estadosMap = new Map<string, {
+      uf: string;
+      varas: Array<VaraComFavorabilidade & { trtNumero: string; trtNome: string }>;
+      totalJulgamentos: number;
+      favoraveis: number;
+      desfavoraveis: number;
+      parciais: number;
+    }>();
+
+    for (const trt of trtsData) {
+      const existing = estadosMap.get(trt.uf) || {
+        uf: trt.uf,
+        varas: [],
+        totalJulgamentos: 0,
+        favoraveis: 0,
+        desfavoraveis: 0,
+        parciais: 0,
+      };
+
+      for (const vara of trt.varas) {
+        existing.varas.push({
+          ...vara,
+          trtNumero: trt.numero,
+          trtNome: trt.nome,
+        });
+        existing.totalJulgamentos += vara.favorabilidade.totalJulgamentos;
+        existing.favoraveis += vara.favorabilidade.favoraveis;
+        existing.desfavoraveis += vara.favorabilidade.desfavoraveis;
+        existing.parciais += vara.favorabilidade.parciais;
+      }
+
+      estadosMap.set(trt.uf, existing);
+    }
+
+    return Array.from(estadosMap.values())
+      .map(estado => ({
+        ...estado,
+        percentualFavoravel: estado.totalJulgamentos > 0
+          ? Math.round(((estado.favoraveis + estado.parciais * 0.5) / estado.totalJulgamentos) * 100)
+          : 0,
+        varas: estado.varas.sort((a, b) => a.nome.localeCompare(b.nome)),
+      }))
+      .sort((a, b) => a.uf.localeCompare(b.uf));
+  }, [trtsData]);
+
   if (isLoadingTRTs || isLoadingJuizes) {
     return (
       <div className="container mx-auto p-6 space-y-4">
@@ -87,54 +135,6 @@ export default function FavorabilidadePage() {
     .filter(j => j.favorabilidade.totalJulgamentos >= 2)
     .sort((a, b) => a.favorabilidade.percentualFavoravel - b.favorabilidade.percentualFavoravel)
     .slice(0, 5);
-
-  const estadosData = useMemo(() => {
-    if (!trtsData) return [];
-    
-    const estadosMap = new Map<string, {
-      uf: string;
-      varas: Array<VaraComFavorabilidade & { trtNumero: string; trtNome: string }>;
-      totalJulgamentos: number;
-      favoraveis: number;
-      desfavoraveis: number;
-      parciais: number;
-    }>();
-
-    for (const trt of trtsData) {
-      const existing = estadosMap.get(trt.uf) || {
-        uf: trt.uf,
-        varas: [],
-        totalJulgamentos: 0,
-        favoraveis: 0,
-        desfavoraveis: 0,
-        parciais: 0,
-      };
-
-      for (const vara of trt.varas) {
-        existing.varas.push({
-          ...vara,
-          trtNumero: trt.numero,
-          trtNome: trt.nome,
-        });
-        existing.totalJulgamentos += vara.favorabilidade.totalJulgamentos;
-        existing.favoraveis += vara.favorabilidade.favoraveis;
-        existing.desfavoraveis += vara.favorabilidade.desfavoraveis;
-        existing.parciais += vara.favorabilidade.parciais;
-      }
-
-      estadosMap.set(trt.uf, existing);
-    }
-
-    return Array.from(estadosMap.values())
-      .map(estado => ({
-        ...estado,
-        percentualFavoravel: estado.totalJulgamentos > 0
-          ? Math.round(((estado.favoraveis + estado.parciais * 0.5) / estado.totalJulgamentos) * 100)
-          : 0,
-        varas: estado.varas.sort((a, b) => a.nome.localeCompare(b.nome)),
-      }))
-      .sort((a, b) => a.uf.localeCompare(b.uf));
-  }, [trtsData]);
 
   return (
     <div className="container mx-auto p-6 space-y-6">
