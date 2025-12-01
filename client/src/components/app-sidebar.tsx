@@ -88,13 +88,10 @@ export function AppSidebar() {
           <h1 className="text-lg font-bold text-sidebar-foreground tracking-tight leading-tight">
             CONTENCIOSO
           </h1>
-          <p className="text-xs text-sidebar-foreground/70 font-medium tracking-wide uppercase">
-            Ecossistema de Gestão
-          </p>
+          <p className="text-xs text-sidebar-foreground/70 font-medium tracking-wide uppercase">Gerenciamento V.TAL</p>
         </div>
         <div className="mt-4 h-1 w-12 bg-primary rounded-full" />
       </SidebarHeader>
-
       <SidebarContent className="px-3">
         <SidebarGroup>
           <SidebarGroupLabel className="text-sidebar-foreground/50 text-xs font-medium uppercase tracking-wider px-3 mb-2">
@@ -185,7 +182,6 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-
       <SidebarFooter className="p-4 mt-auto border-t border-sidebar-accent">
         {user && (
           <div className="space-y-3">
