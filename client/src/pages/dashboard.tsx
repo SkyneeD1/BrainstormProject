@@ -10,7 +10,7 @@ import { DataTableFase } from "@/components/data-table-fase";
 import { DataTableRisco } from "@/components/data-table-risco";
 import { DataTableOrigem } from "@/components/data-table-origem";
 import { BarChartFase } from "@/components/charts/bar-chart-fase";
-import { PieChartRisco } from "@/components/charts/pie-chart-risco";
+import { FunnelChartRisco } from "@/components/charts/funnel-chart-risco";
 import { GroupedBarChart } from "@/components/charts/grouped-bar-chart";
 import { EmpresaBarChart } from "@/components/charts/empresa-bar-chart";
 import { EmpresaPieChart } from "@/components/charts/empresa-pie-chart";
@@ -342,11 +342,14 @@ export default function Dashboard() {
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <PieChartRisco
+            <div className="grid grid-cols-1 gap-6">
+              <FunnelChartRisco
                 data={riscos}
                 title="Distribuição por Classificação de Risco"
               />
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <GroupedBarChart
                 data={fases}
                 title="Ticket Médio por Fase (R$)"
