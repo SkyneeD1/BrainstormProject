@@ -22,12 +22,12 @@ export function DataTableFase({ data, totals }: DataTableFaseProps) {
             <th className="px-4 py-3 text-center font-semibold text-xs uppercase tracking-wider">
               # de<br />processos ativos
             </th>
-            <th className="px-4 py-3 text-center font-semibold text-xs uppercase tracking-wider bg-primary/20">
-              <span className="text-primary-foreground">Valor total risco -<br />NOVO</span>
+            <th className="px-4 py-3 text-center font-semibold text-xs uppercase tracking-wider">
+              Valor total<br />risco
               <br /><span className="text-[10px] opacity-70">(R$)</span>
             </th>
             <th className="px-4 py-3 text-center font-semibold text-xs uppercase tracking-wider">
-              TM risco<br />CONTADOR +<br />PROJEÇÃO
+              TMT<br />risco
               <br /><span className="text-[10px] opacity-70">(R$ / processo)</span>
             </th>
           </tr>

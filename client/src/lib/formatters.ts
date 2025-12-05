@@ -12,7 +12,7 @@ export function formatCurrency(value: number): string {
 
 export function formatCurrencyValue(value: number): string {
   const absValue = Math.abs(value);
-  const formattedValue = value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const formattedValue = Math.round(value).toLocaleString('pt-BR');
   
   if (absValue >= 1_000_000_000) {
     return `${formattedValue} (bi)`;
@@ -43,7 +43,7 @@ export function formatPercentageParens(value: number): string {
 
 export function formatTicketMedio(value: number): string {
   const absValue = Math.abs(value);
-  const formattedValue = value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const formattedValue = Math.round(value).toLocaleString('pt-BR');
   
   if (absValue >= 1_000_000) {
     return `${formattedValue} (mi)`;

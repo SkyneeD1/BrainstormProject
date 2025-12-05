@@ -29,11 +29,11 @@ export function DataTableRisco({ data, totals }: DataTableRiscoProps) {
               # de<br />processos ativos
             </th>
             <th className="px-4 py-3 text-center font-semibold text-xs uppercase tracking-wider">
-              Valor total risco -<br />NOVO
+              Valor total<br />risco
               <br /><span className="text-[10px] opacity-70">(R$)</span>
             </th>
             <th className="px-4 py-3 text-center font-semibold text-xs uppercase tracking-wider">
-              TM risco<br />CONTADOR +<br />PROJEÇÃO
+              TMT<br />risco
               <br /><span className="text-[10px] opacity-70">(R$ / processo)</span>
             </th>
           </tr>
