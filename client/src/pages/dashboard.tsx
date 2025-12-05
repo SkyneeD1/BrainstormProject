@@ -72,19 +72,43 @@ export default function Dashboard() {
 
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
-      const margin = 8;
+      const margin = 10;
 
       const captureOptions = {
-        scale: 1.5,
+        scale: 2,
         useCORS: true,
         allowTaint: true,
-        backgroundColor: "#ebedef",
+        backgroundColor: "#ffffff",
         logging: false,
+        windowWidth: 1200,
+      };
+
+      const addImageWithAspectRatio = (
+        canvas: HTMLCanvasElement, 
+        yStart: number, 
+        maxImgHeight: number
+      ): number => {
+        const imgData = canvas.toDataURL("image/png", 1.0);
+        const aspectRatio = canvas.width / canvas.height;
+        const availableWidth = pageWidth - margin * 2;
+        
+        let imgWidth = availableWidth;
+        let imgHeight = imgWidth / aspectRatio;
+        
+        if (imgHeight > maxImgHeight) {
+          imgHeight = maxImgHeight;
+          imgWidth = imgHeight * aspectRatio;
+        }
+        
+        const xOffset = margin + (availableWidth - imgWidth) / 2;
+        
+        pdf.addImage(imgData, "PNG", xOffset, yStart, imgWidth, imgHeight);
+        return imgHeight;
       };
 
       // Garantir que estamos na aba Visão Geral
       setActiveTab("visao-geral");
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 600));
 
       // Página 1: KPIs + Visão Geral
       pdf.setFontSize(14);
@@ -94,35 +118,25 @@ export default function Dashboard() {
       pdf.setTextColor(100, 100, 100);
       pdf.text("Base Dez/24 | V.tal", margin, margin + 10);
 
-      let yOffset = margin + 14;
+      let yOffset = margin + 15;
 
       // Capturar KPIs
       if (kpisRef.current) {
         const canvasKpis = await html2canvas(kpisRef.current, captureOptions);
-        const imgDataKpis = canvasKpis.toDataURL("image/jpeg", 0.92);
-        const imgWidth = pageWidth - margin * 2;
-        const imgHeightKpis = (canvasKpis.height * imgWidth) / canvasKpis.width;
-        const kpiHeight = Math.min(imgHeightKpis, 35);
-
-        pdf.addImage(imgDataKpis, "JPEG", margin, yOffset, imgWidth, kpiHeight);
-        yOffset += kpiHeight + 4;
+        const kpiHeight = addImageWithAspectRatio(canvasKpis, yOffset, 30);
+        yOffset += kpiHeight + 5;
       }
 
       // Capturar Visão Geral
       if (visaoGeralRef.current) {
         const canvas1 = await html2canvas(visaoGeralRef.current, captureOptions);
-        const imgData1 = canvas1.toDataURL("image/jpeg", 0.92);
-        const imgWidth = pageWidth - margin * 2;
-        const imgHeight1 = (canvas1.height * imgWidth) / canvas1.width;
         const maxHeight = pageHeight - yOffset - margin;
-        const finalHeight1 = Math.min(imgHeight1, maxHeight);
-
-        pdf.addImage(imgData1, "JPEG", margin, yOffset, imgWidth, finalHeight1);
+        addImageWithAspectRatio(canvas1, yOffset, maxHeight);
       }
 
       // Mudar para aba Detalhamento por Origem
       setActiveTab("por-origem");
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 600));
 
       // Página 2: KPIs + Detalhamento por Origem
       pdf.addPage();
@@ -134,30 +148,20 @@ export default function Dashboard() {
       pdf.setTextColor(100, 100, 100);
       pdf.text("Base Dez/24 | V.tal", margin, margin + 10);
 
-      yOffset = margin + 14;
+      yOffset = margin + 15;
 
       // Capturar KPIs novamente na página 2
       if (kpisRef.current) {
         const canvasKpis2 = await html2canvas(kpisRef.current, captureOptions);
-        const imgDataKpis2 = canvasKpis2.toDataURL("image/jpeg", 0.92);
-        const imgWidth = pageWidth - margin * 2;
-        const imgHeightKpis2 = (canvasKpis2.height * imgWidth) / canvasKpis2.width;
-        const kpiHeight2 = Math.min(imgHeightKpis2, 35);
-
-        pdf.addImage(imgDataKpis2, "JPEG", margin, yOffset, imgWidth, kpiHeight2);
-        yOffset += kpiHeight2 + 4;
+        const kpiHeight2 = addImageWithAspectRatio(canvasKpis2, yOffset, 30);
+        yOffset += kpiHeight2 + 5;
       }
 
       // Capturar Detalhamento por Origem
       if (detalhamentoRef.current) {
         const canvas2 = await html2canvas(detalhamentoRef.current, captureOptions);
-        const imgData2 = canvas2.toDataURL("image/jpeg", 0.92);
-        const imgWidth = pageWidth - margin * 2;
-        const imgHeight2 = (canvas2.height * imgWidth) / canvas2.width;
         const maxHeight = pageHeight - yOffset - margin;
-        const finalHeight2 = Math.min(imgHeight2, maxHeight);
-
-        pdf.addImage(imgData2, "JPEG", margin, yOffset, imgWidth, finalHeight2);
+        addImageWithAspectRatio(canvas2, yOffset, maxHeight);
       }
 
       // Restaurar aba original
