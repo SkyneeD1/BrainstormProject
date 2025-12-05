@@ -342,14 +342,11 @@ export default function Dashboard() {
               />
             </div>
 
-            <div className="grid grid-cols-1 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <FunnelChartRisco
                 data={riscos}
                 title="Distribuição por Classificação de Risco"
               />
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <GroupedBarChart
                 data={fases}
                 title="Ticket Médio por Fase (R$)"

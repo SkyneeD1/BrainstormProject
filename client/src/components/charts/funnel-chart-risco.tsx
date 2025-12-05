@@ -35,8 +35,8 @@ export function FunnelChartRisco({ data, title }: FunnelChartRiscoProps) {
         <h3 className="text-sm font-semibold text-foreground">{title}</h3>
       </div>
       
-      <div className="flex flex-col lg:flex-row gap-4">
-        <div className="h-[280px] flex-1 min-w-[200px]" data-testid="chart-funnel-risco">
+      <div className="flex flex-col sm:flex-row gap-4">
+        <div className="h-[220px] w-full sm:w-[180px] shrink-0" data-testid="chart-funnel-risco">
           <ResponsiveContainer width="100%" height="100%">
             <FunnelChart>
               <Tooltip
@@ -82,41 +82,39 @@ export function FunnelChartRisco({ data, title }: FunnelChartRiscoProps) {
           </ResponsiveContainer>
         </div>
 
-        <div className="flex flex-col justify-center gap-3 lg:w-[280px]">
+        <div className="flex flex-col justify-center gap-2 flex-1">
           {chartData.map((item, index) => (
             <div
               key={item.name}
-              className="flex items-start gap-3 p-3 rounded-lg border hover-elevate"
+              className="flex items-center gap-2 p-2 rounded-lg border hover-elevate"
               data-testid={`funnel-desc-${item.name.toLowerCase()}`}
             >
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex items-center gap-1 shrink-0">
                 <div
-                  className="w-4 h-4 rounded"
+                  className="w-3 h-3 rounded"
                   style={{ backgroundColor: item.fill }}
                 />
-                <div className="w-12 h-0.5 bg-border" />
+                <div className="w-6 h-0.5 bg-border hidden sm:block" />
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-bold text-sm mb-1" style={{ color: item.fill }}>
-                  {item.name}
-                </p>
-                <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
-                  <div>
-                    <span className="text-muted-foreground">Qtd:</span>{" "}
-                    <span className="font-semibold">{item.processos.toLocaleString('pt-BR')}</span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">%:</span>{" "}
-                    <span className="font-semibold">{item.percentual.toFixed(0)}%</span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Média:</span>{" "}
-                    <span className="font-semibold">{formatTicketMedio(item.ticketMedio)}</span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Valor:</span>{" "}
-                    <span className="font-semibold">{formatCurrencyValue(item.valorTotal)}</span>
-                  </div>
+              <p className="font-bold text-xs w-16 shrink-0" style={{ color: item.fill }}>
+                {item.name}
+              </p>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] flex-1">
+                <div>
+                  <span className="text-muted-foreground">Qtd:</span>{" "}
+                  <span className="font-semibold">{item.processos.toLocaleString('pt-BR')}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">%:</span>{" "}
+                  <span className="font-semibold">{item.percentual.toFixed(0)}%</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Média:</span>{" "}
+                  <span className="font-semibold">{formatTicketMedio(item.ticketMedio)}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Valor:</span>{" "}
+                  <span className="font-semibold">{formatCurrencyValue(item.valorTotal)}</span>
                 </div>
               </div>
             </div>
