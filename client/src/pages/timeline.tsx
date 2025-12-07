@@ -20,9 +20,7 @@ import { ptBR } from "date-fns/locale";
 
 export default function TimelinePage() {
   const today = new Date();
-  const [dataInicio, setDataInicio] = useState<string>(
-    format(subMonths(startOfMonth(today), 6), "yyyy-MM-dd")
-  );
+  const [dataInicio, setDataInicio] = useState<string>("2020-01-01");
   const [dataFim, setDataFim] = useState<string>(
     format(endOfMonth(today), "yyyy-MM-dd")
   );
