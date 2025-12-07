@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { BarChart3, Database, ChevronDown, Building2, Scale, Users, LogOut, Shield, Eye, Loader2, Map, Gavel, User, TrendingUp, Calendar } from "lucide-react";
+import { BarChart3, Database, ChevronDown, Building2, Scale, Users, LogOut, Shield, Eye, Loader2, Map, Gavel, User, TrendingUp, Calendar, Lightbulb, FileSpreadsheet, Table2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -27,18 +27,18 @@ import {
 
 const menuItems = [
   {
-    title: "Brainstorm",
-    icon: BarChart3,
+    title: "Módulo 1 - Passivo",
+    icon: Scale,
     subItems: [
       {
         title: "Passivo Sob Gestão (Base Dez/24)",
         url: "/",
-        icon: Scale,
+        icon: BarChart3,
       },
     ],
   },
   {
-    title: "Mapas Estratégicos",
+    title: "Módulo 2 - Mapas",
     icon: Map,
     subItems: [
       {
@@ -56,10 +56,32 @@ const menuItems = [
         url: "/mapas/favorabilidade",
         icon: TrendingUp,
       },
+    ],
+  },
+  {
+    title: "Módulo 3 - Timeline",
+    icon: Calendar,
+    subItems: [
       {
         title: "Linha do Tempo",
         url: "/mapas/timeline",
         icon: Calendar,
+      },
+    ],
+  },
+  {
+    title: "Módulo 4 - Brainstorm",
+    icon: Lightbulb,
+    subItems: [
+      {
+        title: "Relatório de Quantidades",
+        url: "/brainstorm/relatorio",
+        icon: FileSpreadsheet,
+      },
+      {
+        title: "Gestão de Dados",
+        url: "/brainstorm/gestao",
+        icon: Table2,
       },
     ],
   },
