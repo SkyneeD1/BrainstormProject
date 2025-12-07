@@ -11,7 +11,11 @@ import {
   insertVaraSchema,
   insertJuizSchema,
   insertJulgamentoSchema,
-  insertAudienciaSchema
+  insertAudienciaSchema,
+  insertDistribuidoSchema,
+  insertEncerradoSchema,
+  insertSentencaMeritoSchema,
+  insertAcordaoMeritoSchema
 } from "@shared/schema";
 import XLSX from "xlsx";
 import { randomUUID } from "crypto";
@@ -723,6 +727,285 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error fetching timeline:", error);
       res.status(500).json({ error: "Erro ao buscar linha do tempo" });
+    }
+  });
+
+  // ========== Brainstorm Routes ==========
+  app.get("/api/brainstorm/stats", isAuthenticated, async (req, res) => {
+    try {
+      const stats = await storage.getBrainstormStats();
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching brainstorm stats:", error);
+      res.status(500).json({ error: "Erro ao buscar estatísticas" });
+    }
+  });
+
+  // Distribuídos
+  app.get("/api/brainstorm/distribuidos", isAuthenticated, async (req, res) => {
+    try {
+      const data = await storage.getAllDistribuidos();
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching distribuidos:", error);
+      res.status(500).json({ error: "Erro ao buscar distribuídos" });
+    }
+  });
+
+  app.post("/api/brainstorm/distribuidos", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const parsed = insertDistribuidoSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.errors[0]?.message || "Dados inválidos" });
+      }
+      const created = await storage.createDistribuido(parsed.data);
+      res.status(201).json(created);
+    } catch (error) {
+      console.error("Error creating distribuido:", error);
+      res.status(500).json({ error: "Erro ao criar distribuído" });
+    }
+  });
+
+  app.post("/api/brainstorm/distribuidos/batch", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const items = req.body as any[];
+      if (!Array.isArray(items)) {
+        return res.status(400).json({ error: "Esperado array de itens" });
+      }
+      const validItems = items.filter(item => {
+        const parsed = insertDistribuidoSchema.safeParse(item);
+        return parsed.success;
+      }).map(item => insertDistribuidoSchema.parse(item));
+      const created = await storage.createDistribuidosBatch(validItems);
+      res.status(201).json({ count: created.length, items: created });
+    } catch (error) {
+      console.error("Error batch creating distribuidos:", error);
+      res.status(500).json({ error: "Erro ao criar distribuídos em lote" });
+    }
+  });
+
+  app.delete("/api/brainstorm/distribuidos/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      await storage.deleteDistribuido(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting distribuido:", error);
+      res.status(500).json({ error: "Erro ao excluir distribuído" });
+    }
+  });
+
+  app.post("/api/brainstorm/distribuidos/delete-batch", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { ids } = req.body;
+      if (!Array.isArray(ids)) {
+        return res.status(400).json({ error: "Esperado array de IDs" });
+      }
+      await storage.deleteDistribuidosBatch(ids);
+      res.json({ success: true, count: ids.length });
+    } catch (error) {
+      console.error("Error batch deleting distribuidos:", error);
+      res.status(500).json({ error: "Erro ao excluir distribuídos em lote" });
+    }
+  });
+
+  // Encerrados
+  app.get("/api/brainstorm/encerrados", isAuthenticated, async (req, res) => {
+    try {
+      const data = await storage.getAllEncerrados();
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching encerrados:", error);
+      res.status(500).json({ error: "Erro ao buscar encerrados" });
+    }
+  });
+
+  app.post("/api/brainstorm/encerrados", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const parsed = insertEncerradoSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.errors[0]?.message || "Dados inválidos" });
+      }
+      const created = await storage.createEncerrado(parsed.data);
+      res.status(201).json(created);
+    } catch (error) {
+      console.error("Error creating encerrado:", error);
+      res.status(500).json({ error: "Erro ao criar encerrado" });
+    }
+  });
+
+  app.post("/api/brainstorm/encerrados/batch", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const items = req.body as any[];
+      if (!Array.isArray(items)) {
+        return res.status(400).json({ error: "Esperado array de itens" });
+      }
+      const validItems = items.filter(item => {
+        const parsed = insertEncerradoSchema.safeParse(item);
+        return parsed.success;
+      }).map(item => insertEncerradoSchema.parse(item));
+      const created = await storage.createEncerradosBatch(validItems);
+      res.status(201).json({ count: created.length, items: created });
+    } catch (error) {
+      console.error("Error batch creating encerrados:", error);
+      res.status(500).json({ error: "Erro ao criar encerrados em lote" });
+    }
+  });
+
+  app.delete("/api/brainstorm/encerrados/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      await storage.deleteEncerrado(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting encerrado:", error);
+      res.status(500).json({ error: "Erro ao excluir encerrado" });
+    }
+  });
+
+  app.post("/api/brainstorm/encerrados/delete-batch", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { ids } = req.body;
+      if (!Array.isArray(ids)) {
+        return res.status(400).json({ error: "Esperado array de IDs" });
+      }
+      await storage.deleteEncerradosBatch(ids);
+      res.json({ success: true, count: ids.length });
+    } catch (error) {
+      console.error("Error batch deleting encerrados:", error);
+      res.status(500).json({ error: "Erro ao excluir encerrados em lote" });
+    }
+  });
+
+  // Sentenças de Mérito
+  app.get("/api/brainstorm/sentencas-merito", isAuthenticated, async (req, res) => {
+    try {
+      const data = await storage.getAllSentencasMerito();
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching sentencas merito:", error);
+      res.status(500).json({ error: "Erro ao buscar sentenças de mérito" });
+    }
+  });
+
+  app.post("/api/brainstorm/sentencas-merito", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const parsed = insertSentencaMeritoSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.errors[0]?.message || "Dados inválidos" });
+      }
+      const created = await storage.createSentencaMerito(parsed.data);
+      res.status(201).json(created);
+    } catch (error) {
+      console.error("Error creating sentenca merito:", error);
+      res.status(500).json({ error: "Erro ao criar sentença de mérito" });
+    }
+  });
+
+  app.post("/api/brainstorm/sentencas-merito/batch", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const items = req.body as any[];
+      if (!Array.isArray(items)) {
+        return res.status(400).json({ error: "Esperado array de itens" });
+      }
+      const validItems = items.filter(item => {
+        const parsed = insertSentencaMeritoSchema.safeParse(item);
+        return parsed.success;
+      }).map(item => insertSentencaMeritoSchema.parse(item));
+      const created = await storage.createSentencasMeritoBatch(validItems);
+      res.status(201).json({ count: created.length, items: created });
+    } catch (error) {
+      console.error("Error batch creating sentencas merito:", error);
+      res.status(500).json({ error: "Erro ao criar sentenças de mérito em lote" });
+    }
+  });
+
+  app.delete("/api/brainstorm/sentencas-merito/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      await storage.deleteSentencaMerito(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting sentenca merito:", error);
+      res.status(500).json({ error: "Erro ao excluir sentença de mérito" });
+    }
+  });
+
+  app.post("/api/brainstorm/sentencas-merito/delete-batch", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { ids } = req.body;
+      if (!Array.isArray(ids)) {
+        return res.status(400).json({ error: "Esperado array de IDs" });
+      }
+      await storage.deleteSentencasMeritoBatch(ids);
+      res.json({ success: true, count: ids.length });
+    } catch (error) {
+      console.error("Error batch deleting sentencas merito:", error);
+      res.status(500).json({ error: "Erro ao excluir sentenças de mérito em lote" });
+    }
+  });
+
+  // Acórdãos de Mérito
+  app.get("/api/brainstorm/acordaos-merito", isAuthenticated, async (req, res) => {
+    try {
+      const data = await storage.getAllAcordaosMerito();
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching acordaos merito:", error);
+      res.status(500).json({ error: "Erro ao buscar acórdãos de mérito" });
+    }
+  });
+
+  app.post("/api/brainstorm/acordaos-merito", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const parsed = insertAcordaoMeritoSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.errors[0]?.message || "Dados inválidos" });
+      }
+      const created = await storage.createAcordaoMerito(parsed.data);
+      res.status(201).json(created);
+    } catch (error) {
+      console.error("Error creating acordao merito:", error);
+      res.status(500).json({ error: "Erro ao criar acórdão de mérito" });
+    }
+  });
+
+  app.post("/api/brainstorm/acordaos-merito/batch", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const items = req.body as any[];
+      if (!Array.isArray(items)) {
+        return res.status(400).json({ error: "Esperado array de itens" });
+      }
+      const validItems = items.filter(item => {
+        const parsed = insertAcordaoMeritoSchema.safeParse(item);
+        return parsed.success;
+      }).map(item => insertAcordaoMeritoSchema.parse(item));
+      const created = await storage.createAcordaosMeritoBatch(validItems);
+      res.status(201).json({ count: created.length, items: created });
+    } catch (error) {
+      console.error("Error batch creating acordaos merito:", error);
+      res.status(500).json({ error: "Erro ao criar acórdãos de mérito em lote" });
+    }
+  });
+
+  app.delete("/api/brainstorm/acordaos-merito/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      await storage.deleteAcordaoMerito(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting acordao merito:", error);
+      res.status(500).json({ error: "Erro ao excluir acórdão de mérito" });
+    }
+  });
+
+  app.post("/api/brainstorm/acordaos-merito/delete-batch", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { ids } = req.body;
+      if (!Array.isArray(ids)) {
+        return res.status(400).json({ error: "Esperado array de IDs" });
+      }
+      await storage.deleteAcordaosMeritoBatch(ids);
+      res.json({ success: true, count: ids.length });
+    } catch (error) {
+      console.error("Error batch deleting acordaos merito:", error);
+      res.status(500).json({ error: "Erro ao excluir acórdãos de mérito em lote" });
     }
   });
 
