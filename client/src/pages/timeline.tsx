@@ -80,19 +80,15 @@ export default function TimelinePage() {
 
   const stats = useMemo(() => {
     const decisoes = eventos.filter((e) => e.tipo === "decisao");
-    const audiencias = eventos.filter((e) => e.tipo === "audiencia");
     const favoraveis = decisoes.filter((e) => e.resultado === "favoravel").length;
     const desfavoraveis = decisoes.filter((e) => e.resultado === "desfavoravel").length;
+    const parciais = decisoes.filter((e) => e.resultado === "parcial").length;
     
     return {
-      totalEventos: eventos.length,
       totalDecisoes: decisoes.length,
-      totalAudiencias: audiencias.length,
       favoraveis,
       desfavoraveis,
-      percentualFavoravel: decisoes.length > 0 
-        ? Math.round((favoraveis / decisoes.length) * 100) 
-        : 0,
+      parciais,
     };
   }, [eventos]);
 
@@ -214,41 +210,13 @@ export default function TimelinePage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="p-4">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-primary/10">
-              <Calendar className="w-5 h-5 text-primary" />
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Total de Eventos</p>
-              <p className="text-2xl font-bold" data-testid="text-total-eventos">
-                {stats.totalEventos}
-              </p>
-            </div>
-          </div>
-        </Card>
-        
-        <Card className="p-4">
-          <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-blue-500/10">
               <Gavel className="w-5 h-5 text-blue-500" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Decisões</p>
+              <p className="text-sm text-muted-foreground">Total Decisões</p>
               <p className="text-2xl font-bold" data-testid="text-total-decisoes">
                 {stats.totalDecisoes}
-              </p>
-            </div>
-          </div>
-        </Card>
-        
-        <Card className="p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-purple-500/10">
-              <Users className="w-5 h-5 text-purple-500" />
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Audiências</p>
-              <p className="text-2xl font-bold" data-testid="text-total-audiencias">
-                {stats.totalAudiencias}
               </p>
             </div>
           </div>
@@ -260,9 +228,37 @@ export default function TimelinePage() {
               <Gavel className="w-5 h-5 text-green-500" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Favorabilidade</p>
-              <p className="text-2xl font-bold" data-testid="text-favorabilidade">
-                {stats.percentualFavoravel}%
+              <p className="text-sm text-muted-foreground">Favoráveis</p>
+              <p className="text-2xl font-bold text-green-600" data-testid="text-favoraveis">
+                {stats.favoraveis}
+              </p>
+            </div>
+          </div>
+        </Card>
+        
+        <Card className="p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-red-500/10">
+              <Gavel className="w-5 h-5 text-red-500" />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Desfavoráveis</p>
+              <p className="text-2xl font-bold text-red-600" data-testid="text-desfavoraveis">
+                {stats.desfavoraveis}
+              </p>
+            </div>
+          </div>
+        </Card>
+        
+        <Card className="p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-amber-500/10">
+              <Gavel className="w-5 h-5 text-amber-500" />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Parciais</p>
+              <p className="text-2xl font-bold text-amber-600" data-testid="text-parciais">
+                {stats.parciais}
               </p>
             </div>
           </div>
