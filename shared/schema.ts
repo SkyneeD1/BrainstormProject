@@ -312,3 +312,59 @@ export const trtComFavorabilidadeSchema = z.object({
 });
 
 export type TRTComFavorabilidade = z.infer<typeof trtComFavorabilidadeSchema>;
+
+export const statusAudienciaEnum = z.enum(["agendada", "realizada", "adiada", "cancelada"]);
+export type StatusAudiencia = z.infer<typeof statusAudienciaEnum>;
+
+export const tipoAudienciaEnum = z.enum(["conciliacao", "instrucao", "julgamento"]);
+export type TipoAudiencia = z.infer<typeof tipoAudienciaEnum>;
+
+export const audiencias = pgTable("audiencias", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  varaId: varchar("vara_id").notNull().references(() => varas.id, { onDelete: "cascade" }),
+  juizId: varchar("juiz_id").references(() => juizes.id, { onDelete: "set null" }),
+  numeroProcesso: varchar("numero_processo").notNull(),
+  dataAudiencia: timestamp("data_audiencia").notNull(),
+  tipo: varchar("tipo").notNull(),
+  status: varchar("status").notNull(),
+  parte: varchar("parte"),
+  observacoes: varchar("observacoes"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type Audiencia = typeof audiencias.$inferSelect;
+export type InsertAudiencia = typeof audiencias.$inferInsert;
+
+export const insertAudienciaSchema = z.object({
+  varaId: z.string().min(1, "Vara é obrigatória"),
+  juizId: z.string().optional(),
+  numeroProcesso: z.string().min(1, "Número do processo é obrigatório"),
+  dataAudiencia: z.string().min(1, "Data da audiência é obrigatória"),
+  tipo: tipoAudienciaEnum,
+  status: statusAudienciaEnum,
+  parte: z.string().optional(),
+  observacoes: z.string().optional(),
+});
+
+export type CreateAudienciaInput = z.infer<typeof insertAudienciaSchema>;
+
+export const eventoTimelineSchema = z.object({
+  id: z.string(),
+  tipo: z.enum(["decisao", "audiencia"]),
+  data: z.string(),
+  numeroProcesso: z.string(),
+  descricao: z.string(),
+  resultado: z.string().optional(),
+  status: z.string().optional(),
+  trtId: z.string(),
+  trtNome: z.string(),
+  trtUF: z.string(),
+  varaId: z.string(),
+  varaNome: z.string(),
+  varaCidade: z.string(),
+  juizId: z.string().optional(),
+  juizNome: z.string().optional(),
+  parte: z.string().optional(),
+});
+
+export type EventoTimeline = z.infer<typeof eventoTimelineSchema>;
