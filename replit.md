@@ -4,6 +4,7 @@
 A Power BI-style litigation management dashboard for V.tal with role-based access control (Admin/Viewer). The system includes:
 - **Module 1**: "Passivo Sob Gestão" - Displays 2,276 lawsuits organized by procedural phase, risk classification, and company origin (December 2024 data)
 - **Module 2**: "Mapa de Juízes TRTs/Varas Favorabilidade" - Tracks judicial decisions and favorability metrics across Regional Labor Courts (TRTs), Courts (Varas), and Judges
+- **Module 3**: "Linha do Tempo" - Timeline visualization of decisions and hearings with date range filtering and TRT/Vara selection
 
 ## Authentication
 - PostgreSQL-backed sessions with bcrypt password hashing
@@ -28,6 +29,14 @@ A Power BI-style litigation management dashboard for V.tal with role-based acces
   - Dashboard with favorability analytics and charts
   - Judge avatar component with colored arc visualization
 
+- Module 3 (Linha do Tempo) is fully implemented with:
+  - Timeline visualization of decisions (julgamentos) and hearings (audiências)
+  - Date range filtering (start/end dates)
+  - Hierarchical location filters (TRT → Vara)
+  - Event type filtering (decisions, hearings, or all)
+  - Grouped display by month with color-coded result indicators
+  - KPI cards showing total events, decisions, hearings, and favorability percentage
+
 ## Architecture
 
 ### Frontend (React + Vite)
@@ -38,6 +47,7 @@ A Power BI-style litigation management dashboard for V.tal with role-based acces
 - **client/src/pages/trts-varas.tsx**: Module 2 - TRTs and Varas management
 - **client/src/pages/juizes.tsx**: Module 2 - Judges directory with julgamentos
 - **client/src/pages/favorabilidade.tsx**: Module 2 - Favorability analytics dashboard
+- **client/src/pages/timeline.tsx**: Module 3 - Timeline visualization with date filters
 - **client/src/components/**: Reusable UI components
   - `app-sidebar.tsx`: Navigation sidebar with module groups
   - `judge-avatar.tsx`: Avatar with favorability arc visualization
@@ -50,6 +60,7 @@ A Power BI-style litigation management dashboard for V.tal with role-based acces
   - Module 1: `GET /api/passivo`, `GET /api/passivo/raw`
   - Module 2: CRUD for `/api/trts`, `/api/varas`, `/api/juizes`, `/api/julgamentos`
   - Favorability: `GET /api/favorabilidade/trts`, `GET /api/favorabilidade/juizes`
+  - Module 3: `GET /api/timeline`, CRUD `/api/audiencias`
   - Auth: `POST /api/login`, `POST /api/logout`, `GET /api/user`
   - Admin: `GET/POST/PATCH/DELETE /api/users`
 - **server/storage.ts**: In-memory storage with data aggregation and favorability calculations
@@ -62,6 +73,7 @@ A Power BI-style litigation management dashboard for V.tal with role-based acces
 - **varas**: Labor Courts with TRT relationship
 - **juizes**: Judges with Vara relationship and type (titular/substituto)
 - **julgamentos**: Judgments with result (favoravel/desfavoravel/parcial)
+- **audiencias**: Hearings with type, status, and date
 
 ### Shared
 - **shared/schema.ts**: TypeScript types, Drizzle ORM schemas, and Zod validation
@@ -89,6 +101,7 @@ A Power BI-style litigation management dashboard for V.tal with role-based acces
 - November 2024: Initial implementation of Module 1
 - November 2024: Added authentication system with PostgreSQL sessions
 - November 2024: Implemented Module 2 - TRTs, Varas, Juízes, Julgamentos with favorability analytics
+- December 2024: Implemented Module 3 - Timeline report with date filtering and event visualization
 
 ## Running the Project
 ```bash
