@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { BarChart3, Database, ChevronDown, Building2, Scale, Users, LogOut, Shield, Eye, Loader2, Map, Gavel, User, TrendingUp } from "lucide-react";
+import { BarChart3, Database, ChevronDown, Building2, Scale, Users, LogOut, Shield, Eye, Loader2, Map, Gavel, User, TrendingUp, Calendar } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -55,6 +55,11 @@ const menuItems = [
         title: "Dashboard Favorabilidade",
         url: "/mapas/favorabilidade",
         icon: TrendingUp,
+      },
+      {
+        title: "Linha do Tempo",
+        url: "/mapas/timeline",
+        icon: Calendar,
       },
     ],
   },

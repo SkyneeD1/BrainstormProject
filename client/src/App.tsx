@@ -14,6 +14,7 @@ import AdminUsers from "@/pages/admin-users";
 import TRTsVaras from "@/pages/trts-varas";
 import Juizes from "@/pages/juizes";
 import Favorabilidade from "@/pages/favorabilidade";
+import Timeline from "@/pages/timeline";
 import Landing from "@/pages/landing";
 import NotFound from "@/pages/not-found";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -27,6 +28,7 @@ function AuthenticatedRouter() {
       <Route path="/mapas/trts-varas" component={TRTsVaras} />
       <Route path="/mapas/juizes" component={Juizes} />
       <Route path="/mapas/favorabilidade" component={Favorabilidade} />
+      <Route path="/mapas/timeline" component={Timeline} />
       <Route component={NotFound} />
     </Switch>
   );
