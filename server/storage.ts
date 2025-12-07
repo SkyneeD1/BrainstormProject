@@ -25,10 +25,19 @@ import type {
   DecisionResult,
   Audiencia,
   InsertAudiencia,
-  EventoTimeline
+  EventoTimeline,
+  Distribuido,
+  InsertDistribuido,
+  Encerrado,
+  InsertEncerrado,
+  SentencaMerito,
+  InsertSentencaMerito,
+  AcordaoMerito,
+  InsertAcordaoMerito,
+  BrainstormStats
 } from "@shared/schema";
-import { users, trts, varas, juizes, julgamentos, audiencias } from "@shared/schema";
-import { and, gte, lte } from "drizzle-orm";
+import { users, trts, varas, juizes, julgamentos, audiencias, distribuidos, encerrados, sentencasMerito, acordaosMerito } from "@shared/schema";
+import { and, gte, lte, inArray, sql } from "drizzle-orm";
 import { parseExcelFile } from "./excel-parser";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
@@ -85,6 +94,33 @@ export interface IStorage {
     trtId?: string;
     varaId?: string;
   }): Promise<EventoTimeline[]>;
+  
+  // Brainstorm
+  getBrainstormStats(): Promise<BrainstormStats>;
+  
+  getAllDistribuidos(): Promise<Distribuido[]>;
+  createDistribuido(data: InsertDistribuido): Promise<Distribuido>;
+  createDistribuidosBatch(data: InsertDistribuido[]): Promise<Distribuido[]>;
+  deleteDistribuido(id: string): Promise<boolean>;
+  deleteDistribuidosBatch(ids: string[]): Promise<boolean>;
+  
+  getAllEncerrados(): Promise<Encerrado[]>;
+  createEncerrado(data: InsertEncerrado): Promise<Encerrado>;
+  createEncerradosBatch(data: InsertEncerrado[]): Promise<Encerrado[]>;
+  deleteEncerrado(id: string): Promise<boolean>;
+  deleteEncerradosBatch(ids: string[]): Promise<boolean>;
+  
+  getAllSentencasMerito(): Promise<SentencaMerito[]>;
+  createSentencaMerito(data: InsertSentencaMerito): Promise<SentencaMerito>;
+  createSentencasMeritoBatch(data: InsertSentencaMerito[]): Promise<SentencaMerito[]>;
+  deleteSentencaMerito(id: string): Promise<boolean>;
+  deleteSentencasMeritoBatch(ids: string[]): Promise<boolean>;
+  
+  getAllAcordaosMerito(): Promise<AcordaoMerito[]>;
+  createAcordaoMerito(data: InsertAcordaoMerito): Promise<AcordaoMerito>;
+  createAcordaosMeritoBatch(data: InsertAcordaoMerito[]): Promise<AcordaoMerito[]>;
+  deleteAcordaoMerito(id: string): Promise<boolean>;
+  deleteAcordaosMeritoBatch(ids: string[]): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -770,6 +806,121 @@ export class MemStorage implements IStorage {
     }
 
     console.log(`Dados de demonstração inseridos: ${createdTRTs.length} TRTs, ${createdVaras.length} Varas, ${createdJuizes.length} Juízes, ${processIndex - 1} Julgamentos`);
+  }
+
+  // Brainstorm methods
+  async getBrainstormStats(): Promise<BrainstormStats> {
+    const [distCount] = await db.select({ count: sql<number>`count(*)::int` }).from(distribuidos);
+    const [encCount] = await db.select({ count: sql<number>`count(*)::int` }).from(encerrados);
+    const [sentCount] = await db.select({ count: sql<number>`count(*)::int` }).from(sentencasMerito);
+    const [acordCount] = await db.select({ count: sql<number>`count(*)::int` }).from(acordaosMerito);
+    
+    return {
+      distribuidos: distCount?.count || 0,
+      encerrados: encCount?.count || 0,
+      sentencasMerito: sentCount?.count || 0,
+      acordaosMerito: acordCount?.count || 0,
+    };
+  }
+
+  async getAllDistribuidos(): Promise<Distribuido[]> {
+    return await db.select().from(distribuidos).orderBy(distribuidos.createdAt);
+  }
+
+  async createDistribuido(data: InsertDistribuido): Promise<Distribuido> {
+    const [created] = await db.insert(distribuidos).values(data).returning();
+    return created;
+  }
+
+  async createDistribuidosBatch(data: InsertDistribuido[]): Promise<Distribuido[]> {
+    if (data.length === 0) return [];
+    return await db.insert(distribuidos).values(data).returning();
+  }
+
+  async deleteDistribuido(id: string): Promise<boolean> {
+    await db.delete(distribuidos).where(eq(distribuidos.id, id));
+    return true;
+  }
+
+  async deleteDistribuidosBatch(ids: string[]): Promise<boolean> {
+    if (ids.length === 0) return true;
+    await db.delete(distribuidos).where(inArray(distribuidos.id, ids));
+    return true;
+  }
+
+  async getAllEncerrados(): Promise<Encerrado[]> {
+    return await db.select().from(encerrados).orderBy(encerrados.createdAt);
+  }
+
+  async createEncerrado(data: InsertEncerrado): Promise<Encerrado> {
+    const [created] = await db.insert(encerrados).values(data).returning();
+    return created;
+  }
+
+  async createEncerradosBatch(data: InsertEncerrado[]): Promise<Encerrado[]> {
+    if (data.length === 0) return [];
+    return await db.insert(encerrados).values(data).returning();
+  }
+
+  async deleteEncerrado(id: string): Promise<boolean> {
+    await db.delete(encerrados).where(eq(encerrados.id, id));
+    return true;
+  }
+
+  async deleteEncerradosBatch(ids: string[]): Promise<boolean> {
+    if (ids.length === 0) return true;
+    await db.delete(encerrados).where(inArray(encerrados.id, ids));
+    return true;
+  }
+
+  async getAllSentencasMerito(): Promise<SentencaMerito[]> {
+    return await db.select().from(sentencasMerito).orderBy(sentencasMerito.createdAt);
+  }
+
+  async createSentencaMerito(data: InsertSentencaMerito): Promise<SentencaMerito> {
+    const [created] = await db.insert(sentencasMerito).values(data).returning();
+    return created;
+  }
+
+  async createSentencasMeritoBatch(data: InsertSentencaMerito[]): Promise<SentencaMerito[]> {
+    if (data.length === 0) return [];
+    return await db.insert(sentencasMerito).values(data).returning();
+  }
+
+  async deleteSentencaMerito(id: string): Promise<boolean> {
+    await db.delete(sentencasMerito).where(eq(sentencasMerito.id, id));
+    return true;
+  }
+
+  async deleteSentencasMeritoBatch(ids: string[]): Promise<boolean> {
+    if (ids.length === 0) return true;
+    await db.delete(sentencasMerito).where(inArray(sentencasMerito.id, ids));
+    return true;
+  }
+
+  async getAllAcordaosMerito(): Promise<AcordaoMerito[]> {
+    return await db.select().from(acordaosMerito).orderBy(acordaosMerito.createdAt);
+  }
+
+  async createAcordaoMerito(data: InsertAcordaoMerito): Promise<AcordaoMerito> {
+    const [created] = await db.insert(acordaosMerito).values(data).returning();
+    return created;
+  }
+
+  async createAcordaosMeritoBatch(data: InsertAcordaoMerito[]): Promise<AcordaoMerito[]> {
+    if (data.length === 0) return [];
+    return await db.insert(acordaosMerito).values(data).returning();
+  }
+
+  async deleteAcordaoMerito(id: string): Promise<boolean> {
+    await db.delete(acordaosMerito).where(eq(acordaosMerito.id, id));
+    return true;
+  }
+
+  async deleteAcordaosMeritoBatch(ids: string[]): Promise<boolean> {
+    if (ids.length === 0) return true;
+    await db.delete(acordaosMerito).where(inArray(acordaosMerito.id, ids));
+    return true;
   }
 }
 
