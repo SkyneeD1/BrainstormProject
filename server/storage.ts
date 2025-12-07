@@ -22,9 +22,13 @@ import type {
   JuizComFavorabilidade,
   VaraComFavorabilidade,
   TRTComFavorabilidade,
-  DecisionResult
+  DecisionResult,
+  Audiencia,
+  InsertAudiencia,
+  EventoTimeline
 } from "@shared/schema";
-import { users, trts, varas, juizes, julgamentos } from "@shared/schema";
+import { users, trts, varas, juizes, julgamentos, audiencias } from "@shared/schema";
+import { and, gte, lte } from "drizzle-orm";
 import { parseExcelFile } from "./excel-parser";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
@@ -67,6 +71,20 @@ export interface IStorage {
   getJuizFavorabilidade(juizId: string): Promise<Favorabilidade>;
   getAllJuizesComFavorabilidade(): Promise<JuizComFavorabilidade[]>;
   getAllTRTsComFavorabilidade(): Promise<TRTComFavorabilidade[]>;
+  
+  getAllAudiencias(): Promise<Audiencia[]>;
+  getAudienciasByVara(varaId: string): Promise<Audiencia[]>;
+  getAudiencia(id: string): Promise<Audiencia | undefined>;
+  createAudiencia(audiencia: InsertAudiencia): Promise<Audiencia>;
+  updateAudiencia(id: string, data: Partial<InsertAudiencia>): Promise<Audiencia | undefined>;
+  deleteAudiencia(id: string): Promise<boolean>;
+  
+  getEventosTimeline(filters: {
+    dataInicio?: string;
+    dataFim?: string;
+    trtId?: string;
+    varaId?: string;
+  }): Promise<EventoTimeline[]>;
 }
 
 export class MemStorage implements IStorage {
@@ -483,6 +501,131 @@ export class MemStorage implements IStorage {
     }
 
     return result;
+  }
+
+  async getAllAudiencias(): Promise<Audiencia[]> {
+    return await db.select().from(audiencias);
+  }
+
+  async getAudienciasByVara(varaId: string): Promise<Audiencia[]> {
+    return await db.select().from(audiencias).where(eq(audiencias.varaId, varaId));
+  }
+
+  async getAudiencia(id: string): Promise<Audiencia | undefined> {
+    const [audiencia] = await db.select().from(audiencias).where(eq(audiencias.id, id));
+    return audiencia;
+  }
+
+  async createAudiencia(audiencia: InsertAudiencia): Promise<Audiencia> {
+    const [created] = await db.insert(audiencias).values(audiencia).returning();
+    return created;
+  }
+
+  async updateAudiencia(id: string, data: Partial<InsertAudiencia>): Promise<Audiencia | undefined> {
+    const [updated] = await db.update(audiencias).set(data).where(eq(audiencias.id, id)).returning();
+    return updated;
+  }
+
+  async deleteAudiencia(id: string): Promise<boolean> {
+    await db.delete(audiencias).where(eq(audiencias.id, id));
+    return true;
+  }
+
+  async getEventosTimeline(filters: {
+    dataInicio?: string;
+    dataFim?: string;
+    trtId?: string;
+    varaId?: string;
+  }): Promise<EventoTimeline[]> {
+    const eventos: EventoTimeline[] = [];
+    const allTrts = await this.getAllTRTs();
+    
+    for (const trt of allTrts) {
+      if (filters.trtId && trt.id !== filters.trtId) continue;
+      
+      const trtVaras = await this.getVarasByTRT(trt.id);
+      
+      for (const vara of trtVaras) {
+        if (filters.varaId && vara.id !== filters.varaId) continue;
+        
+        const varaJuizes = await this.getJuizesByVara(vara.id);
+        
+        for (const juiz of varaJuizes) {
+          const julgamentosJuiz = await this.getJulgamentosByJuiz(juiz.id);
+          
+          for (const j of julgamentosJuiz) {
+            if (!j.dataJulgamento) continue;
+            
+            const dataJulg = new Date(j.dataJulgamento);
+            if (filters.dataInicio && dataJulg < new Date(filters.dataInicio)) continue;
+            if (filters.dataFim && dataJulg > new Date(filters.dataFim)) continue;
+            
+            const resultadoLabel = j.resultado === 'favoravel' ? 'Favorável' :
+              j.resultado === 'desfavoravel' ? 'Desfavorável' : 'Parcial';
+            
+            eventos.push({
+              id: j.id,
+              tipo: "decisao",
+              data: j.dataJulgamento.toISOString(),
+              numeroProcesso: j.numeroProcesso,
+              descricao: `Decisão ${resultadoLabel}`,
+              resultado: j.resultado,
+              trtId: trt.id,
+              trtNome: trt.nome,
+              trtUF: trt.uf,
+              varaId: vara.id,
+              varaNome: vara.nome,
+              varaCidade: vara.cidade,
+              juizId: juiz.id,
+              juizNome: juiz.nome,
+              parte: j.parte || undefined,
+            });
+          }
+        }
+        
+        const audienciasVara = await this.getAudienciasByVara(vara.id);
+        
+        for (const a of audienciasVara) {
+          const dataAud = new Date(a.dataAudiencia);
+          if (filters.dataInicio && dataAud < new Date(filters.dataInicio)) continue;
+          if (filters.dataFim && dataAud > new Date(filters.dataFim)) continue;
+          
+          const tipoLabel = a.tipo === 'conciliacao' ? 'Conciliação' :
+            a.tipo === 'instrucao' ? 'Instrução' : 'Julgamento';
+          const statusLabel = a.status === 'agendada' ? 'Agendada' :
+            a.status === 'realizada' ? 'Realizada' :
+            a.status === 'adiada' ? 'Adiada' : 'Cancelada';
+          
+          let juizNome: string | undefined;
+          if (a.juizId) {
+            const juiz = await this.getJuiz(a.juizId);
+            juizNome = juiz?.nome;
+          }
+          
+          eventos.push({
+            id: a.id,
+            tipo: "audiencia",
+            data: a.dataAudiencia.toISOString(),
+            numeroProcesso: a.numeroProcesso,
+            descricao: `Audiência de ${tipoLabel}`,
+            status: a.status,
+            trtId: trt.id,
+            trtNome: trt.nome,
+            trtUF: trt.uf,
+            varaId: vara.id,
+            varaNome: vara.nome,
+            varaCidade: vara.cidade,
+            juizId: a.juizId || undefined,
+            juizNome,
+            parte: a.parte || undefined,
+          });
+        }
+      }
+    }
+    
+    eventos.sort((a, b) => new Date(a.data).getTime() - new Date(b.data).getTime());
+    
+    return eventos;
   }
 
   async seedDemoData(): Promise<void> {

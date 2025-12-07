@@ -10,7 +10,8 @@ import {
   insertTRTSchema,
   insertVaraSchema,
   insertJuizSchema,
-  insertJulgamentoSchema
+  insertJulgamentoSchema,
+  insertAudienciaSchema
 } from "@shared/schema";
 import XLSX from "xlsx";
 import { randomUUID } from "crypto";
@@ -630,6 +631,98 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error seeding demo data:", error);
       res.status(500).json({ error: "Erro ao inserir dados de demonstração" });
+    }
+  });
+
+  // ========== Audiencia Routes ==========
+  app.get("/api/audiencias", isAuthenticated, async (req, res) => {
+    try {
+      const audiencias = await storage.getAllAudiencias();
+      res.json(audiencias);
+    } catch (error) {
+      console.error("Error fetching audiencias:", error);
+      res.status(500).json({ error: "Erro ao buscar audiências" });
+    }
+  });
+
+  app.get("/api/varas/:varaId/audiencias", isAuthenticated, async (req, res) => {
+    try {
+      const audiencias = await storage.getAudienciasByVara(req.params.varaId);
+      res.json(audiencias);
+    } catch (error) {
+      console.error("Error fetching audiencias:", error);
+      res.status(500).json({ error: "Erro ao buscar audiências" });
+    }
+  });
+
+  app.get("/api/audiencias/:id", isAuthenticated, async (req, res) => {
+    try {
+      const audiencia = await storage.getAudiencia(req.params.id);
+      if (!audiencia) {
+        return res.status(404).json({ error: "Audiência não encontrada" });
+      }
+      res.json(audiencia);
+    } catch (error) {
+      console.error("Error fetching audiencia:", error);
+      res.status(500).json({ error: "Erro ao buscar audiência" });
+    }
+  });
+
+  app.post("/api/audiencias", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const parsed = insertAudienciaSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.errors[0]?.message || "Dados inválidos" });
+      }
+      const data = {
+        ...parsed.data,
+        dataAudiencia: new Date(parsed.data.dataAudiencia),
+      };
+      const audiencia = await storage.createAudiencia(data);
+      res.status(201).json(audiencia);
+    } catch (error) {
+      console.error("Error creating audiencia:", error);
+      res.status(500).json({ error: "Erro ao criar audiência" });
+    }
+  });
+
+  app.patch("/api/audiencias/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const audiencia = await storage.updateAudiencia(req.params.id, req.body);
+      if (!audiencia) {
+        return res.status(404).json({ error: "Audiência não encontrada" });
+      }
+      res.json(audiencia);
+    } catch (error) {
+      console.error("Error updating audiencia:", error);
+      res.status(500).json({ error: "Erro ao atualizar audiência" });
+    }
+  });
+
+  app.delete("/api/audiencias/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      await storage.deleteAudiencia(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting audiencia:", error);
+      res.status(500).json({ error: "Erro ao excluir audiência" });
+    }
+  });
+
+  // ========== Timeline Events Route ==========
+  app.get("/api/timeline", isAuthenticated, async (req, res) => {
+    try {
+      const { dataInicio, dataFim, trtId, varaId } = req.query;
+      const eventos = await storage.getEventosTimeline({
+        dataInicio: dataInicio as string | undefined,
+        dataFim: dataFim as string | undefined,
+        trtId: trtId as string | undefined,
+        varaId: varaId as string | undefined,
+      });
+      res.json(eventos);
+    } catch (error) {
+      console.error("Error fetching timeline:", error);
+      res.status(500).json({ error: "Erro ao buscar linha do tempo" });
     }
   });
 
