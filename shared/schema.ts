@@ -368,3 +368,102 @@ export const eventoTimelineSchema = z.object({
 });
 
 export type EventoTimeline = z.infer<typeof eventoTimelineSchema>;
+
+// Brainstorm Module - 4 spreadsheet tables
+
+export const distribuidos = pgTable("distribuidos", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  numeroProcesso: varchar("numero_processo").notNull(),
+  reclamada: varchar("reclamada"),
+  tipoEmpregado: varchar("tipo_empregado"),
+  empregadora: varchar("empregadora"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type Distribuido = typeof distribuidos.$inferSelect;
+export type InsertDistribuido = typeof distribuidos.$inferInsert;
+
+export const insertDistribuidoSchema = z.object({
+  numeroProcesso: z.string().min(1, "Número do processo é obrigatório"),
+  reclamada: z.string().optional(),
+  tipoEmpregado: z.string().optional(),
+  empregadora: z.string().optional(),
+});
+
+export type CreateDistribuidoInput = z.infer<typeof insertDistribuidoSchema>;
+
+export const encerrados = pgTable("encerrados", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  numeroProcesso: varchar("numero_processo").notNull(),
+  reclamada: varchar("reclamada"),
+  tipoEmpregado: varchar("tipo_empregado"),
+  empregadora: varchar("empregadora"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type Encerrado = typeof encerrados.$inferSelect;
+export type InsertEncerrado = typeof encerrados.$inferInsert;
+
+export const insertEncerradoSchema = z.object({
+  numeroProcesso: z.string().min(1, "Número do processo é obrigatório"),
+  reclamada: z.string().optional(),
+  tipoEmpregado: z.string().optional(),
+  empregadora: z.string().optional(),
+});
+
+export type CreateEncerradoInput = z.infer<typeof insertEncerradoSchema>;
+
+export const sentencasMerito = pgTable("sentencas_merito", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  numeroProcesso: varchar("numero_processo").notNull(),
+  empresa: varchar("empresa"),
+  tipoDecisao: varchar("tipo_decisao"),
+  favorabilidade: varchar("favorabilidade"),
+  empregadora: varchar("empregadora"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type SentencaMerito = typeof sentencasMerito.$inferSelect;
+export type InsertSentencaMerito = typeof sentencasMerito.$inferInsert;
+
+export const insertSentencaMeritoSchema = z.object({
+  numeroProcesso: z.string().min(1, "Número do processo é obrigatório"),
+  empresa: z.string().optional(),
+  tipoDecisao: z.string().optional(),
+  favorabilidade: z.string().optional(),
+  empregadora: z.string().optional(),
+});
+
+export type CreateSentencaMeritoInput = z.infer<typeof insertSentencaMeritoSchema>;
+
+export const acordaosMerito = pgTable("acordaos_merito", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  numeroProcesso: varchar("numero_processo").notNull(),
+  empresa: varchar("empresa"),
+  tipoDecisao: varchar("tipo_decisao"),
+  sinteseDecisao: varchar("sintese_decisao"),
+  empregadora: varchar("empregadora"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type AcordaoMerito = typeof acordaosMerito.$inferSelect;
+export type InsertAcordaoMerito = typeof acordaosMerito.$inferInsert;
+
+export const insertAcordaoMeritoSchema = z.object({
+  numeroProcesso: z.string().min(1, "Número do processo é obrigatório"),
+  empresa: z.string().optional(),
+  tipoDecisao: z.string().optional(),
+  sinteseDecisao: z.string().optional(),
+  empregadora: z.string().optional(),
+});
+
+export type CreateAcordaoMeritoInput = z.infer<typeof insertAcordaoMeritoSchema>;
+
+export const brainstormStatsSchema = z.object({
+  distribuidos: z.number(),
+  encerrados: z.number(),
+  sentencasMerito: z.number(),
+  acordaosMerito: z.number(),
+});
+
+export type BrainstormStats = z.infer<typeof brainstormStatsSchema>;
