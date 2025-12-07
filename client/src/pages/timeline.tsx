@@ -39,14 +39,18 @@ export default function TimelinePage() {
     enabled: trtId !== "all",
   });
 
-  const queryParams = new URLSearchParams();
-  if (dataInicio) queryParams.set("dataInicio", dataInicio);
-  if (dataFim) queryParams.set("dataFim", dataFim);
-  if (trtId && trtId !== "all") queryParams.set("trtId", trtId);
-  if (varaId && varaId !== "all") queryParams.set("varaId", varaId);
+  const timelineUrl = useMemo(() => {
+    const params = new URLSearchParams();
+    if (dataInicio) params.set("dataInicio", dataInicio);
+    if (dataFim) params.set("dataFim", dataFim);
+    if (trtId && trtId !== "all") params.set("trtId", trtId);
+    if (varaId && varaId !== "all") params.set("varaId", varaId);
+    const qs = params.toString();
+    return qs ? `/api/timeline?${qs}` : "/api/timeline";
+  }, [dataInicio, dataFim, trtId, varaId]);
 
   const { data: eventos = [], isLoading: loadingEventos } = useQuery<EventoTimeline[]>({
-    queryKey: ["/api/timeline", queryParams.toString()],
+    queryKey: [timelineUrl],
   });
 
   const eventosFiltrados = useMemo(() => {
