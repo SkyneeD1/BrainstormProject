@@ -1,8 +1,41 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { FileSpreadsheet, FileInput, FileOutput, Scale, Gavel } from "lucide-react";
+import { FileSpreadsheet, FileInput, FileOutput, Scale, Gavel, Building2, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import type { BrainstormStats } from "@shared/schema";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, Cell } from "recharts";
+
+type EmployerData = {
+  empregadora: string;
+  sentencasFavoraveis: number;
+  sentencasDesfavoraveis: number;
+  sentencasParciais: number;
+  acordaosFavoraveis: number;
+  acordaosDesfavoraveis: number;
+  acordaosParciais: number;
+  totalFavoraveis: number;
+  totalDesfavoraveis: number;
+  totalParciais: number;
+  total: number;
+  taxaExito: number;
+};
+
+type EmployerComparisonResponse = {
+  employers: EmployerData[];
+  totals: {
+    sentencasFavoraveis: number;
+    sentencasDesfavoraveis: number;
+    sentencasParciais: number;
+    acordaosFavoraveis: number;
+    acordaosDesfavoraveis: number;
+    acordaosParciais: number;
+    totalFavoraveis: number;
+    totalDesfavoraveis: number;
+    totalParciais: number;
+    total: number;
+    taxaExito: number;
+  };
+};
 
 function KPICard({ 
   title, 
@@ -47,14 +80,80 @@ function KPICard({
   );
 }
 
+function EmployerCard({ employer, isLoading }: { employer: EmployerData; isLoading: boolean }) {
+  const getTaxaColor = (taxa: number) => {
+    if (taxa >= 50) return "text-green-600 dark:text-green-400";
+    if (taxa >= 30) return "text-yellow-600 dark:text-yellow-400";
+    return "text-red-600 dark:text-red-400";
+  };
+
+  const getTaxaIcon = (taxa: number) => {
+    if (taxa >= 50) return TrendingUp;
+    if (taxa >= 30) return Minus;
+    return TrendingDown;
+  };
+
+  const TaxaIcon = getTaxaIcon(employer.taxaExito);
+
+  return (
+    <Card className="hover-elevate" data-testid={`card-employer-${employer.empregadora.toLowerCase().replace(/[.\s]/g, '-')}`}>
+      <CardContent className="p-4">
+        <div className="flex items-start justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <Building2 className="h-4 w-4 text-muted-foreground" />
+            <span className="font-semibold text-sm">{employer.empregadora}</span>
+          </div>
+          <div className={`flex items-center gap-1 ${getTaxaColor(employer.taxaExito)}`}>
+            <TaxaIcon className="h-4 w-4" />
+            <span className="font-bold text-lg">{employer.taxaExito}%</span>
+          </div>
+        </div>
+        
+        <div className="text-sm space-y-1">
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Favoráveis</span>
+            <span className="font-medium text-green-600 dark:text-green-400">{employer.totalFavoraveis}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Parciais</span>
+            <span className="font-medium text-yellow-600 dark:text-yellow-400">{employer.totalParciais}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Desfavoráveis</span>
+            <span className="font-medium text-red-600 dark:text-red-400">{employer.totalDesfavoraveis}</span>
+          </div>
+          <div className="flex justify-between pt-2 border-t">
+            <span className="text-muted-foreground font-medium">Total</span>
+            <span className="font-bold">{employer.total}</span>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function BrainstormRelatorio() {
   const { data: stats, isLoading } = useQuery<BrainstormStats>({
     queryKey: ['/api/brainstorm/stats'],
   });
 
+  const { data: comparison, isLoading: isLoadingComparison } = useQuery<EmployerComparisonResponse>({
+    queryKey: ['/api/brainstorm/employer-comparison'],
+  });
+
   const total = stats 
     ? stats.distribuidos + stats.encerrados + stats.sentencasMerito + stats.acordaosMerito 
     : 0;
+
+  const chartData = comparison?.employers.map(emp => ({
+    name: emp.empregadora,
+    'Sentença Favorável': emp.sentencasFavoraveis,
+    'Sentença Parcial': emp.sentencasParciais,
+    'Sentença Desfavorável': emp.sentencasDesfavoraveis,
+    'Acórdão Favorável': emp.acordaosFavoraveis,
+    'Acórdão Parcial': emp.acordaosParciais,
+    'Acórdão Desfavorável': emp.acordaosDesfavoraveis,
+  })) || [];
 
   return (
     <div className="p-6 space-y-6">
@@ -116,6 +215,104 @@ export default function BrainstormRelatorio() {
           isLoading={isLoading}
         />
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Building2 className="h-5 w-5" />
+            Comparativo de Resultados por Empregadora
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isLoadingComparison ? (
+            <Skeleton className="h-[300px] w-full" />
+          ) : (
+            <ResponsiveContainer width="100%" height={350}>
+              <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                <YAxis tick={{ fontSize: 12 }} />
+                <Tooltip 
+                  contentStyle={{ 
+                    backgroundColor: 'hsl(var(--card))', 
+                    border: '1px solid hsl(var(--border))',
+                    borderRadius: '8px'
+                  }}
+                />
+                <Legend wrapperStyle={{ paddingTop: '20px' }} />
+                <Bar dataKey="Sentença Favorável" stackId="sentenca" fill="#22c55e" />
+                <Bar dataKey="Sentença Parcial" stackId="sentenca" fill="#fbbf24" />
+                <Bar dataKey="Sentença Desfavorável" stackId="sentenca" fill="#f97316" />
+                <Bar dataKey="Acórdão Favorável" stackId="acordao" fill="#16a34a" />
+                <Bar dataKey="Acórdão Parcial" stackId="acordao" fill="#eab308" />
+                <Bar dataKey="Acórdão Desfavorável" stackId="acordao" fill="#ef4444" />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Taxa de Êxito por Empregadora</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isLoadingComparison ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <Skeleton key={i} className="h-[160px]" />
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {comparison?.employers.map((employer) => (
+                <EmployerCard 
+                  key={employer.empregadora} 
+                  employer={employer} 
+                  isLoading={isLoadingComparison} 
+                />
+              ))}
+            </div>
+          )}
+          
+          {comparison?.totals && (
+            <div className="mt-6 p-4 bg-muted/50 rounded-lg">
+              <div className="flex items-center justify-between mb-4">
+                <span className="font-semibold text-lg">TOTAL GERAL</span>
+                <div className="flex items-center gap-2 text-primary">
+                  <span className="font-bold text-2xl">{comparison.totals.taxaExito}%</span>
+                  <span className="text-sm text-muted-foreground">taxa de êxito</span>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                <div className="flex flex-col">
+                  <span className="text-muted-foreground">Total Decisões</span>
+                  <span className="font-bold text-lg" data-testid="text-total-decisoes">
+                    {comparison.totals.total}
+                  </span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-muted-foreground">Favoráveis</span>
+                  <span className="font-bold text-lg text-green-600 dark:text-green-400" data-testid="text-total-favoraveis">
+                    {comparison.totals.totalFavoraveis}
+                  </span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-muted-foreground">Parciais</span>
+                  <span className="font-bold text-lg text-yellow-600 dark:text-yellow-400" data-testid="text-total-parciais">
+                    {comparison.totals.totalParciais}
+                  </span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-muted-foreground">Desfavoráveis</span>
+                  <span className="font-bold text-lg text-red-600 dark:text-red-400" data-testid="text-total-desfavoraveis">
+                    {comparison.totals.totalDesfavoraveis}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
