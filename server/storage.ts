@@ -121,10 +121,13 @@ export interface IStorage {
   createAcordaosMeritoBatch(data: InsertAcordaoMerito[]): Promise<AcordaoMerito[]>;
   deleteAcordaoMerito(id: string): Promise<boolean>;
   deleteAcordaosMeritoBatch(ids: string[]): Promise<boolean>;
+  
+  initializeBrainstorm(): Promise<void>;
 }
 
 export class MemStorage implements IStorage {
   private rawData: ProcessoRaw[] = [];
+  private initialized = false;
 
   constructor() {
     this.initializeFromExcel();
@@ -137,6 +140,12 @@ export class MemStorage implements IStorage {
     if (this.rawData.length === 0) {
       console.warn("Nenhum dado carregado do Excel, usando fallback");
     }
+  }
+
+  async initializeBrainstorm(): Promise<void> {
+    if (this.initialized) return;
+    this.initialized = true;
+    await this.loadBrainstormFromExcel();
   }
 
   async setRawData(data: ProcessoRaw[]): Promise<void> {
@@ -921,6 +930,95 @@ export class MemStorage implements IStorage {
     if (ids.length === 0) return true;
     await db.delete(acordaosMerito).where(inArray(acordaosMerito.id, ids));
     return true;
+  }
+
+  async loadBrainstormFromExcel(): Promise<void> {
+    const XLSX = await import('xlsx');
+    const fs = await import('fs');
+    const path = await import('path');
+    
+    const excelPath = path.join(process.cwd(), 'attached_assets', 'planilha_brainstorm_1765139329599.xlsx');
+    
+    if (!fs.existsSync(excelPath)) {
+      console.log('Planilha Brainstorm não encontrada');
+      return;
+    }
+
+    const stats = await this.getBrainstormStats();
+    const totalExisting = stats.distribuidos + stats.encerrados + stats.sentencasMerito + stats.acordaosMerito;
+    
+    if (totalExisting > 0) {
+      console.log('Dados Brainstorm já carregados:', totalExisting, 'registros');
+      return;
+    }
+
+    console.log('Carregando dados Brainstorm do Excel...');
+    const workbook = XLSX.readFile(excelPath);
+
+    const loadSheet = async (sheetName: string, insertFn: (data: any[]) => Promise<any>) => {
+      const sheet = workbook.Sheets[sheetName];
+      if (!sheet) return 0;
+      
+      const data = XLSX.utils.sheet_to_json(sheet, { header: 1 }) as any[][];
+      if (data.length <= 1) return 0;
+      
+      const headers = data[0] as string[];
+      const rows = data.slice(1).filter(row => row.length > 0 && row[0]);
+      
+      return { headers, rows };
+    };
+
+    const distribuidosData = await loadSheet('DISTRIBUÍDOS', async () => {});
+    if (distribuidosData && distribuidosData.rows.length > 0) {
+      const items = distribuidosData.rows.map(row => ({
+        numeroProcesso: String(row[0] || ''),
+        reclamada: String(row[1] || ''),
+        tipoEmpregado: String(row[2] || ''),
+        empregadora: String(row[3] || ''),
+      }));
+      await this.createDistribuidosBatch(items);
+      console.log(`  DISTRIBUÍDOS: ${items.length} registros`);
+    }
+
+    const encerradosData = await loadSheet('ENCERRADOS', async () => {});
+    if (encerradosData && encerradosData.rows.length > 0) {
+      const items = encerradosData.rows.map(row => ({
+        numeroProcesso: String(row[0] || ''),
+        reclamada: String(row[1] || ''),
+        tipoEmpregado: String(row[2] || ''),
+        empregadora: String(row[3] || ''),
+      }));
+      await this.createEncerradosBatch(items);
+      console.log(`  ENCERRADOS: ${items.length} registros`);
+    }
+
+    const sentencasData = await loadSheet('SENTENÇA DE MÉRITO', async () => {});
+    if (sentencasData && sentencasData.rows.length > 0) {
+      const items = sentencasData.rows.map(row => ({
+        numeroProcesso: String(row[0] || ''),
+        empresa: String(row[1] || ''),
+        tipoDecisao: String(row[2] || ''),
+        favorabilidade: String(row[3] || ''),
+        empregadora: String(row[4] || ''),
+      }));
+      await this.createSentencasMeritoBatch(items);
+      console.log(`  SENTENÇA DE MÉRITO: ${items.length} registros`);
+    }
+
+    const acordaosData = await loadSheet('ACÓRDÃO DE MÉRITO', async () => {});
+    if (acordaosData && acordaosData.rows.length > 0) {
+      const items = acordaosData.rows.map(row => ({
+        numeroProcesso: String(row[0] || ''),
+        empresa: String(row[1] || ''),
+        tipoDecisao: String(row[2] || ''),
+        sinteseDecisao: String(row[3] || ''),
+        empregadora: String(row[4] || ''),
+      }));
+      await this.createAcordaosMeritoBatch(items);
+      console.log(`  ACÓRDÃO DE MÉRITO: ${items.length} registros`);
+    }
+
+    console.log('Dados Brainstorm carregados com sucesso!');
   }
 }
 

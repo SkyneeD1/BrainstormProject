@@ -79,6 +79,9 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
   await setupAuth(app);
+  
+  // Initialize Brainstorm data from Excel
+  await storage.initializeBrainstorm();
 
   // Login route
   app.post('/api/login', async (req, res) => {

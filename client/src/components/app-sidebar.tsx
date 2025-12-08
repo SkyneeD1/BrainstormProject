@@ -27,18 +27,18 @@ import {
 
 const menuItems = [
   {
-    title: "Módulo 1 - Passivo",
+    title: "Passivo Sob Gestão",
     icon: Scale,
     subItems: [
       {
-        title: "Passivo Sob Gestão (Base Dez/24)",
+        title: "Dashboard (Base Dez/24)",
         url: "/",
         icon: BarChart3,
       },
     ],
   },
   {
-    title: "Módulo 2 - Mapas",
+    title: "Mapas Estratégicos",
     icon: Map,
     subItems: [
       {
@@ -56,12 +56,6 @@ const menuItems = [
         url: "/mapas/favorabilidade",
         icon: TrendingUp,
       },
-    ],
-  },
-  {
-    title: "Módulo 3 - Timeline",
-    icon: Calendar,
-    subItems: [
       {
         title: "Linha do Tempo",
         url: "/mapas/timeline",
@@ -70,7 +64,7 @@ const menuItems = [
     ],
   },
   {
-    title: "Módulo 4 - Brainstorm",
+    title: "Brainstorm",
     icon: Lightbulb,
     subItems: [
       {
