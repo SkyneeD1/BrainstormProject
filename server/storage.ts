@@ -953,13 +953,13 @@ export class MemStorage implements IStorage {
     }
 
     console.log('Carregando dados Brainstorm do Excel...');
-    const workbook = XLSX.readFile(excelPath);
+    const workbook = XLSX.default.readFile(excelPath);
 
     const loadSheet = async (sheetName: string, insertFn: (data: any[]) => Promise<any>) => {
       const sheet = workbook.Sheets[sheetName];
       if (!sheet) return 0;
       
-      const data = XLSX.utils.sheet_to_json(sheet, { header: 1 }) as any[][];
+      const data = XLSX.default.utils.sheet_to_json(sheet, { header: 1 }) as any[][];
       if (data.length <= 1) return 0;
       
       const headers = data[0] as string[];
