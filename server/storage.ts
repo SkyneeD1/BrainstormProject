@@ -123,6 +123,35 @@ export interface IStorage {
   deleteAcordaosMeritoBatch(ids: string[]): Promise<boolean>;
   
   initializeBrainstorm(): Promise<void>;
+  getEmployerComparison(): Promise<{
+    employers: Array<{
+      empregadora: string;
+      sentencasFavoraveis: number;
+      sentencasDesfavoraveis: number;
+      sentencasParciais: number;
+      acordaosFavoraveis: number;
+      acordaosDesfavoraveis: number;
+      acordaosParciais: number;
+      totalFavoraveis: number;
+      totalDesfavoraveis: number;
+      totalParciais: number;
+      total: number;
+      taxaExito: number;
+    }>;
+    totals: {
+      sentencasFavoraveis: number;
+      sentencasDesfavoraveis: number;
+      sentencasParciais: number;
+      acordaosFavoraveis: number;
+      acordaosDesfavoraveis: number;
+      acordaosParciais: number;
+      totalFavoraveis: number;
+      totalDesfavoraveis: number;
+      totalParciais: number;
+      total: number;
+      taxaExito: number;
+    };
+  }>;
 }
 
 export class MemStorage implements IStorage {
@@ -930,6 +959,152 @@ export class MemStorage implements IStorage {
     if (ids.length === 0) return true;
     await db.delete(acordaosMerito).where(inArray(acordaosMerito.id, ids));
     return true;
+  }
+
+  async getEmployerComparison(): Promise<{
+    employers: Array<{
+      empregadora: string;
+      sentencasFavoraveis: number;
+      sentencasDesfavoraveis: number;
+      sentencasParciais: number;
+      acordaosFavoraveis: number;
+      acordaosDesfavoraveis: number;
+      acordaosParciais: number;
+      totalFavoraveis: number;
+      totalDesfavoraveis: number;
+      totalParciais: number;
+      total: number;
+      taxaExito: number;
+    }>;
+    totals: {
+      sentencasFavoraveis: number;
+      sentencasDesfavoraveis: number;
+      sentencasParciais: number;
+      acordaosFavoraveis: number;
+      acordaosDesfavoraveis: number;
+      acordaosParciais: number;
+      totalFavoraveis: number;
+      totalDesfavoraveis: number;
+      totalParciais: number;
+      total: number;
+      taxaExito: number;
+    };
+  }> {
+    const allSentencas = await this.getAllSentencasMerito();
+    const allAcordaos = await this.getAllAcordaosMerito();
+    
+    const employerMap = new Map<string, {
+      sentencasFavoraveis: number;
+      sentencasDesfavoraveis: number;
+      sentencasParciais: number;
+      acordaosFavoraveis: number;
+      acordaosDesfavoraveis: number;
+      acordaosParciais: number;
+    }>();
+
+    const normalizeEmpregadora = (emp: string | null | undefined): string => {
+      if (!emp) return 'Não informado';
+      const normalized = emp.trim().toUpperCase();
+      if (normalized.includes('OI') || normalized === 'OI') return 'OI';
+      if (normalized.includes('SEREDE')) return 'SEREDE';
+      if (normalized.includes('ICOMON')) return 'ICOMON';
+      if (normalized.includes('TELEMON')) return 'TELEMON';
+      if (normalized.includes('VTAL') || normalized.includes('V.TAL') || normalized.includes('V TAL')) return 'V.TAL';
+      if (normalized.includes('PRÓPRIO') || normalized.includes('PROPRIO')) return 'PRÓPRIO';
+      return emp.trim();
+    };
+
+    const normalizeFavorabilidade = (fav: string | null | undefined): 'favoravel' | 'desfavoravel' | 'parcial' => {
+      if (!fav) return 'desfavoravel';
+      const normalized = fav.trim().toLowerCase();
+      if (normalized.includes('favorável') || normalized.includes('favoravel') || normalized === 'sim') return 'favoravel';
+      if (normalized.includes('parcial')) return 'parcial';
+      return 'desfavoravel';
+    };
+
+    const getOrCreate = (emp: string) => {
+      if (!employerMap.has(emp)) {
+        employerMap.set(emp, {
+          sentencasFavoraveis: 0,
+          sentencasDesfavoraveis: 0,
+          sentencasParciais: 0,
+          acordaosFavoraveis: 0,
+          acordaosDesfavoraveis: 0,
+          acordaosParciais: 0,
+        });
+      }
+      return employerMap.get(emp)!;
+    };
+
+    for (const sentenca of allSentencas) {
+      const emp = normalizeEmpregadora(sentenca.empregadora);
+      const fav = normalizeFavorabilidade(sentenca.favorabilidade);
+      const data = getOrCreate(emp);
+      
+      if (fav === 'favoravel') data.sentencasFavoraveis++;
+      else if (fav === 'parcial') data.sentencasParciais++;
+      else data.sentencasDesfavoraveis++;
+    }
+
+    for (const acordao of allAcordaos) {
+      const emp = normalizeEmpregadora(acordao.empregadora);
+      const fav = normalizeFavorabilidade(acordao.sinteseDecisao);
+      const data = getOrCreate(emp);
+      
+      if (fav === 'favoravel') data.acordaosFavoraveis++;
+      else if (fav === 'parcial') data.acordaosParciais++;
+      else data.acordaosDesfavoraveis++;
+    }
+
+    const employers = Array.from(employerMap.entries()).map(([empregadora, data]) => {
+      const totalFavoraveis = data.sentencasFavoraveis + data.acordaosFavoraveis;
+      const totalDesfavoraveis = data.sentencasDesfavoraveis + data.acordaosDesfavoraveis;
+      const totalParciais = data.sentencasParciais + data.acordaosParciais;
+      const total = totalFavoraveis + totalDesfavoraveis + totalParciais;
+      const taxaExito = total > 0 ? Math.round(((totalFavoraveis + totalParciais * 0.5) / total) * 100 * 10) / 10 : 0;
+      
+      return {
+        empregadora,
+        ...data,
+        totalFavoraveis,
+        totalDesfavoraveis,
+        totalParciais,
+        total,
+        taxaExito,
+      };
+    }).sort((a, b) => b.total - a.total);
+
+    const totals = employers.reduce((acc, emp) => ({
+      sentencasFavoraveis: acc.sentencasFavoraveis + emp.sentencasFavoraveis,
+      sentencasDesfavoraveis: acc.sentencasDesfavoraveis + emp.sentencasDesfavoraveis,
+      sentencasParciais: acc.sentencasParciais + emp.sentencasParciais,
+      acordaosFavoraveis: acc.acordaosFavoraveis + emp.acordaosFavoraveis,
+      acordaosDesfavoraveis: acc.acordaosDesfavoraveis + emp.acordaosDesfavoraveis,
+      acordaosParciais: acc.acordaosParciais + emp.acordaosParciais,
+      totalFavoraveis: acc.totalFavoraveis + emp.totalFavoraveis,
+      totalDesfavoraveis: acc.totalDesfavoraveis + emp.totalDesfavoraveis,
+      totalParciais: acc.totalParciais + emp.totalParciais,
+      total: acc.total + emp.total,
+      taxaExito: 0,
+    }), {
+      sentencasFavoraveis: 0,
+      sentencasDesfavoraveis: 0,
+      sentencasParciais: 0,
+      acordaosFavoraveis: 0,
+      acordaosDesfavoraveis: 0,
+      acordaosParciais: 0,
+      totalFavoraveis: 0,
+      totalDesfavoraveis: 0,
+      totalParciais: 0,
+      total: 0,
+      taxaExito: 0,
+    });
+
+    totals.taxaExito = totals.total > 0 
+      ? Math.round(((totals.totalFavoraveis + totals.totalParciais * 0.5) / totals.total) * 100 * 10) / 10 
+      : 0;
+
+    return { employers, totals };
   }
 
   async loadBrainstormFromExcel(): Promise<void> {

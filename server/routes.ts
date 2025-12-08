@@ -744,6 +744,16 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/brainstorm/employer-comparison", isAuthenticated, async (req, res) => {
+    try {
+      const comparison = await storage.getEmployerComparison();
+      res.json(comparison);
+    } catch (error) {
+      console.error("Error fetching employer comparison:", error);
+      res.status(500).json({ error: "Erro ao buscar comparativo de empregadoras" });
+    }
+  });
+
   // Distribuídos
   app.get("/api/brainstorm/distribuidos", isAuthenticated, async (req, res) => {
     try {
