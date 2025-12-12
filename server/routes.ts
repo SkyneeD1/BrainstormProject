@@ -811,6 +811,16 @@ export async function registerRoutes(
     }
   });
 
+  app.delete("/api/brainstorm/distribuidos", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      await storage.deleteAllDistribuidos();
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting all distribuidos:", error);
+      res.status(500).json({ error: "Erro ao excluir todos os distribuídos" });
+    }
+  });
+
   // Encerrados
   app.get("/api/brainstorm/encerrados", isAuthenticated, async (req, res) => {
     try {
@@ -875,6 +885,16 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error batch deleting encerrados:", error);
       res.status(500).json({ error: "Erro ao excluir encerrados em lote" });
+    }
+  });
+
+  app.delete("/api/brainstorm/encerrados", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      await storage.deleteAllEncerrados();
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting all encerrados:", error);
+      res.status(500).json({ error: "Erro ao excluir todos os encerrados" });
     }
   });
 
@@ -945,6 +965,16 @@ export async function registerRoutes(
     }
   });
 
+  app.delete("/api/brainstorm/sentencas-merito", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      await storage.deleteAllSentencasMerito();
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting all sentencas merito:", error);
+      res.status(500).json({ error: "Erro ao excluir todas as sentenças de mérito" });
+    }
+  });
+
   // Acórdãos de Mérito
   app.get("/api/brainstorm/acordaos-merito", isAuthenticated, async (req, res) => {
     try {
@@ -1009,6 +1039,16 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error batch deleting acordaos merito:", error);
       res.status(500).json({ error: "Erro ao excluir acórdãos de mérito em lote" });
+    }
+  });
+
+  app.delete("/api/brainstorm/acordaos-merito", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      await storage.deleteAllAcordaosMerito();
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting all acordaos merito:", error);
+      res.status(500).json({ error: "Erro ao excluir todos os acórdãos de mérito" });
     }
   });
 

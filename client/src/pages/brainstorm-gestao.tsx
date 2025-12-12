@@ -8,7 +8,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { Table2, Plus, Trash2, Loader2, FileInput, FileOutput, Scale, Gavel, X } from "lucide-react";
+import { Table2, Plus, Trash2, Loader2, FileInput, FileOutput, Scale, Gavel, X, AlertTriangle } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useAuth } from "@/hooks/useAuth";
 import type { Distribuido, Encerrado, SentencaMerito, AcordaoMerito } from "@shared/schema";
 
@@ -92,6 +93,21 @@ function DataTable({ tableType }: { tableType: TableType }) {
     },
     onError: () => {
       toast({ title: "Erro ao excluir itens", variant: "destructive" });
+    },
+  });
+
+  const deleteAllMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("DELETE", config.endpoint);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [config.endpoint] });
+      queryClient.invalidateQueries({ queryKey: ['/api/brainstorm/stats'] });
+      setSelectedIds(new Set());
+      toast({ title: "Todos os itens foram excluídos" });
+    },
+    onError: () => {
+      toast({ title: "Erro ao excluir todos os itens", variant: "destructive" });
     },
   });
 
@@ -192,6 +208,45 @@ function DataTable({ tableType }: { tableType: TableType }) {
                   )}
                   Excluir ({selectedIds.size})
                 </Button>
+              )}
+              {items.length > 0 && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-destructive border-destructive hover:bg-destructive/10"
+                      data-testid={`button-delete-all-${tableType}`}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Apagar Todos
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle className="flex items-center gap-2">
+                        <AlertTriangle className="h-5 w-5 text-destructive" />
+                        Confirmar exclusão
+                      </AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Tem certeza que deseja apagar todos os {items.length} registros de {config.title}? Esta ação não pode ser desfeita.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel data-testid={`button-cancel-delete-all-${tableType}`}>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => deleteAllMutation.mutate()}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        data-testid={`button-confirm-delete-all-${tableType}`}
+                      >
+                        {deleteAllMutation.isPending ? (
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        ) : null}
+                        Apagar Todos
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               )}
               <Button
                 variant="outline"

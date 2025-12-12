@@ -103,24 +103,28 @@ export interface IStorage {
   createDistribuidosBatch(data: InsertDistribuido[]): Promise<Distribuido[]>;
   deleteDistribuido(id: string): Promise<boolean>;
   deleteDistribuidosBatch(ids: string[]): Promise<boolean>;
+  deleteAllDistribuidos(): Promise<boolean>;
   
   getAllEncerrados(): Promise<Encerrado[]>;
   createEncerrado(data: InsertEncerrado): Promise<Encerrado>;
   createEncerradosBatch(data: InsertEncerrado[]): Promise<Encerrado[]>;
   deleteEncerrado(id: string): Promise<boolean>;
   deleteEncerradosBatch(ids: string[]): Promise<boolean>;
+  deleteAllEncerrados(): Promise<boolean>;
   
   getAllSentencasMerito(): Promise<SentencaMerito[]>;
   createSentencaMerito(data: InsertSentencaMerito): Promise<SentencaMerito>;
   createSentencasMeritoBatch(data: InsertSentencaMerito[]): Promise<SentencaMerito[]>;
   deleteSentencaMerito(id: string): Promise<boolean>;
   deleteSentencasMeritoBatch(ids: string[]): Promise<boolean>;
+  deleteAllSentencasMerito(): Promise<boolean>;
   
   getAllAcordaosMerito(): Promise<AcordaoMerito[]>;
   createAcordaoMerito(data: InsertAcordaoMerito): Promise<AcordaoMerito>;
   createAcordaosMeritoBatch(data: InsertAcordaoMerito[]): Promise<AcordaoMerito[]>;
   deleteAcordaoMerito(id: string): Promise<boolean>;
   deleteAcordaosMeritoBatch(ids: string[]): Promise<boolean>;
+  deleteAllAcordaosMerito(): Promise<boolean>;
   
   initializeBrainstorm(): Promise<void>;
 }
@@ -857,6 +861,11 @@ export class MemStorage implements IStorage {
     return true;
   }
 
+  async deleteAllDistribuidos(): Promise<boolean> {
+    await db.delete(distribuidos);
+    return true;
+  }
+
   async getAllEncerrados(): Promise<Encerrado[]> {
     return await db.select().from(encerrados).orderBy(encerrados.createdAt);
   }
@@ -879,6 +888,11 @@ export class MemStorage implements IStorage {
   async deleteEncerradosBatch(ids: string[]): Promise<boolean> {
     if (ids.length === 0) return true;
     await db.delete(encerrados).where(inArray(encerrados.id, ids));
+    return true;
+  }
+
+  async deleteAllEncerrados(): Promise<boolean> {
+    await db.delete(encerrados);
     return true;
   }
 
@@ -907,6 +921,11 @@ export class MemStorage implements IStorage {
     return true;
   }
 
+  async deleteAllSentencasMerito(): Promise<boolean> {
+    await db.delete(sentencasMerito);
+    return true;
+  }
+
   async getAllAcordaosMerito(): Promise<AcordaoMerito[]> {
     return await db.select().from(acordaosMerito).orderBy(acordaosMerito.createdAt);
   }
@@ -929,6 +948,11 @@ export class MemStorage implements IStorage {
   async deleteAcordaosMeritoBatch(ids: string[]): Promise<boolean> {
     if (ids.length === 0) return true;
     await db.delete(acordaosMerito).where(inArray(acordaosMerito.id, ids));
+    return true;
+  }
+
+  async deleteAllAcordaosMerito(): Promise<boolean> {
+    await db.delete(acordaosMerito);
     return true;
   }
 
