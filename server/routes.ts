@@ -303,27 +303,56 @@ export async function registerRoutes(
       const workbook = XLSX.read(req.file.buffer, { type: "buffer" });
       const sheetName = workbook.SheetNames[0];
       const sheet = workbook.Sheets[sheetName];
-      const rawData = XLSX.utils.sheet_to_json<any[]>(sheet, { header: 1 });
-
-      if (rawData.length < 2) {
+      
+      // Try to read with headers first
+      const jsonData = XLSX.utils.sheet_to_json<Record<string, any>>(sheet);
+      
+      if (jsonData.length === 0) {
         return res.status(400).json({ error: "Planilha vazia ou sem dados" });
       }
 
       const processos: ProcessoRaw[] = [];
+      
+      // Get headers from first row to detect column mapping
+      const sampleRow = jsonData[0];
+      const headers = Object.keys(sampleRow);
+      
+      // Find column indices by partial matching header names
+      const findColumn = (patterns: string[]) => {
+        return headers.find(h => {
+          const headerLower = h.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+          return patterns.some(p => headerLower.includes(p.toLowerCase()));
+        });
+      };
+      
+      const colNumeroProcesso = findColumn(["numero do processo", "processo", "cnj", "numero"]);
+      const colTipoOrigem = findColumn(["proprio", "oi", "terceiro", "tipo"]);
+      const colEmpresa = findColumn(["empresa", "empregadora", "terceira"]);
+      const colStatus = findColumn(["status"]);
+      const colFase = findColumn(["fase"]);
+      const colValor = findColumn(["valor", "total"]);
+      const colPrognostico = findColumn(["prognostico", "perda", "risco"]);
+      
+      console.log("Detected columns:", { colNumeroProcesso, colTipoOrigem, colEmpresa, colStatus, colFase, colValor, colPrognostico });
+      
+      if (!colNumeroProcesso) {
+        return res.status(400).json({ 
+          error: "Não foi possível encontrar a coluna de número do processo. Certifique-se de que a planilha tem uma coluna com 'Número do Processo' ou similar no cabeçalho.",
+          headers: headers.slice(0, 10)
+        });
+      }
 
-      for (let i = 1; i < rawData.length; i++) {
-        const row = rawData[i] as any[];
-        if (!row || row.length < 7) continue;
-
-        const numeroProcesso = String(row[0] || "").trim();
-        const tipoOrigem = String(row[1] || "").trim();
-        const empresaOriginal = String(row[2] || "").trim();
-        const status = String(row[3] || "").trim();
-        const fase = String(row[4] || "").trim();
-        const valorTotal = typeof row[5] === "number" ? row[5] : parseFloat(row[5]) || 0;
-        const prognostico = String(row[6] || "").trim();
-
+      for (const row of jsonData) {
+        const numeroProcesso = String(row[colNumeroProcesso] || "").trim();
         if (!numeroProcesso || numeroProcesso === "") continue;
+        
+        const tipoOrigem = colTipoOrigem ? String(row[colTipoOrigem] || "").trim() : "";
+        const empresaOriginal = colEmpresa ? String(row[colEmpresa] || "").trim() : "";
+        const status = colStatus ? String(row[colStatus] || "").trim() : "ATIVO";
+        const fase = colFase ? String(row[colFase] || "").trim() : "CONHECIMENTO";
+        const valorRaw = colValor ? row[colValor] : 0;
+        const valorTotal = typeof valorRaw === "number" ? valorRaw : parseFloat(String(valorRaw).replace(/[^\d,.-]/g, "").replace(",", ".")) || 0;
+        const prognostico = colPrognostico ? String(row[colPrognostico] || "").trim() : "POSSÍVEL";
 
         const processo: ProcessoRaw = {
           id: randomUUID(),
