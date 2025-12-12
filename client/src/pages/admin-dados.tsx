@@ -1,6 +1,8 @@
 import { useState, useMemo, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Database, Download, RefreshCw, AlertTriangle, Search, Upload, FileSpreadsheet, X, Shield } from "lucide-react";
+import { Database, Download, RefreshCw, AlertTriangle, Search, Upload, FileSpreadsheet, X, Shield, Trash2, Loader2 } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { apiRequest } from "@/lib/queryClient";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -83,6 +85,31 @@ export default function AdminDados() {
       }
       toast({
         title: "Erro no upload",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteAllMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("DELETE", "/api/passivo");
+    },
+    onSuccess: () => {
+      toast({ title: "Todos os dados foram apagados" });
+      queryClient.invalidateQueries({ queryKey: ["/api/passivo"] });
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Sem permissão",
+          description: "Você precisa ser administrador para apagar dados",
+          variant: "destructive",
+        });
+        return;
+      }
+      toast({
+        title: "Erro ao apagar dados",
         description: error.message,
         variant: "destructive",
       });
@@ -200,19 +227,59 @@ export default function AdminDados() {
             data-testid="input-file-upload"
           />
           {isAdmin && (
-            <Button
-              variant="outline"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploadMutation.isPending}
-              data-testid="button-upload"
-            >
-              {uploadMutation.isPending ? (
-                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <Upload className="h-4 w-4 mr-2" />
+            <>
+              <Button
+                variant="outline"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadMutation.isPending}
+                data-testid="button-upload"
+              >
+                {uploadMutation.isPending ? (
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Upload className="h-4 w-4 mr-2" />
+                )}
+                Importar XLSX
+              </Button>
+              {passivoData.rawData.length > 0 && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="text-destructive border-destructive hover:bg-destructive/10"
+                      data-testid="button-delete-all-passivo"
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Apagar Todos
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle className="flex items-center gap-2">
+                        <AlertTriangle className="h-5 w-5 text-destructive" />
+                        Confirmar exclusão
+                      </AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Tem certeza que deseja apagar todos os {passivoData.rawData.length.toLocaleString('pt-BR')} registros do passivo? Esta ação não pode ser desfeita.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel data-testid="button-cancel-delete-all-passivo">Cancelar</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => deleteAllMutation.mutate()}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        data-testid="button-confirm-delete-all-passivo"
+                      >
+                        {deleteAllMutation.isPending ? (
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        ) : null}
+                        Apagar Todos
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               )}
-              Importar XLSX
-            </Button>
+            </>
           )}
           <Button
             variant="outline"

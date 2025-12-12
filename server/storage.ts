@@ -46,6 +46,7 @@ export interface IStorage {
   getPassivoData(): Promise<PassivoData>;
   setRawData(data: ProcessoRaw[]): Promise<void>;
   getRawData(): Promise<ProcessoRaw[]>;
+  clearRawData(): Promise<void>;
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
@@ -158,6 +159,10 @@ export class MemStorage implements IStorage {
 
   async getRawData(): Promise<ProcessoRaw[]> {
     return this.rawData;
+  }
+
+  async clearRawData(): Promise<void> {
+    this.rawData = [];
   }
 
   async getUser(id: string): Promise<User | undefined> {

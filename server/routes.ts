@@ -283,6 +283,16 @@ export async function registerRoutes(
     }
   });
 
+  app.delete("/api/passivo", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      await storage.clearRawData();
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error clearing passivo data:", error);
+      res.status(500).json({ error: "Erro ao apagar dados do passivo" });
+    }
+  });
+
   // Upload Excel (admin only)
   app.post("/api/passivo/upload", isAuthenticated, isAdmin, upload.single("file"), async (req, res) => {
     try {
