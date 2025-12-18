@@ -17,7 +17,8 @@ import {
   insertSentencaMeritoSchema,
   insertAcordaoMeritoSchema,
   insertTurmaSchema,
-  insertDesembargadorSchema
+  insertDesembargadorSchema,
+  insertDecisaoRpacSchema
 } from "@shared/schema";
 import XLSX from "xlsx";
 import { randomUUID } from "crypto";
@@ -811,6 +812,78 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error fetching mapa de decisões:", error);
       res.status(500).json({ error: "Erro ao buscar mapa de decisões" });
+    }
+  });
+
+  app.get("/api/mapa-decisoes/admin", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const data = await storage.getMapaDecisoesAdminData();
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching mapa de decisões admin data:", error);
+      res.status(500).json({ error: "Erro ao buscar dados administrativos" });
+    }
+  });
+
+  // ========== Decisões RPAC Routes ==========
+  app.get("/api/decisoes", isAuthenticated, async (req, res) => {
+    try {
+      const decisoes = await storage.getAllDecisoesRpac();
+      res.json(decisoes);
+    } catch (error) {
+      console.error("Error fetching decisoes:", error);
+      res.status(500).json({ error: "Erro ao buscar decisões" });
+    }
+  });
+
+  app.get("/api/desembargadores/:desembargadorId/decisoes", isAuthenticated, async (req, res) => {
+    try {
+      const decisoes = await storage.getDecisoesRpacByDesembargador(req.params.desembargadorId);
+      res.json(decisoes);
+    } catch (error) {
+      console.error("Error fetching decisoes:", error);
+      res.status(500).json({ error: "Erro ao buscar decisões" });
+    }
+  });
+
+  app.post("/api/decisoes", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const parsed = insertDecisaoRpacSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.errors[0]?.message || "Dados inválidos" });
+      }
+      const data = {
+        ...parsed.data,
+        dataDecisao: parsed.data.dataDecisao ? new Date(parsed.data.dataDecisao) : undefined,
+      };
+      const decisao = await storage.createDecisaoRpac(data);
+      res.status(201).json(decisao);
+    } catch (error) {
+      console.error("Error creating decisao:", error);
+      res.status(500).json({ error: "Erro ao criar decisão" });
+    }
+  });
+
+  app.patch("/api/decisoes/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const decisao = await storage.updateDecisaoRpac(req.params.id, req.body);
+      if (!decisao) {
+        return res.status(404).json({ error: "Decisão não encontrada" });
+      }
+      res.json(decisao);
+    } catch (error) {
+      console.error("Error updating decisao:", error);
+      res.status(500).json({ error: "Erro ao atualizar decisão" });
+    }
+  });
+
+  app.delete("/api/decisoes/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      await storage.deleteDecisaoRpac(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting decisao:", error);
+      res.status(500).json({ error: "Erro ao excluir decisão" });
     }
   });
 

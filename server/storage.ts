@@ -40,9 +40,11 @@ import type {
   Desembargador,
   InsertDesembargador,
   TurmaComDesembargadores,
-  MapaDecisoes
+  MapaDecisoes,
+  DecisaoRpac,
+  InsertDecisaoRpac
 } from "@shared/schema";
-import { users, trts, varas, juizes, julgamentos, audiencias, distribuidos, encerrados, sentencasMerito, acordaosMerito, turmas, desembargadores } from "@shared/schema";
+import { users, trts, varas, juizes, julgamentos, audiencias, distribuidos, encerrados, sentencasMerito, acordaosMerito, turmas, desembargadores, decisoesRpac } from "@shared/schema";
 import { and, gte, lte, inArray, sql } from "drizzle-orm";
 import { parseExcelFile } from "./excel-parser";
 import { db } from "./db";
@@ -150,6 +152,31 @@ export interface IStorage {
   deleteDesembargador(id: string): Promise<boolean>;
   
   getMapaDecisoesGeral(): Promise<MapaDecisoes>;
+  
+  // Decisões RPAC
+  getAllDecisoesRpac(): Promise<DecisaoRpac[]>;
+  getDecisoesRpacByDesembargador(desembargadorId: string): Promise<DecisaoRpac[]>;
+  getDecisaoRpac(id: string): Promise<DecisaoRpac | undefined>;
+  createDecisaoRpac(decisao: InsertDecisaoRpac): Promise<DecisaoRpac>;
+  updateDecisaoRpac(id: string, data: Partial<InsertDecisaoRpac>): Promise<DecisaoRpac | undefined>;
+  deleteDecisaoRpac(id: string): Promise<boolean>;
+  
+  // Dados completos para admin
+  getMapaDecisoesAdminData(): Promise<{
+    trts: Array<{
+      nome: string;
+      turmas: Array<{
+        id: string;
+        nome: string;
+        desembargadores: Array<{
+          id: string;
+          nome: string;
+          voto: string;
+          decisoes: DecisaoRpac[];
+        }>;
+      }>;
+    }>;
+  }>;
 }
 
 export class MemStorage implements IStorage {
@@ -1260,6 +1287,110 @@ export class MemStorage implements IStorage {
         percentualDesfavoravel: estatisticasGerais.percentualDesfavoravel,
       },
     };
+  }
+
+  // Decisões RPAC CRUD
+  async getAllDecisoesRpac(): Promise<DecisaoRpac[]> {
+    return await db.select().from(decisoesRpac).orderBy(decisoesRpac.createdAt);
+  }
+
+  async getDecisoesRpacByDesembargador(desembargadorId: string): Promise<DecisaoRpac[]> {
+    return await db.select().from(decisoesRpac).where(eq(decisoesRpac.desembargadorId, desembargadorId)).orderBy(decisoesRpac.createdAt);
+  }
+
+  async getDecisaoRpac(id: string): Promise<DecisaoRpac | undefined> {
+    const [decisao] = await db.select().from(decisoesRpac).where(eq(decisoesRpac.id, id));
+    return decisao;
+  }
+
+  async createDecisaoRpac(decisao: InsertDecisaoRpac): Promise<DecisaoRpac> {
+    const [created] = await db.insert(decisoesRpac).values(decisao).returning();
+    return created;
+  }
+
+  async updateDecisaoRpac(id: string, data: Partial<InsertDecisaoRpac>): Promise<DecisaoRpac | undefined> {
+    const [updated] = await db.update(decisoesRpac).set(data).where(eq(decisoesRpac.id, id)).returning();
+    return updated;
+  }
+
+  async deleteDecisaoRpac(id: string): Promise<boolean> {
+    await db.delete(decisoesRpac).where(eq(decisoesRpac.id, id));
+    return true;
+  }
+
+  // Dados completos para admin - hierarquia TRT → Turmas → Desembargadores → Decisões
+  async getMapaDecisoesAdminData(): Promise<{
+    trts: Array<{
+      nome: string;
+      turmas: Array<{
+        id: string;
+        nome: string;
+        desembargadores: Array<{
+          id: string;
+          nome: string;
+          voto: string;
+          decisoes: DecisaoRpac[];
+        }>;
+      }>;
+    }>;
+  }> {
+    const turmasList = await this.getAllTurmas();
+    
+    // Agrupar turmas por região (TRT)
+    const trtMap = new Map<string, typeof turmasList>();
+    for (const turma of turmasList) {
+      const trtNome = turma.regiao || 'Sem Região';
+      if (!trtMap.has(trtNome)) {
+        trtMap.set(trtNome, []);
+      }
+      trtMap.get(trtNome)!.push(turma);
+    }
+
+    const trts: Array<{
+      nome: string;
+      turmas: Array<{
+        id: string;
+        nome: string;
+        desembargadores: Array<{
+          id: string;
+          nome: string;
+          voto: string;
+          decisoes: DecisaoRpac[];
+        }>;
+      }>;
+    }> = [];
+    
+    for (const [trtNome, turmasDoTrt] of Array.from(trtMap.entries())) {
+      const turmasComDados = [];
+      
+      for (const turma of turmasDoTrt.sort((a: Turma, b: Turma) => a.nome.localeCompare(b.nome))) {
+        const desembargadoresTurma = await this.getDesembargadoresByTurma(turma.id);
+        const desembargadoresComDecisoes = [];
+        
+        for (const desembargador of desembargadoresTurma) {
+          const decisoes = await this.getDecisoesRpacByDesembargador(desembargador.id);
+          desembargadoresComDecisoes.push({
+            id: desembargador.id,
+            nome: desembargador.nome,
+            voto: desembargador.voto,
+            decisoes,
+          });
+        }
+        
+        turmasComDados.push({
+          id: turma.id,
+          nome: turma.nome,
+          desembargadores: desembargadoresComDecisoes,
+        });
+      }
+      
+      trts.push({
+        nome: trtNome,
+        turmas: turmasComDados,
+      });
+    }
+
+    return { trts: trts.sort((a, b) => a.nome.localeCompare(b.nome)) };
   }
 }
 

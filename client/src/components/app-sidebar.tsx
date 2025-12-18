@@ -167,6 +167,22 @@ export function AppSidebar() {
                   <SidebarMenuButton
                     asChild
                     className={`${
+                      location === "/admin/mapas"
+                        ? "bg-primary/10 text-primary"
+                        : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent"
+                    }`}
+                  >
+                    <Link href="/admin/mapas" data-testid="link-admin-mapas">
+                      <Map className="h-4 w-4" />
+                      <span className="font-medium">Dados Mapas</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    asChild
+                    className={`${
                       location === "/admin/usuarios"
                         ? "bg-primary/10 text-primary"
                         : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent"
