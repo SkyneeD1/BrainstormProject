@@ -3,8 +3,8 @@
 ## Overview
 A Power BI-style litigation management dashboard for V.tal with role-based access control (Admin/Viewer). The system includes:
 - **Module 1**: "Passivo Sob Gestão" - Displays 2,276 lawsuits organized by procedural phase, risk classification, and company origin (December 2024 data)
-- **Module 2**: "Mapa de Juízes TRTs/Varas Favorabilidade" - Tracks judicial decisions and favorability metrics across Regional Labor Courts (TRTs), Courts (Varas), and Judges
-- **Module 3**: "Linha do Tempo" - Timeline visualization of decisions and hearings with date range filtering and TRT/Vara selection
+- **Module 2**: "Mapas Estratégicos" - Mapa de Decisões with Turmas → Desembargadores structure for tracking judicial vote status (FAVORÁVEL, DESFAVORÁVEL, EM ANÁLISE, SUSPEITO)
+- **Module 3**: "Brainstorm" - Reporting and batch management for case data (DISTRIBUÍDOS, ENCERRADOS, SENTENÇA DE MÉRITO, ACÓRDÃO DE MÉRITO)
 
 ## Authentication
 - PostgreSQL-backed sessions with bcrypt password hashing
@@ -21,21 +21,17 @@ A Power BI-style litigation management dashboard for V.tal with role-based acces
   - Admin data table with export functionality
   - Dark/Light theme toggle
 
-- Module 2 (Mapa de Juízes) is fully implemented with:
-  - Hierarchical structure: TRT → Vara → Juiz → Julgamento
-  - TRTs/Varas management page with CRUD operations
-  - Juízes directory with favorability visualization
-  - Julgamentos registration with weighted scoring
-  - Dashboard with favorability analytics and charts
-  - Judge avatar component with colored arc visualization
+- Module 2 (Mapas Estratégicos - Mapa de Decisões) is fully implemented with:
+  - Simplified structure: Turmas → Desembargadores (no TRT/Vara dependencies)
+  - Turmas management with optional "regiao" field
+  - Desembargadores with vote status tracking (FAVORÁVEL, DESFAVORÁVEL, EM ANÁLISE, SUSPEITO)
+  - Tabbed interface: Turmas view (cards with statistics) and Desembargadores view (table listing)
+  - Admin CRUD operations for both Turmas and Desembargadores
+  - Progress bars showing vote distribution percentages
 
-- Module 3 (Linha do Tempo) is fully implemented with:
-  - Timeline visualization of decisions (julgamentos) and hearings (audiências)
-  - Date range filtering (start/end dates)
-  - Hierarchical location filters (TRT → Vara)
-  - Event type filtering (decisions, hearings, or all)
-  - Grouped display by month with color-coded result indicators
-  - KPI cards showing total events, decisions, hearings, and favorability percentage
+- Module 3 (Brainstorm) includes:
+  - Relatório page for report generation
+  - Gestão page for batch data management
 
 ## Architecture
 
@@ -44,13 +40,11 @@ A Power BI-style litigation management dashboard for V.tal with role-based acces
 - **client/src/pages/dashboard.tsx**: Module 1 dashboard with KPIs, tables, and charts
 - **client/src/pages/admin-dados.tsx**: Admin page with raw data table and export
 - **client/src/pages/admin-users.tsx**: User management page (Admin only)
-- **client/src/pages/trts-varas.tsx**: Module 2 - TRTs and Varas management
-- **client/src/pages/juizes.tsx**: Module 2 - Judges directory with julgamentos
-- **client/src/pages/favorabilidade.tsx**: Module 2 - Favorability analytics dashboard
-- **client/src/pages/timeline.tsx**: Module 3 - Timeline visualization with date filters
+- **client/src/pages/mapa-decisoes.tsx**: Module 2 - Turmas and Desembargadores management
+- **client/src/pages/brainstorm-relatorio.tsx**: Module 3 - Report generation
+- **client/src/pages/brainstorm-gestao.tsx**: Module 3 - Data management
 - **client/src/components/**: Reusable UI components
   - `app-sidebar.tsx`: Navigation sidebar with module groups
-  - `judge-avatar.tsx`: Avatar with favorability arc visualization
   - `kpi-card.tsx`: Metric display cards
   - `data-table-*.tsx`: Data tables for phases, risks, and company breakdown
   - `charts/*.tsx`: Recharts-based visualizations
@@ -58,22 +52,18 @@ A Power BI-style litigation management dashboard for V.tal with role-based acces
 ### Backend (Express)
 - **server/routes.ts**: API endpoints
   - Module 1: `GET /api/passivo`, `GET /api/passivo/raw`
-  - Module 2: CRUD for `/api/trts`, `/api/varas`, `/api/juizes`, `/api/julgamentos`
-  - Favorability: `GET /api/favorabilidade/trts`, `GET /api/favorabilidade/juizes`
-  - Module 3: `GET /api/timeline`, CRUD `/api/audiencias`
+  - Module 2: `GET /api/mapa-decisoes`, CRUD for `/api/turmas`, `/api/desembargadores`
   - Auth: `POST /api/login`, `POST /api/logout`, `GET /api/user`
   - Admin: `GET/POST/PATCH/DELETE /api/users`
-- **server/storage.ts**: In-memory storage with data aggregation and favorability calculations
+- **server/storage.ts**: In-memory storage with data aggregation and vote statistics calculations
 - **server/auth.ts**: Passport.js authentication with PostgreSQL sessions
 
 ### Database (PostgreSQL)
 - **users**: User accounts with roles (admin/viewer)
 - **session**: Express sessions with connect-pg-simple
-- **trts**: Regional Labor Courts (TRT 1-24)
-- **varas**: Labor Courts with TRT relationship
-- **juizes**: Judges with Vara relationship and type (titular/substituto)
-- **julgamentos**: Judgments with result (favoravel/desfavoravel/parcial)
-- **audiencias**: Hearings with type, status, and date
+- **turmas**: Chamber units with optional regiao field
+- **desembargadores**: Judges with turma_id relationship and vote status
+- **carteira_rpac**: Case portfolio data (Brainstorm module)
 
 ### Shared
 - **shared/schema.ts**: TypeScript types, Drizzle ORM schemas, and Zod validation
@@ -85,11 +75,12 @@ A Power BI-style litigation management dashboard for V.tal with role-based acces
 2. **Classificação de Risco** (Risk Classification): Remoto, Possível, Provável
 3. **Empresa** (Company Origin): V.tal, OI, Serede, Sprink, Outros Terceiros
 
-### Module 2 - Favorability Scoring
-- Favorável = 1.0 weight
-- Parcial = 0.5 weight
-- Desfavorável = 0.0 weight
-- Percentage = (favoraveis + parciais × 0.5) / total × 100
+### Module 2 - Vote Status System
+- FAVORÁVEL - Favorable vote
+- DESFAVORÁVEL - Unfavorable vote
+- EM ANÁLISE - Under analysis
+- SUSPEITO - Suspect (questionable status)
+- Statistics calculated per Turma: percentages for each status
 
 ## User Preferences
 - Brazilian Portuguese localization
@@ -100,8 +91,8 @@ A Power BI-style litigation management dashboard for V.tal with role-based acces
 ## Recent Changes
 - November 2024: Initial implementation of Module 1
 - November 2024: Added authentication system with PostgreSQL sessions
-- November 2024: Implemented Module 2 - TRTs, Varas, Juízes, Julgamentos with favorability analytics
-- December 2024: Implemented Module 3 - Timeline report with date filtering and event visualization
+- December 2024: Restructured Module 2 - Removed TRT/Vara/Juízes, now uses Turmas → Desembargadores with vote status
+- December 2024: Implemented Brainstorm module with relatorio and gestao pages
 
 ## Running the Project
 ```bash
