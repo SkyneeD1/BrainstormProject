@@ -46,26 +46,6 @@ const menuItems = [
         url: "/mapas/decisoes",
         icon: Gavel,
       },
-      {
-        title: "TRTs e Varas",
-        url: "/mapas/trts-varas",
-        icon: Building2,
-      },
-      {
-        title: "Diretório de Juízes",
-        url: "/mapas/juizes",
-        icon: User,
-      },
-      {
-        title: "Dashboard Favorabilidade",
-        url: "/mapas/favorabilidade",
-        icon: TrendingUp,
-      },
-      {
-        title: "Linha do Tempo",
-        url: "/mapas/timeline",
-        icon: Calendar,
-      },
     ],
   },
   {

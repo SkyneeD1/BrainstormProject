@@ -137,7 +137,6 @@ export interface IStorage {
   
   // Mapas Estratégicos - Turmas e Desembargadores
   getAllTurmas(): Promise<Turma[]>;
-  getTurmasByTRT(trtId: string): Promise<Turma[]>;
   getTurma(id: string): Promise<Turma | undefined>;
   createTurma(turma: InsertTurma): Promise<Turma>;
   updateTurma(id: string, data: Partial<InsertTurma>): Promise<Turma | undefined>;
@@ -150,8 +149,7 @@ export interface IStorage {
   updateDesembargador(id: string, data: Partial<InsertDesembargador>): Promise<Desembargador | undefined>;
   deleteDesembargador(id: string): Promise<boolean>;
   
-  getMapaDecisoes(trtId: string): Promise<MapaDecisoes | null>;
-  getAllMapasDecisoes(): Promise<MapaDecisoes[]>;
+  getMapaDecisoesGeral(): Promise<MapaDecisoes>;
 }
 
 export class MemStorage implements IStorage {
@@ -1079,10 +1077,6 @@ export class MemStorage implements IStorage {
     return await db.select().from(turmas).orderBy(turmas.nome);
   }
 
-  async getTurmasByTRT(trtId: string): Promise<Turma[]> {
-    return await db.select().from(turmas).where(eq(turmas.trtId, trtId)).orderBy(turmas.nome);
-  }
-
   async getTurma(id: string): Promise<Turma | undefined> {
     const [turma] = await db.select().from(turmas).where(eq(turmas.id, id));
     return turma;
@@ -1153,11 +1147,8 @@ export class MemStorage implements IStorage {
     };
   }
 
-  async getMapaDecisoes(trtId: string): Promise<MapaDecisoes | null> {
-    const trt = await this.getTRT(trtId);
-    if (!trt) return null;
-
-    const turmasList = await this.getTurmasByTRT(trtId);
+  async getMapaDecisoesGeral(): Promise<MapaDecisoes> {
+    const turmasList = await this.getAllTurmas();
     const turmasComDesembargadores: TurmaComDesembargadores[] = [];
     let todosDesembargadores: Desembargador[] = [];
 
@@ -1168,7 +1159,7 @@ export class MemStorage implements IStorage {
       turmasComDesembargadores.push({
         id: turma.id,
         nome: turma.nome,
-        trtId: turma.trtId,
+        regiao: turma.regiao,
         desembargadores: desembargadoresTurma.map(d => ({
           id: d.id,
           nome: d.nome,
@@ -1181,12 +1172,6 @@ export class MemStorage implements IStorage {
     const estatisticasGerais = this.calculateTurmaEstatisticas(todosDesembargadores);
 
     return {
-      trt: {
-        id: trt.id,
-        numero: trt.numero,
-        nome: trt.nome,
-        uf: trt.uf,
-      },
       turmas: turmasComDesembargadores,
       estatisticasGerais: {
         total: estatisticasGerais.total,
@@ -1198,18 +1183,6 @@ export class MemStorage implements IStorage {
         percentualDesfavoravel: estatisticasGerais.percentualDesfavoravel,
       },
     };
-  }
-
-  async getAllMapasDecisoes(): Promise<MapaDecisoes[]> {
-    const allTrts = await this.getAllTRTs();
-    const mapas: MapaDecisoes[] = [];
-
-    for (const trt of allTrts) {
-      const mapa = await this.getMapaDecisoes(trt.id);
-      if (mapa) mapas.push(mapa);
-    }
-
-    return mapas;
   }
 }
 

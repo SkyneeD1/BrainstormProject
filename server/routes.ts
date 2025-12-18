@@ -682,16 +682,6 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/trts/:trtId/turmas", isAuthenticated, async (req, res) => {
-    try {
-      const turmas = await storage.getTurmasByTRT(req.params.trtId);
-      res.json(turmas);
-    } catch (error) {
-      console.error("Error fetching turmas by TRT:", error);
-      res.status(500).json({ error: "Erro ao buscar turmas" });
-    }
-  });
-
   app.get("/api/turmas/:id", isAuthenticated, async (req, res) => {
     try {
       const turma = await storage.getTurma(req.params.id);
@@ -816,20 +806,7 @@ export async function registerRoutes(
   // ========== Mapa de Decisões Routes ==========
   app.get("/api/mapa-decisoes", isAuthenticated, async (req, res) => {
     try {
-      const mapas = await storage.getAllMapasDecisoes();
-      res.json(mapas);
-    } catch (error) {
-      console.error("Error fetching mapas de decisões:", error);
-      res.status(500).json({ error: "Erro ao buscar mapas de decisões" });
-    }
-  });
-
-  app.get("/api/mapa-decisoes/:trtId", isAuthenticated, async (req, res) => {
-    try {
-      const mapa = await storage.getMapaDecisoes(req.params.trtId);
-      if (!mapa) {
-        return res.status(404).json({ error: "Mapa não encontrado" });
-      }
+      const mapa = await storage.getMapaDecisoesGeral();
       res.json(mapa);
     } catch (error) {
       console.error("Error fetching mapa de decisões:", error);

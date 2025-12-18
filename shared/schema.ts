@@ -468,15 +468,15 @@ export const brainstormStatsSchema = z.object({
 
 export type BrainstormStats = z.infer<typeof brainstormStatsSchema>;
 
-// Mapas Estratégicos Module - TRT → Turma → Desembargador structure
+// Mapas Estratégicos Module - Turma → Desembargador → Decisões structure
 
 export const votoStatusEnum = z.enum(["FAVORÁVEL", "DESFAVORÁVEL", "EM ANÁLISE", "SUSPEITO"]);
 export type VotoStatus = z.infer<typeof votoStatusEnum>;
 
 export const turmas = pgTable("turmas", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  trtId: varchar("trt_id").notNull().references(() => trts.id, { onDelete: "cascade" }),
   nome: varchar("nome").notNull(),
+  regiao: varchar("regiao"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -484,8 +484,8 @@ export type Turma = typeof turmas.$inferSelect;
 export type InsertTurma = typeof turmas.$inferInsert;
 
 export const insertTurmaSchema = z.object({
-  trtId: z.string().min(1, "TRT é obrigatório"),
   nome: z.string().min(1, "Nome da turma é obrigatório"),
+  regiao: z.string().optional(),
 });
 
 export type CreateTurmaInput = z.infer<typeof insertTurmaSchema>;
@@ -538,7 +538,6 @@ export type CreateDecisaoRpacInput = z.infer<typeof insertDecisaoRpacSchema>;
 // Carteira RPAC - processos em carteira
 export const carteiraRpac = pgTable("carteira_rpac", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  trtId: varchar("trt_id").notNull().references(() => trts.id, { onDelete: "cascade" }),
   turmaId: varchar("turma_id").references(() => turmas.id, { onDelete: "set null" }),
   numeroProcesso: varchar("numero_processo").notNull(),
   parte: varchar("parte"),
@@ -550,7 +549,6 @@ export type CarteiraRpacItem = typeof carteiraRpac.$inferSelect;
 export type InsertCarteiraRpac = typeof carteiraRpac.$inferInsert;
 
 export const insertCarteiraRpacSchema = z.object({
-  trtId: z.string().min(1, "TRT é obrigatório"),
   turmaId: z.string().optional(),
   numeroProcesso: z.string().min(1, "Número do processo é obrigatório"),
   parte: z.string().optional(),
@@ -560,10 +558,35 @@ export const insertCarteiraRpacSchema = z.object({
 export type CreateCarteiraRpacInput = z.infer<typeof insertCarteiraRpacSchema>;
 
 // Schemas de visualização para o Mapa de Decisões
+export const desembargadorComDecisoesSchema = z.object({
+  id: z.string(),
+  nome: z.string(),
+  voto: z.string(),
+  turmaId: z.string(),
+  turmaNome: z.string(),
+  decisoes: z.array(z.object({
+    id: z.string(),
+    numeroProcesso: z.string(),
+    dataDecisao: z.string().nullable(),
+    resultado: z.string(),
+    observacoes: z.string().nullable(),
+  })),
+  estatisticas: z.object({
+    total: z.number(),
+    favoraveis: z.number(),
+    desfavoraveis: z.number(),
+    emAnalise: z.number(),
+    suspeitos: z.number(),
+    percentualFavoravel: z.number(),
+  }),
+});
+
+export type DesembargadorComDecisoes = z.infer<typeof desembargadorComDecisoesSchema>;
+
 export const turmaComDesembargadoresSchema = z.object({
   id: z.string(),
   nome: z.string(),
-  trtId: z.string(),
+  regiao: z.string().nullable(),
   desembargadores: z.array(z.object({
     id: z.string(),
     nome: z.string(),
@@ -584,13 +607,7 @@ export const turmaComDesembargadoresSchema = z.object({
 
 export type TurmaComDesembargadores = z.infer<typeof turmaComDesembargadoresSchema>;
 
-export const mapaDecisoesSchema = z.object({
-  trt: z.object({
-    id: z.string(),
-    numero: z.string(),
-    nome: z.string(),
-    uf: z.string(),
-  }),
+export const mapaDecisoesGeralSchema = z.object({
   turmas: z.array(turmaComDesembargadoresSchema),
   estatisticasGerais: z.object({
     total: z.number(),
@@ -603,4 +620,8 @@ export const mapaDecisoesSchema = z.object({
   }),
 });
 
-export type MapaDecisoes = z.infer<typeof mapaDecisoesSchema>;
+export type MapaDecisoesGeral = z.infer<typeof mapaDecisoesGeralSchema>;
+
+// Backwards compatibility
+export const mapaDecisoesSchema = mapaDecisoesGeralSchema;
+export type MapaDecisoes = MapaDecisoesGeral;
