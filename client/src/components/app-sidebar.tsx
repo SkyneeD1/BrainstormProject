@@ -42,6 +42,11 @@ const menuItems = [
     icon: Map,
     subItems: [
       {
+        title: "Mapa de Decisões",
+        url: "/mapas/decisoes",
+        icon: Gavel,
+      },
+      {
         title: "TRTs e Varas",
         url: "/mapas/trts-varas",
         icon: Building2,

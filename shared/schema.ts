@@ -467,3 +467,140 @@ export const brainstormStatsSchema = z.object({
 });
 
 export type BrainstormStats = z.infer<typeof brainstormStatsSchema>;
+
+// Mapas Estratégicos Module - TRT → Turma → Desembargador structure
+
+export const votoStatusEnum = z.enum(["FAVORÁVEL", "DESFAVORÁVEL", "EM ANÁLISE", "SUSPEITO"]);
+export type VotoStatus = z.infer<typeof votoStatusEnum>;
+
+export const turmas = pgTable("turmas", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  trtId: varchar("trt_id").notNull().references(() => trts.id, { onDelete: "cascade" }),
+  nome: varchar("nome").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type Turma = typeof turmas.$inferSelect;
+export type InsertTurma = typeof turmas.$inferInsert;
+
+export const insertTurmaSchema = z.object({
+  trtId: z.string().min(1, "TRT é obrigatório"),
+  nome: z.string().min(1, "Nome da turma é obrigatório"),
+});
+
+export type CreateTurmaInput = z.infer<typeof insertTurmaSchema>;
+
+export const desembargadores = pgTable("desembargadores", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  turmaId: varchar("turma_id").notNull().references(() => turmas.id, { onDelete: "cascade" }),
+  nome: varchar("nome").notNull(),
+  voto: varchar("voto").notNull().default("EM ANÁLISE"),
+  observacoes: varchar("observacoes"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type Desembargador = typeof desembargadores.$inferSelect;
+export type InsertDesembargador = typeof desembargadores.$inferInsert;
+
+export const insertDesembargadorSchema = z.object({
+  turmaId: z.string().min(1, "Turma é obrigatória"),
+  nome: z.string().min(1, "Nome do desembargador é obrigatório"),
+  voto: votoStatusEnum.default("EM ANÁLISE"),
+  observacoes: z.string().optional(),
+});
+
+export type CreateDesembargadorInput = z.infer<typeof insertDesembargadorSchema>;
+
+// Decisões RPAC - para rastrear decisões específicas
+export const decisoesRpac = pgTable("decisoes_rpac", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  desembargadorId: varchar("desembargador_id").notNull().references(() => desembargadores.id, { onDelete: "cascade" }),
+  numeroProcesso: varchar("numero_processo").notNull(),
+  dataDecisao: timestamp("data_decisao"),
+  resultado: varchar("resultado").notNull(),
+  observacoes: varchar("observacoes"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type DecisaoRpac = typeof decisoesRpac.$inferSelect;
+export type InsertDecisaoRpac = typeof decisoesRpac.$inferInsert;
+
+export const insertDecisaoRpacSchema = z.object({
+  desembargadorId: z.string().min(1, "Desembargador é obrigatório"),
+  numeroProcesso: z.string().min(1, "Número do processo é obrigatório"),
+  dataDecisao: z.string().optional(),
+  resultado: votoStatusEnum,
+  observacoes: z.string().optional(),
+});
+
+export type CreateDecisaoRpacInput = z.infer<typeof insertDecisaoRpacSchema>;
+
+// Carteira RPAC - processos em carteira
+export const carteiraRpac = pgTable("carteira_rpac", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  trtId: varchar("trt_id").notNull().references(() => trts.id, { onDelete: "cascade" }),
+  turmaId: varchar("turma_id").references(() => turmas.id, { onDelete: "set null" }),
+  numeroProcesso: varchar("numero_processo").notNull(),
+  parte: varchar("parte"),
+  status: varchar("status"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type CarteiraRpacItem = typeof carteiraRpac.$inferSelect;
+export type InsertCarteiraRpac = typeof carteiraRpac.$inferInsert;
+
+export const insertCarteiraRpacSchema = z.object({
+  trtId: z.string().min(1, "TRT é obrigatório"),
+  turmaId: z.string().optional(),
+  numeroProcesso: z.string().min(1, "Número do processo é obrigatório"),
+  parte: z.string().optional(),
+  status: z.string().optional(),
+});
+
+export type CreateCarteiraRpacInput = z.infer<typeof insertCarteiraRpacSchema>;
+
+// Schemas de visualização para o Mapa de Decisões
+export const turmaComDesembargadoresSchema = z.object({
+  id: z.string(),
+  nome: z.string(),
+  trtId: z.string(),
+  desembargadores: z.array(z.object({
+    id: z.string(),
+    nome: z.string(),
+    voto: z.string(),
+  })),
+  estatisticas: z.object({
+    total: z.number(),
+    favoraveis: z.number(),
+    desfavoraveis: z.number(),
+    emAnalise: z.number(),
+    suspeitos: z.number(),
+    percentualFavoravel: z.number(),
+    percentualDesfavoravel: z.number(),
+    percentualEmAnalise: z.number(),
+    percentualSuspeito: z.number(),
+  }),
+});
+
+export type TurmaComDesembargadores = z.infer<typeof turmaComDesembargadoresSchema>;
+
+export const mapaDecisoesSchema = z.object({
+  trt: z.object({
+    id: z.string(),
+    numero: z.string(),
+    nome: z.string(),
+    uf: z.string(),
+  }),
+  turmas: z.array(turmaComDesembargadoresSchema),
+  estatisticasGerais: z.object({
+    total: z.number(),
+    favoraveis: z.number(),
+    desfavoraveis: z.number(),
+    emAnalise: z.number(),
+    suspeitos: z.number(),
+    percentualFavoravel: z.number(),
+    percentualDesfavoravel: z.number(),
+  }),
+});
+
+export type MapaDecisoes = z.infer<typeof mapaDecisoesSchema>;

@@ -15,7 +15,9 @@ import {
   insertDistribuidoSchema,
   insertEncerradoSchema,
   insertSentencaMeritoSchema,
-  insertAcordaoMeritoSchema
+  insertAcordaoMeritoSchema,
+  insertTurmaSchema,
+  insertDesembargadorSchema
 } from "@shared/schema";
 import XLSX from "xlsx";
 import { randomUUID } from "crypto";
@@ -666,6 +668,172 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error fetching TRTs com favorabilidade:", error);
       res.status(500).json({ error: "Erro ao buscar TRTs com favorabilidade" });
+    }
+  });
+
+  // ========== Turma Routes (Mapas Estratégicos) ==========
+  app.get("/api/turmas", isAuthenticated, async (req, res) => {
+    try {
+      const turmas = await storage.getAllTurmas();
+      res.json(turmas);
+    } catch (error) {
+      console.error("Error fetching turmas:", error);
+      res.status(500).json({ error: "Erro ao buscar turmas" });
+    }
+  });
+
+  app.get("/api/trts/:trtId/turmas", isAuthenticated, async (req, res) => {
+    try {
+      const turmas = await storage.getTurmasByTRT(req.params.trtId);
+      res.json(turmas);
+    } catch (error) {
+      console.error("Error fetching turmas by TRT:", error);
+      res.status(500).json({ error: "Erro ao buscar turmas" });
+    }
+  });
+
+  app.get("/api/turmas/:id", isAuthenticated, async (req, res) => {
+    try {
+      const turma = await storage.getTurma(req.params.id);
+      if (!turma) {
+        return res.status(404).json({ error: "Turma não encontrada" });
+      }
+      res.json(turma);
+    } catch (error) {
+      console.error("Error fetching turma:", error);
+      res.status(500).json({ error: "Erro ao buscar turma" });
+    }
+  });
+
+  app.post("/api/turmas", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const parsed = insertTurmaSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.errors[0]?.message || "Dados inválidos" });
+      }
+      const turma = await storage.createTurma(parsed.data);
+      res.status(201).json(turma);
+    } catch (error) {
+      console.error("Error creating turma:", error);
+      res.status(500).json({ error: "Erro ao criar turma" });
+    }
+  });
+
+  app.patch("/api/turmas/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const turma = await storage.updateTurma(req.params.id, req.body);
+      if (!turma) {
+        return res.status(404).json({ error: "Turma não encontrada" });
+      }
+      res.json(turma);
+    } catch (error) {
+      console.error("Error updating turma:", error);
+      res.status(500).json({ error: "Erro ao atualizar turma" });
+    }
+  });
+
+  app.delete("/api/turmas/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      await storage.deleteTurma(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting turma:", error);
+      res.status(500).json({ error: "Erro ao excluir turma" });
+    }
+  });
+
+  // ========== Desembargador Routes (Mapas Estratégicos) ==========
+  app.get("/api/desembargadores", isAuthenticated, async (req, res) => {
+    try {
+      const desembargadores = await storage.getAllDesembargadores();
+      res.json(desembargadores);
+    } catch (error) {
+      console.error("Error fetching desembargadores:", error);
+      res.status(500).json({ error: "Erro ao buscar desembargadores" });
+    }
+  });
+
+  app.get("/api/turmas/:turmaId/desembargadores", isAuthenticated, async (req, res) => {
+    try {
+      const desembargadores = await storage.getDesembargadoresByTurma(req.params.turmaId);
+      res.json(desembargadores);
+    } catch (error) {
+      console.error("Error fetching desembargadores by turma:", error);
+      res.status(500).json({ error: "Erro ao buscar desembargadores" });
+    }
+  });
+
+  app.get("/api/desembargadores/:id", isAuthenticated, async (req, res) => {
+    try {
+      const desembargador = await storage.getDesembargador(req.params.id);
+      if (!desembargador) {
+        return res.status(404).json({ error: "Desembargador não encontrado" });
+      }
+      res.json(desembargador);
+    } catch (error) {
+      console.error("Error fetching desembargador:", error);
+      res.status(500).json({ error: "Erro ao buscar desembargador" });
+    }
+  });
+
+  app.post("/api/desembargadores", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const parsed = insertDesembargadorSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.errors[0]?.message || "Dados inválidos" });
+      }
+      const desembargador = await storage.createDesembargador(parsed.data);
+      res.status(201).json(desembargador);
+    } catch (error) {
+      console.error("Error creating desembargador:", error);
+      res.status(500).json({ error: "Erro ao criar desembargador" });
+    }
+  });
+
+  app.patch("/api/desembargadores/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const desembargador = await storage.updateDesembargador(req.params.id, req.body);
+      if (!desembargador) {
+        return res.status(404).json({ error: "Desembargador não encontrado" });
+      }
+      res.json(desembargador);
+    } catch (error) {
+      console.error("Error updating desembargador:", error);
+      res.status(500).json({ error: "Erro ao atualizar desembargador" });
+    }
+  });
+
+  app.delete("/api/desembargadores/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      await storage.deleteDesembargador(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting desembargador:", error);
+      res.status(500).json({ error: "Erro ao excluir desembargador" });
+    }
+  });
+
+  // ========== Mapa de Decisões Routes ==========
+  app.get("/api/mapa-decisoes", isAuthenticated, async (req, res) => {
+    try {
+      const mapas = await storage.getAllMapasDecisoes();
+      res.json(mapas);
+    } catch (error) {
+      console.error("Error fetching mapas de decisões:", error);
+      res.status(500).json({ error: "Erro ao buscar mapas de decisões" });
+    }
+  });
+
+  app.get("/api/mapa-decisoes/:trtId", isAuthenticated, async (req, res) => {
+    try {
+      const mapa = await storage.getMapaDecisoes(req.params.trtId);
+      if (!mapa) {
+        return res.status(404).json({ error: "Mapa não encontrado" });
+      }
+      res.json(mapa);
+    } catch (error) {
+      console.error("Error fetching mapa de decisões:", error);
+      res.status(500).json({ error: "Erro ao buscar mapa de decisões" });
     }
   });
 

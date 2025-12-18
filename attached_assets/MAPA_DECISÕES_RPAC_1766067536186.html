@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mapa de Decisões - TRT 9ª Região</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        vtal: {
+                            gray: '#373437',
+                            yellow: '#FFD919',
+                        },
+                        voto: {
+                            favoravel: 'rgb(22 163 74)',
+                            desfavoravel: 'rgb(220 38 38)',
+                            analise: 'rgb(107 114 128)',
+                            suspeito: 'rgb(249 115 22)'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .nav-button-active { background-color: #FFD919; color: #373437; }
+        .nav-button { transition: all 0.2s ease-in-out; }
+    </style>
+</head>
+<body class="bg-slate-50 text-gray-800">
+
+    <div class="container mx-auto p-4 md:p-8">
+
+        <header class="text-center mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-vtal-gray pt-10">Mapa de Decisões</h1>
+            <p class="mt-2 text-xl text-vtal-yellow font-semibold" style="text-shadow: 1px 1px 2px #373437;">TRT 9ª Região</p>
+        </header>
+
+        <div class="flex flex-col sm:flex-row justify-center mb-8 bg-white p-2 rounded-xl shadow-md max-w-3xl mx-auto">
+            <button id="btnTurmas" class="nav-button nav-button-active text-lg font-semibold py-2 px-4 rounded-lg w-full sm:w-auto flex-1 mt-1 sm:mt-0">Turmas</button>
+            <button id="btnDesembargadores" class="nav-button text-slate-600 hover:bg-vtal-yellow/20 text-lg font-semibold py-2 px-4 rounded-lg w-full sm:w-auto flex-1 mt-1 sm:mt-0">Desembargadores</button>
+            <button id="btnRPAC" class="nav-button text-slate-600 hover:bg-vtal-yellow/20 text-lg font-semibold py-2 px-4 rounded-lg w-full sm:w-auto flex-1 mt-1 sm:mt-0">Decisões RPAC</button>
+            <button id="btnCarteira" class="nav-button text-slate-600 hover:bg-vtal-yellow/20 text-lg font-semibold py-2 px-4 rounded-lg w-full sm:w-auto flex-1 mt-1 sm:mt-0">Carteira RPAC</button>
+        </div>
+
+        <div id="content">
+            <main id="viewTurmas" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"></main>
+            <main id="viewDesembargadores" class="hidden"></main>
+            <main id="viewRPAC" class="hidden"></main>
+            <main id="viewCarteira" class="hidden"></main>
+        </div>
+    </div>
+
+    <script>
+        const data = [
+             { nome: "DES. NEIDE ALVES DOS SANTOS", voto: "FAVORÁVEL", turma: "1ª Turma" },
+            { nome: "DES. ELIÁZER ANTONIO MEDEIROS", voto: "FAVORÁVEL", turma: "1ª Turma" },
+            { nome: "DES. NAIR MARIA LUNARDELLI RAMOS", voto: "FAVORÁVEL", turma: "1ª Turma" },
+            { nome: "DES. EDMILSON ANTONIO DE LIMA", voto: "FAVORÁVEL", turma: "1ª Turma" },
+            { nome: "DES. LUIZ ALVES", voto: "DESFAVORÁVEL", turma: "2ª Turma" },
+            { nome: "DES. ROSEMARIE DIEDRICHS PIMPÃO", voto: "DESFAVORÁVEL", turma: "2ª Turma" },
+            { nome: "DES. CLÁUDIA CRISTINA PEREIRA", voto: "DESFAVORÁVEL", turma: "2ª Turma" },
+            { nome: "DES. CARLOS HENRIQUE DE OLIVEIRA MENDONÇA", voto: "DESFAVORÁVEL", turma: "2ª Turma" },
+            { nome: "DES. THEREZA CRISTINA GOSDAL", voto: "FAVORÁVEL", turma: "3ª Turma" },
+            { nome: "DES. EDUARDO MILLÉO BARACAT", voto: "FAVORÁVEL", turma: "3ª Turma" },
+            { nome: "DES. ARAMIS DE SOUZA SILVEIRA", voto: "FAVORÁVEL", turma: "3ª Turma" },
+            { nome: "DES. ADILSON LUIZ FUNEZ", voto: "FAVORÁVEL", turma: "3ª Turma" },
+            { nome: "DES. RICARDO BRUEL DA SILVEIRA", voto: "FAVORÁVEL", turma: "4ª Turma" },
+            { nome: "DES. MARLENE TERESINHA FUVERKI SUGUIMATSU", voto: "FAVORÁVEL", turma: "4ª Turma" },
+            { nome: "DES. RICARDO TADEU MARQUES DA FONSECA", voto: "FAVORÁVEL", turma: "4ª Turma" },
+            { nome: "DES. VALDECIR EDSON FOSSATTI", voto: "FAVORÁVEL", turma: "4ª Turma" },
+            { nome: "DES. ARION MAZURKEVIC", voto: "FAVORÁVEL", turma: "5ª Turma" },
+            { nome: "DES. ARCHIMEDES CASTRO CAMPOS JÚNIOR", voto: "FAVORÁVEL", turma: "5ª Turma" },
+            { nome: "DES. ILSE MARCELINA BERNARDI LORA", voto: "FAVORÁVEL", turma: "5ª Turma" },
+            { nome: "DES. SÉRGIO GUIMARÃES SAMPAIO", voto: "FAVORÁVEL", turma: "5ª Turma" },
+            { nome: "DES. ARNOR LIMA NETO", voto: "FAVORÁVEL", turma: "6ª Turma" },
+            { nome: "DES. SERGIO MURILO RODRIGUES LEMOS", voto: "FAVORÁVEL", turma: "6ª Turma" },
+            { nome: "DES. PAULO RICARDO POZZOLO", voto: "FAVORÁVEL", turma: "6ª Turma" },
+            { nome: "DES. ODETE GRASSELLI", voto: "FAVORÁVEL", turma: "6ª Turma" },
+            { nome: "DES. ANA CAROLINA ZAINA", voto: "FAVORÁVEL", turma: "7ª Turma" },
+            { nome: "DES. JANETE DO AMARANTE", voto: "FAVORÁVEL", turma: "7ª Turma" },
+            { nome: "DES. MARCUS AURÉLIO LOPES", voto: "FAVORÁVEL", turma: "7ª Turma" }
+        ];
+
+        const turmas = data.reduce((acc, current) => {
+            acc[current.turma] = acc[current.turma] || [];
+            acc[current.turma].push(current);
+            return acc;
+        }, {});
+
+        const viewTurmas = document.getElementById('viewTurmas');
+        const viewDesembargadores = document.getElementById('viewDesembargadores');
+        const viewRPAC = document.getElementById('viewRPAC');
+        const viewCarteira = document.getElementById('viewCarteira');
+
+        function renderTurmas() {
+            viewTurmas.innerHTML = '';
+            const sortedTurmas = Object.keys(turmas).sort((a, b) => parseInt(a) - parseInt(b));
+
+            sortedTurmas.forEach(nomeTurma => {
+                const membros = turmas[nomeTurma];
+                const total = membros.length;
+                const desfavoraveis = membros.filter(m => (m.voto || "").toUpperCase().includes('DESFAVORÁVEL')).length;
+                const emAnalise = membros.filter(m => (m.voto || "").toUpperCase() === 'EM ANÁLISE').length;
+                const suspeitos = membros.filter(m => (m.voto || "") === 'SUSPEITO').length;
+                const favoraveis = total - desfavoraveis - emAnalise - suspeitos;
+                
+                const percFavoraveis = total > 0 ? ((favoraveis / total) * 100).toFixed(0) : 0;
+                const percDesfavoraveis = total > 0 ? ((desfavoraveis / total) * 100).toFixed(0) : 0;
+                const percEmAnalise = total > 0 ? ((emAnalise / total) * 100).toFixed(0) : 0;
+                const percSuspeitos = total > 0 ? ((suspeitos / total) * 100).toFixed(0) : 0;
+
+                const membrosHtml = membros.map(m => {
+                    let indicatorClass = 'bg-slate-400';
+                    let tagClass = 'bg-slate-200 text-slate-700';
+                    const votoUpper = (m.voto || "").toUpperCase();
+
+                    if (votoUpper.includes('DESFAVORÁVEL')) {
+                        indicatorClass = 'bg-red-500';
+                        tagClass = 'bg-red-100 text-red-800';
+                    } else if (votoUpper.includes('FAVORÁVEL')) {
+                        indicatorClass = 'bg-emerald-500';
+                        tagClass = 'bg-emerald-100 text-emerald-800';
+                    } else if (votoUpper === 'SUSPEITO') {
+                        indicatorClass = 'bg-orange-500';
+                        tagClass = 'bg-orange-100 text-orange-800';
+                    } else if (votoUpper === 'EM ANÁLISE') {
+                        indicatorClass = 'bg-slate-400';
+                        tagClass = 'bg-slate-200 text-slate-700';
+                    }
+
+                    return `<li class="flex items-center justify-between py-1">
+                        <div class="flex items-center space-x-3">
+                            <span class="w-3 h-3 rounded-full ${indicatorClass} flex-shrink-0"></span>
+                            <span class="text-slate-700">${m.nome}</span>
+                        </div>
+                        <span class="text-xs font-semibold px-2 py-0.5 rounded-full ${tagClass}">${m.voto}</span>
+                    </li>`;
+                }).join('');
+
+                viewTurmas.innerHTML += `<div class="bg-white p-6 rounded-xl shadow-lg border border-slate-200 flex flex-col">
+                    <h2 class="text-2xl font-bold mb-4 text-vtal-gray">${nomeTurma}</h2>
+                    <div class="mb-4">
+                        <div class="flex justify-between mb-1"><span class="text-base font-medium text-emerald-700">Favoráveis</span><span class="text-sm font-medium text-emerald-700">${percFavoraveis}%</span></div>
+                        <div class="w-full bg-slate-200 rounded-full h-2.5"><div class="bg-emerald-500 h-2.5 rounded-full" style="width: ${percFavoraveis}%"></div></div>
+                    </div>
+                    <div class="mb-4">
+                         <div class="flex justify-between mb-1"><span class="text-base font-medium text-red-700">Desfavoráveis</span><span class="text-sm font-medium text-red-700">${percDesfavoraveis}%</span></div>
+                        <div class="w-full bg-slate-200 rounded-full h-2.5"><div class="bg-red-500 h-2.5 rounded-full" style="width: ${percDesfavoraveis}%"></div></div>
+                    </div>
+                    <div class="mb-5">
+                         <div class="flex justify-between mb-1"><span class="text-base font-medium text-slate-600">Em Análise</span><span class="text-sm font-medium text-slate-600">${percEmAnalise}%</span></div>
+                        <div class="w-full bg-slate-200 rounded-full h-2.5"><div class="bg-slate-400 h-2.5 rounded-full" style="width: ${percEmAnalise}%"></div></div>
+                    </div>
+                    <div class="mt-auto border-t pt-4">
+                        <h3 class="font-semibold mb-2 text-slate-600">Membros:</h3>
+                        <ul class="space-y-2">${membrosHtml}</ul>
+                    </div>
+                </div>`;
+            });
+        }
+
+        function renderDesembargadores() {
+            const total = data.length;
+            const desfavoraveis = data.filter(d => (d.voto || "").toUpperCase().includes('DESFAVORÁVEL')).length;
+            const emAnalise = data.filter(d => (d.voto || "").toUpperCase() === 'EM ANÁLISE').length;
+            const suspeitos = data.filter(d => (d.voto || "") === 'SUSPEITO').length;
+            const favoraveis = total - desfavoraveis - emAnalise - suspeitos;
+            
+            const percFavoraveis = total > 0 ? ((favoraveis / total) * 100).toFixed(0) : 0;
+            const percDesfavoraveis = total > 0 ? ((desfavoraveis / total) * 100).toFixed(0) : 0;
+            const percEmAnalise = total > 0 ? ((emAnalise / total) * 100).toFixed(0) : 0;
+            const percSuspeitos = total > 0 ? ((suspeitos / total) * 100).toFixed(0) : 0;
+
+            const summaryHtml = `
+            <div class="bg-white p-6 rounded-xl shadow-lg border border-slate-200 max-w-4xl mx-auto mb-8">
+                <h2 class="text-2xl font-bold mb-4 text-vtal-gray text-center">Visão Geral - Todos os Desembargadores</h2>
+                <div class="mb-4">
+                    <div class="flex justify-between mb-1"><span class="text-base font-medium text-emerald-700">Favoráveis</span><span class="text-sm font-medium text-emerald-700">${percFavoraveis}%</span></div>
+                    <div class="w-full bg-slate-200 rounded-full h-2.5"><div class="bg-emerald-500 h-2.5 rounded-full" style="width: ${percFavoraveis}%"></div></div>
+                </div>
+                <div class="mb-4">
+                     <div class="flex justify-between mb-1"><span class="text-base font-medium text-red-700">Desfavoráveis</span><span class="text-sm font-medium text-red-700">${percDesfavoraveis}%</span></div>
+                    <div class="w-full bg-slate-200 rounded-full h-2.5"><div class="bg-red-500 h-2.5 rounded-full" style="width: ${percDesfavoraveis}%"></div></div>
+                </div>
+                <div class="mb-5">
+                     <div class="flex justify-between mb-1"><span class="text-base font-medium text-slate-600">Em Análise</span><span class="text-sm font-medium text-slate-600">${percEmAnalise}%</span></div>
+                    <div class="w-full bg-slate-200 rounded-full h-2.5"><div class="bg-slate-400 h-2.5 rounded-full" style="width: ${percEmAnalise}%"></div></div>
+                </div>
+            </div>
+            `;
+
+            let cardsHtml = '';
+            const sortedData = [...data].sort((a, b) => a.nome.localeCompare(b.nome));
+
+            sortedData.forEach(d => {
+                let tagClasses = '';
+                const votoUpper = (d.voto || "").toUpperCase();
+
+                if (votoUpper.includes('DESFAVORÁVEL')) {
+                    tagClasses = 'bg-red-100 text-red-800';
+                } else if (votoUpper.includes('FAVORÁVEL')) {
+                    tagClasses = 'bg-emerald-100 text-emerald-800';
+                } else if (votoUpper === 'SUSPEITO') {
+                    tagClasses = 'bg-orange-100 text-orange-800';
+                } else {
+                    tagClasses = 'bg-slate-200 text-slate-700';
+                }
+
+                cardsHtml += `<div class="bg-white rounded-xl shadow-lg border border-slate-200 text-center p-6 flex flex-col items-center">
+                    <div class="w-24 h-24 rounded-full bg-slate-200 flex items-center justify-center mb-4">
+                        <svg class="w-16 h-16 text-slate-400" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path></svg>
+                    </div>
+                    <h3 class="font-bold text-lg text-vtal-gray">${d.nome}</h3>
+                    <p class="text-slate-500 mb-3">Membro da ${d.turma}</p>
+                    <span class="px-3 py-1 text-sm font-semibold rounded-full ${tagClasses}">${d.voto}</span>
+                </div>`;
+            });
+            
+            const gridHtml = `<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">${cardsHtml}</div>`
+            viewDesembargadores.innerHTML = summaryHtml + gridHtml;
+        }
+
+        function renderDecisoesRPAC() {
+            viewRPAC.innerHTML = '';
+
+            const headerHtml = `
+                <div class="bg-white p-8 rounded-xl shadow-lg border-l-4 border-vtal-yellow mb-8 text-center">
+                    <h2 class="text-2xl font-bold text-vtal-gray mb-2">Relatório de Atuação: Abril a Novembro</h2>
+                    <p class="text-slate-600">Panorama consolidado das atividades e resultados processuais.</p>
+                </div>
+            `;
+
+            const statsCards = `
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <div class="bg-white p-6 rounded-xl shadow-lg border border-slate-200 flex flex-col items-center justify-center">
+                        <span class="text-4xl font-bold text-sky-600 mb-2">252</span>
+                        <span class="text-slate-600 font-medium text-center">Despachos de Memoriais</span>
+                        <span class="text-xs text-slate-400 mt-1">com Desembargadores</span>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-lg border border-slate-200 flex flex-col items-center justify-center">
+                        <span class="text-4xl font-bold text-indigo-600 mb-2">81</span>
+                        <span class="text-slate-600 font-medium text-center">Processos Pautados</span>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-lg border border-slate-200 flex flex-col items-center justify-center">
+                        <span class="text-4xl font-bold text-violet-600 mb-2">52</span>
+                        <span class="text-slate-600 font-medium text-center">Processos Julgados</span>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-lg border border-slate-200 flex flex-col items-center justify-center relative overflow-hidden">
+                        <span class="text-4xl font-bold text-amber-500 mb-2">29</span>
+                        <span class="text-slate-600 font-medium text-center">Processos Retirados de Pauta</span>
+                        <div class="mt-3 w-full border-t border-slate-100 pt-2 flex justify-between text-xs text-slate-500 px-2">
+                            <span>16 Juntada Docs</span>
+                            <span>13 Vista Reg.</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            const chartSection = `
+                <div class="bg-white p-8 rounded-xl shadow-lg border border-slate-200 mb-8">
+                    <h3 class="text-xl font-bold text-vtal-gray mb-6 text-center">Performance nos Julgamentos (52 Casos)</h3>
+                    <div class="flex flex-col md:flex-row items-center justify-center gap-12">
+                        <div style="height: 250px; width: 250px;">
+                            <canvas id="judgmentsChart"></canvas>
+                        </div>
+                        <div class="space-y-4 max-w-sm">
+                            <div class="flex items-center p-3 bg-emerald-50 rounded-lg border border-emerald-100">
+                                <div class="w-3 h-3 rounded-full bg-emerald-500 mr-3"></div>
+                                <div>
+                                    <span class="block text-2xl font-bold text-emerald-700">44</span>
+                                    <span class="text-sm text-emerald-800">Decisões Favoráveis (Afastando Grupo Econômico)</span>
+                                </div>
+                            </div>
+                            <div class="flex items-center p-3 bg-red-50 rounded-lg border border-red-100">
+                                <div class="w-3 h-3 rounded-full bg-red-500 mr-3"></div>
+                                <div>
+                                    <span class="block text-2xl font-bold text-red-700">8</span>
+                                    <span class="text-sm text-red-800">Decisões Desfavoráveis</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            const unfavorableDetails = `
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div class="bg-white p-6 rounded-xl shadow-lg border-l-4 border-red-500">
+                        <h3 class="text-lg font-bold text-red-700 mb-3">Análise: 2ª Turma</h3>
+                        <p class="text-slate-600 mb-4">Concentração significativa de resultados negativos.</p>
+                        <div class="flex items-center justify-center bg-red-50 py-4 rounded-lg">
+                            <span class="text-4xl font-bold text-red-600 mr-2">6</span>
+                            <span class="text-red-800 font-medium">Casos Desfavoráveis</span>
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-lg border-l-4 border-orange-400">
+                        <h3 class="text-lg font-bold text-orange-700 mb-3">Análise: 1ª Turma (2 Casos)</h3>
+                        <ul class="space-y-3">
+                            <li class="bg-orange-50 p-3 rounded-lg text-sm text-slate-700">
+                                <strong class="block text-orange-800 mb-1">Caso 1:</strong>
+                                Julgamento em <strong>27/05</strong>. Habilitação no processo ocorreu apenas em 04/2025.
+                            </li>
+                            <li class="bg-orange-50 p-3 rounded-lg text-sm text-slate-700">
+                                <strong class="block text-orange-800 mb-1">Caso 2:</strong>
+                                Julgamento em <strong>24/06</strong>. Recebimento do caso em 05/2025.
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            `;
+
+            const conclusionHtml = `
+                <div class="mt-8 bg-gradient-to-br from-emerald-600 to-teal-700 rounded-xl shadow-lg p-8 text-white text-center transform transition-all hover:scale-[1.01]">
+                    <h3 class="text-2xl font-bold mb-4">Conclusão e Impacto</h3>
+                    <p class="text-lg opacity-90 mb-8 max-w-3xl mx-auto">
+                        No curto espaço de tempo, conseguimos reverter em favor da empresa o posicionamento de:
+                    </p>
+                    <div class="flex flex-col sm:flex-row justify-center items-center gap-8 sm:gap-16">
+                        <div class="flex flex-col items-center">
+                            <div class="text-5xl font-extrabold mb-1">23</div>
+                            <div class="text-sm font-medium uppercase tracking-wider opacity-80">Desembargadores</div>
+                            <div class="text-xs opacity-60 mt-1">(de 27 possíveis)</div>
+                        </div>
+                        <div class="h-16 w-px bg-white/20 hidden sm:block"></div> <!-- Separator -->
+                        <div class="flex flex-col items-center">
+                            <div class="text-5xl font-extrabold mb-1">6</div>
+                            <div class="text-sm font-medium uppercase tracking-wider opacity-80">Turmas</div>
+                            <div class="text-xs opacity-60 mt-1">(de 7 possíveis)</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            viewRPAC.innerHTML = headerHtml + statsCards + chartSection + unfavorableDetails + conclusionHtml;
+
+            const ctx = document.getElementById('judgmentsChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Favorável (85%)', 'Desfavorável (15%)'],
+                    datasets: [{
+                        data: [44, 8],
+                        backgroundColor: ['rgb(16, 185, 129)', 'rgb(239, 68, 68)'],
+                        borderWidth: 0,
+                        hoverOffset: 4,
+                        borderRadius: 20, // Borda arredondada
+                        spacing: 2        // Espaço entre as fatias
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.label || '';
+                                    if (label) { label += ': '; }
+                                    let value = context.raw;
+                                    let total = context.chart._metasets[context.datasetIndex].total;
+                                    let percentage = Math.round((value / total) * 100) + '%';
+                                    return label + value + ' (' + percentage + ')';
+                                }
+                            }
+                        }
+                    },
+                    cutout: '75%', // Buraco um pouco maior
+                },
+                plugins: [{
+                    id: 'textCenter',
+                    beforeDraw: function(chart) {
+                        var width = chart.width, height = chart.height, ctx = chart.ctx;
+                        ctx.restore();
+                        var fontSize = (height / 114).toFixed(2);
+                        ctx.font = "bold " + fontSize + "em sans-serif";
+                        ctx.textBaseline = "middle";
+                        ctx.fillStyle = "#10B981";
+                        var text = "85%", textX = Math.round((width - ctx.measureText(text).width) / 2), textY = height / 2;
+                        ctx.fillText(text, textX, textY);
+                        ctx.save();
+                    }
+                }]
+            });
+        }
+
+        function renderCarteiraRPAC() {
+            viewCarteira.innerHTML = '';
+
+            const headerHtml = `
+                <div class="bg-white p-8 rounded-xl shadow-lg border-l-4 border-vtal-yellow mb-8 text-center">
+                    <h2 class="text-2xl font-bold text-vtal-gray mb-2">Carteira RPAC</h2>
+                    <p class="text-slate-600">Evolução das Reclamatórias Trabalhistas Ativas ao Longo do Ano</p>
+                </div>
+            `;
+
+            const chartContainer = `
+                <div class="bg-white p-8 rounded-xl shadow-lg border border-slate-200 mb-8">
+                    <div style="height: 400px; width: 100%;">
+                        <canvas id="carteiraChart"></canvas>
+                    </div>
+                </div>
+            `;
+            
+            const analysisHtml = `
+                <div class="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-white p-6 rounded-xl shadow-lg border-l-4 border-emerald-500">
+                        <h3 class="text-lg font-bold text-emerald-700 mb-2">Crescimento Expressivo</h3>
+                        <p class="text-slate-600">
+                            A carteira apresentou um crescimento acumulado de <strong>1224%</strong> entre Abril e Novembro, saltando de 25 para 331 processos ativos.
+                        </p>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-lg border-l-4 border-sky-500">
+                        <h3 class="text-lg font-bold text-sky-700 mb-2">Pico de Entrada</h3>
+                        <p class="text-slate-600">
+                            O maior aumento mensal ocorreu entre <strong>Julho e Agosto</strong>, com a adição de quase 200 novos processos, marcando o início de uma fase de alto volume.
+                        </p>
+                    </div>
+                </div>
+            `;
+
+            viewCarteira.innerHTML = headerHtml + chartContainer + analysisHtml;
+
+            // Plugin inline para desenhar os números
+            const dataLabelsPlugin = {
+                id: 'dataLabels',
+                afterDatasetsDraw(chart, args, options) {
+                    const { ctx } = chart;
+                    chart.data.datasets.forEach((dataset, i) => {
+                        const meta = chart.getDatasetMeta(i);
+                        meta.data.forEach((bar, index) => {
+                            const value = dataset.data[index];
+                            ctx.save();
+                            ctx.fillStyle = '#373437'; // Cor do texto (vtal-gray)
+                            ctx.font = "bold 14px 'Inter', sans-serif";
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'bottom';
+                            ctx.fillText(value, bar.x, bar.y - 5); // Posição (x, y - padding)
+                            ctx.restore();
+                        });
+                    });
+                }
+            };
+
+            const ctx = document.getElementById('carteiraChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro'],
+                    datasets: [{
+                        label: 'Reclamatórias Trabalhistas Ativas',
+                        data: [25, 79, 85, 107, 306, 321, 332, 331],
+                        backgroundColor: '#FFD919',
+                        hoverBackgroundColor: '#eec600',
+                        borderRadius: 4,
+                        borderWidth: 0
+                    }]
+                },
+                plugins: [dataLabelsPlugin],
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    layout: {
+                        padding: {
+                            top: 30
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                font: {
+                                    family: "'Inter', sans-serif",
+                                    size: 14
+                                },
+                                color: '#373437'
+                            }
+                        },
+                        tooltip: {
+                            enabled: false // Desativa tooltip padrão já que o número está na barra
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: '#e5e7eb',
+                                drawBorder: false
+                            },
+                            ticks: {
+                                color: '#6b7280',
+                                font: { family: "'Inter', sans-serif" }
+                            },
+                            title: {
+                                display: true,
+                                text: 'Número de Processos',
+                                color: '#373437',
+                                font: { family: "'Inter', sans-serif", weight: 'bold' }
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                color: '#6b7280',
+                                font: { family: "'Inter', sans-serif" }
+                            }
+                        }
+                    },
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    }
+                }
+            });
+        }
+
+        const btnTurmas = document.getElementById('btnTurmas');
+        const btnDesembargadores = document.getElementById('btnDesembargadores');
+        const btnRPAC = document.getElementById('btnRPAC');
+        const btnCarteira = document.getElementById('btnCarteira');
+        
+        const allViews = [viewTurmas, viewDesembargadores, viewRPAC, viewCarteira];
+        const allButtons = [btnTurmas, btnDesembargadores, btnRPAC, btnCarteira];
+
+        function switchView(viewToShow, buttonToActivate) {
+             allViews.forEach(view => view.classList.add('hidden'));
+             allButtons.forEach(button => {
+                button.classList.remove('nav-button-active');
+                button.classList.add('text-slate-600', 'hover:bg-vtal-yellow/20');
+             });
+             viewToShow.classList.remove('hidden');
+             buttonToActivate.classList.add('nav-button-active');
+             buttonToActivate.classList.remove('text-slate-600', 'hover:bg-vtal-yellow/20');
+             
+             if(viewToShow === viewRPAC) { renderDecisoesRPAC(); }
+             if(viewToShow === viewCarteira) { renderCarteiraRPAC(); }
+        }
+
+        btnTurmas.addEventListener('click', () => switchView(viewTurmas, btnTurmas));
+        btnDesembargadores.addEventListener('click', () => switchView(viewDesembargadores, btnDesembargadores));
+        btnRPAC.addEventListener('click', () => switchView(viewRPAC, btnRPAC));
+        btnCarteira.addEventListener('click', () => switchView(viewCarteira, btnCarteira));
+        
+        renderTurmas();
+        renderDesembargadores();
+        renderDecisoesRPAC();
+        renderCarteiraRPAC();
+    </script>
+</body>
+</html>

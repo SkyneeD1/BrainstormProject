@@ -17,6 +17,7 @@ import Favorabilidade from "@/pages/favorabilidade";
 import Timeline from "@/pages/timeline";
 import BrainstormRelatorio from "@/pages/brainstorm-relatorio";
 import BrainstormGestao from "@/pages/brainstorm-gestao";
+import MapaDecisoes from "@/pages/mapa-decisoes";
 import Landing from "@/pages/landing";
 import NotFound from "@/pages/not-found";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -27,6 +28,7 @@ function AuthenticatedRouter() {
       <Route path="/" component={Dashboard} />
       <Route path="/admin/dados" component={AdminDados} />
       <Route path="/admin/usuarios" component={AdminUsers} />
+      <Route path="/mapas/decisoes" component={MapaDecisoes} />
       <Route path="/mapas/trts-varas" component={TRTsVaras} />
       <Route path="/mapas/juizes" component={Juizes} />
       <Route path="/mapas/favorabilidade" component={Favorabilidade} />

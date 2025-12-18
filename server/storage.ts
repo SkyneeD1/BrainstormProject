@@ -34,9 +34,15 @@ import type {
   InsertSentencaMerito,
   AcordaoMerito,
   InsertAcordaoMerito,
-  BrainstormStats
+  BrainstormStats,
+  Turma,
+  InsertTurma,
+  Desembargador,
+  InsertDesembargador,
+  TurmaComDesembargadores,
+  MapaDecisoes
 } from "@shared/schema";
-import { users, trts, varas, juizes, julgamentos, audiencias, distribuidos, encerrados, sentencasMerito, acordaosMerito } from "@shared/schema";
+import { users, trts, varas, juizes, julgamentos, audiencias, distribuidos, encerrados, sentencasMerito, acordaosMerito, turmas, desembargadores } from "@shared/schema";
 import { and, gte, lte, inArray, sql } from "drizzle-orm";
 import { parseExcelFile } from "./excel-parser";
 import { db } from "./db";
@@ -128,6 +134,24 @@ export interface IStorage {
   deleteAllAcordaosMerito(): Promise<boolean>;
   
   initializeBrainstorm(): Promise<void>;
+  
+  // Mapas Estratégicos - Turmas e Desembargadores
+  getAllTurmas(): Promise<Turma[]>;
+  getTurmasByTRT(trtId: string): Promise<Turma[]>;
+  getTurma(id: string): Promise<Turma | undefined>;
+  createTurma(turma: InsertTurma): Promise<Turma>;
+  updateTurma(id: string, data: Partial<InsertTurma>): Promise<Turma | undefined>;
+  deleteTurma(id: string): Promise<boolean>;
+  
+  getAllDesembargadores(): Promise<Desembargador[]>;
+  getDesembargadoresByTurma(turmaId: string): Promise<Desembargador[]>;
+  getDesembargador(id: string): Promise<Desembargador | undefined>;
+  createDesembargador(desembargador: InsertDesembargador): Promise<Desembargador>;
+  updateDesembargador(id: string, data: Partial<InsertDesembargador>): Promise<Desembargador | undefined>;
+  deleteDesembargador(id: string): Promise<boolean>;
+  
+  getMapaDecisoes(trtId: string): Promise<MapaDecisoes | null>;
+  getAllMapasDecisoes(): Promise<MapaDecisoes[]>;
 }
 
 export class MemStorage implements IStorage {
@@ -1048,6 +1072,144 @@ export class MemStorage implements IStorage {
     }
 
     console.log('Dados Brainstorm carregados com sucesso!');
+  }
+
+  // Mapas Estratégicos - Turmas
+  async getAllTurmas(): Promise<Turma[]> {
+    return await db.select().from(turmas).orderBy(turmas.nome);
+  }
+
+  async getTurmasByTRT(trtId: string): Promise<Turma[]> {
+    return await db.select().from(turmas).where(eq(turmas.trtId, trtId)).orderBy(turmas.nome);
+  }
+
+  async getTurma(id: string): Promise<Turma | undefined> {
+    const [turma] = await db.select().from(turmas).where(eq(turmas.id, id));
+    return turma;
+  }
+
+  async createTurma(turma: InsertTurma): Promise<Turma> {
+    const [created] = await db.insert(turmas).values(turma).returning();
+    return created;
+  }
+
+  async updateTurma(id: string, data: Partial<InsertTurma>): Promise<Turma | undefined> {
+    const [updated] = await db.update(turmas).set(data).where(eq(turmas.id, id)).returning();
+    return updated;
+  }
+
+  async deleteTurma(id: string): Promise<boolean> {
+    await db.delete(turmas).where(eq(turmas.id, id));
+    return true;
+  }
+
+  // Mapas Estratégicos - Desembargadores
+  async getAllDesembargadores(): Promise<Desembargador[]> {
+    return await db.select().from(desembargadores).orderBy(desembargadores.nome);
+  }
+
+  async getDesembargadoresByTurma(turmaId: string): Promise<Desembargador[]> {
+    return await db.select().from(desembargadores).where(eq(desembargadores.turmaId, turmaId)).orderBy(desembargadores.nome);
+  }
+
+  async getDesembargador(id: string): Promise<Desembargador | undefined> {
+    const [desembargador] = await db.select().from(desembargadores).where(eq(desembargadores.id, id));
+    return desembargador;
+  }
+
+  async createDesembargador(desembargador: InsertDesembargador): Promise<Desembargador> {
+    const [created] = await db.insert(desembargadores).values(desembargador).returning();
+    return created;
+  }
+
+  async updateDesembargador(id: string, data: Partial<InsertDesembargador>): Promise<Desembargador | undefined> {
+    const [updated] = await db.update(desembargadores).set(data).where(eq(desembargadores.id, id)).returning();
+    return updated;
+  }
+
+  async deleteDesembargador(id: string): Promise<boolean> {
+    await db.delete(desembargadores).where(eq(desembargadores.id, id));
+    return true;
+  }
+
+  // Mapa de Decisões - agregação para visualização
+  private calculateTurmaEstatisticas(desembargadoresList: Desembargador[]) {
+    const total = desembargadoresList.length;
+    const favoraveis = desembargadoresList.filter(d => d.voto?.toUpperCase().includes('FAVORÁVEL')).length;
+    const desfavoraveis = desembargadoresList.filter(d => d.voto?.toUpperCase().includes('DESFAVORÁVEL')).length;
+    const emAnalise = desembargadoresList.filter(d => d.voto?.toUpperCase() === 'EM ANÁLISE').length;
+    const suspeitos = desembargadoresList.filter(d => d.voto?.toUpperCase() === 'SUSPEITO').length;
+
+    return {
+      total,
+      favoraveis,
+      desfavoraveis,
+      emAnalise,
+      suspeitos,
+      percentualFavoravel: total > 0 ? Math.round((favoraveis / total) * 100) : 0,
+      percentualDesfavoravel: total > 0 ? Math.round((desfavoraveis / total) * 100) : 0,
+      percentualEmAnalise: total > 0 ? Math.round((emAnalise / total) * 100) : 0,
+      percentualSuspeito: total > 0 ? Math.round((suspeitos / total) * 100) : 0,
+    };
+  }
+
+  async getMapaDecisoes(trtId: string): Promise<MapaDecisoes | null> {
+    const trt = await this.getTRT(trtId);
+    if (!trt) return null;
+
+    const turmasList = await this.getTurmasByTRT(trtId);
+    const turmasComDesembargadores: TurmaComDesembargadores[] = [];
+    let todosDesembargadores: Desembargador[] = [];
+
+    for (const turma of turmasList) {
+      const desembargadoresTurma = await this.getDesembargadoresByTurma(turma.id);
+      todosDesembargadores = [...todosDesembargadores, ...desembargadoresTurma];
+
+      turmasComDesembargadores.push({
+        id: turma.id,
+        nome: turma.nome,
+        trtId: turma.trtId,
+        desembargadores: desembargadoresTurma.map(d => ({
+          id: d.id,
+          nome: d.nome,
+          voto: d.voto,
+        })),
+        estatisticas: this.calculateTurmaEstatisticas(desembargadoresTurma),
+      });
+    }
+
+    const estatisticasGerais = this.calculateTurmaEstatisticas(todosDesembargadores);
+
+    return {
+      trt: {
+        id: trt.id,
+        numero: trt.numero,
+        nome: trt.nome,
+        uf: trt.uf,
+      },
+      turmas: turmasComDesembargadores,
+      estatisticasGerais: {
+        total: estatisticasGerais.total,
+        favoraveis: estatisticasGerais.favoraveis,
+        desfavoraveis: estatisticasGerais.desfavoraveis,
+        emAnalise: estatisticasGerais.emAnalise,
+        suspeitos: estatisticasGerais.suspeitos,
+        percentualFavoravel: estatisticasGerais.percentualFavoravel,
+        percentualDesfavoravel: estatisticasGerais.percentualDesfavoravel,
+      },
+    };
+  }
+
+  async getAllMapasDecisoes(): Promise<MapaDecisoes[]> {
+    const allTrts = await this.getAllTRTs();
+    const mapas: MapaDecisoes[] = [];
+
+    for (const trt of allTrts) {
+      const mapa = await this.getMapaDecisoes(trt.id);
+      if (mapa) mapas.push(mapa);
+    }
+
+    return mapas;
   }
 }
 
