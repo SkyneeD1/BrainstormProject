@@ -173,6 +173,7 @@ export class MemStorage implements IStorage {
     if (this.initialized) return;
     this.initialized = true;
     await this.loadBrainstormFromExcel();
+    await this.loadMapaDecisoesFromExcel();
   }
 
   async setRawData(data: ProcessoRaw[]): Promise<void> {
@@ -1070,6 +1071,82 @@ export class MemStorage implements IStorage {
     }
 
     console.log('Dados Brainstorm carregados com sucesso!');
+  }
+
+  async loadMapaDecisoesFromExcel(): Promise<void> {
+    const XLSX = await import('xlsx');
+    const fs = await import('fs');
+    const path = await import('path');
+    
+    const excelPath = path.join(process.cwd(), 'attached_assets', 'MAPA_-_TRTs_-_TURMAS_-_DESEMBARGADORES_1766076928183.xlsx');
+    
+    if (!fs.existsSync(excelPath)) {
+      console.log('Planilha de Mapa de Decisões não encontrada');
+      return;
+    }
+
+    const existingTurmas = await this.getAllTurmas();
+    if (existingTurmas.length > 0) {
+      console.log('Dados Mapa de Decisões já carregados:', existingTurmas.length, 'turmas');
+      return;
+    }
+
+    console.log('Carregando dados Mapa de Decisões do Excel...');
+    const workbook = XLSX.default.readFile(excelPath);
+
+    let totalTurmas = 0;
+    let totalDesembargadores = 0;
+
+    for (const sheetName of workbook.SheetNames) {
+      const sheet = workbook.Sheets[sheetName];
+      if (!sheet) continue;
+      
+      const data = XLSX.default.utils.sheet_to_json(sheet, { header: 1 }) as any[][];
+      if (data.length <= 1) continue;
+      
+      const trtNome = sheetName.trim();
+      
+      for (let i = 1; i < data.length; i++) {
+        const row = data[i];
+        if (!row || !row[0]) continue;
+        
+        const turmaNome = String(row[0]).trim();
+        const desembargadoresText = String(row[1] || '');
+        
+        if (!turmaNome) continue;
+        
+        const turma = await this.createTurma({
+          nome: `${turmaNome} Turma`,
+          regiao: trtNome,
+        });
+        totalTurmas++;
+        
+        const nomesSeparados = desembargadoresText
+          .split(/[\r\n,]+/)
+          .map(n => n.trim())
+          .filter(n => n.length > 2);
+        
+        for (const nomeDesembargador of nomesSeparados) {
+          const nomeClean = nomeDesembargador
+            .replace(/\(.*?\)/g, '')
+            .replace(/^\d+\.\s*/, '')
+            .trim();
+          
+          if (nomeClean.length < 3) continue;
+          
+          await this.createDesembargador({
+            turmaId: turma.id,
+            nome: nomeClean,
+            voto: 'EM ANÁLISE',
+          });
+          totalDesembargadores++;
+        }
+      }
+      
+      console.log(`  ${trtNome}: carregado`);
+    }
+
+    console.log(`Dados Mapa de Decisões carregados: ${totalTurmas} turmas, ${totalDesembargadores} desembargadores`);
   }
 
   // Mapas Estratégicos - Turmas
