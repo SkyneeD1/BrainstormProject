@@ -1441,7 +1441,16 @@ export class MemStorage implements IStorage {
       });
     }
 
-    return result.sort((a, b) => a.nome.localeCompare(b.nome));
+    return result
+      .map(item => ({
+        ...item,
+        nome: item.nome.replace(/^(TRT)\s*(\d+)/i, 'TRT - $2')
+      }))
+      .sort((a, b) => {
+        const numA = parseInt(a.nome.match(/\d+/)?.[0] || '999');
+        const numB = parseInt(b.nome.match(/\d+/)?.[0] || '999');
+        return numA - numB;
+      });
   }
 
   // Analytics: Get Turmas by TRT with statistics
@@ -1455,7 +1464,12 @@ export class MemStorage implements IStorage {
     percentualFavoravel: number;
   }>> {
     const turmasList = await this.getAllTurmas();
-    const turmasDoTrt = turmasList.filter(t => (t.regiao || 'Sem Região') === trtNome);
+    const normalizedTrtNome = trtNome.replace(/^TRT\s*-\s*(\d+)/i, 'TRT $1');
+    const turmasDoTrt = turmasList.filter(t => {
+      const regiao = (t.regiao || 'Sem Região');
+      const normalizedRegiao = regiao.replace(/^TRT\s*-\s*(\d+)/i, 'TRT $1');
+      return normalizedRegiao === normalizedTrtNome || regiao === trtNome;
+    });
 
     const result = [];
     for (const turma of turmasDoTrt) {
