@@ -887,6 +887,68 @@ export async function registerRoutes(
     }
   });
 
+  // ========== Mapa de Decisões Analytics Routes ==========
+  app.get("/api/mapa-decisoes/trts", isAuthenticated, async (req, res) => {
+    try {
+      const trts = await storage.getTRTsComEstatisticas();
+      res.json(trts);
+    } catch (error) {
+      console.error("Error fetching TRTs:", error);
+      res.status(500).json({ error: "Erro ao buscar TRTs" });
+    }
+  });
+
+  app.get("/api/mapa-decisoes/turmas/:trtNome", isAuthenticated, async (req, res) => {
+    try {
+      const turmas = await storage.getTurmasByTRT(decodeURIComponent(req.params.trtNome));
+      res.json(turmas);
+    } catch (error) {
+      console.error("Error fetching turmas:", error);
+      res.status(500).json({ error: "Erro ao buscar turmas" });
+    }
+  });
+
+  app.get("/api/mapa-decisoes/desembargadores/:turmaId", isAuthenticated, async (req, res) => {
+    try {
+      const desembargadores = await storage.getDesembargadoresComDecisoesByTurma(req.params.turmaId);
+      res.json(desembargadores);
+    } catch (error) {
+      console.error("Error fetching desembargadores:", error);
+      res.status(500).json({ error: "Erro ao buscar desembargadores" });
+    }
+  });
+
+  app.get("/api/mapa-decisoes/analytics/top-turmas", isAuthenticated, async (req, res) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 5;
+      const topTurmas = await storage.getTopTurmasFavorabilidade(limit);
+      res.json(topTurmas);
+    } catch (error) {
+      console.error("Error fetching top turmas:", error);
+      res.status(500).json({ error: "Erro ao buscar top turmas" });
+    }
+  });
+
+  app.get("/api/mapa-decisoes/analytics/estatisticas", isAuthenticated, async (req, res) => {
+    try {
+      const estatisticas = await storage.getEstatisticasGerais();
+      res.json(estatisticas);
+    } catch (error) {
+      console.error("Error fetching estatisticas:", error);
+      res.status(500).json({ error: "Erro ao buscar estatísticas" });
+    }
+  });
+
+  app.get("/api/mapa-decisoes/analytics/timeline", isAuthenticated, async (req, res) => {
+    try {
+      const timeline = await storage.getTimelineData();
+      res.json(timeline);
+    } catch (error) {
+      console.error("Error fetching timeline:", error);
+      res.status(500).json({ error: "Erro ao buscar timeline" });
+    }
+  });
+
   // ========== Demo Data Seed ==========
   app.post("/api/seed-demo", isAuthenticated, isAdmin, async (req, res) => {
     try {

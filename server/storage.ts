@@ -1392,6 +1392,270 @@ export class MemStorage implements IStorage {
 
     return { trts: trts.sort((a, b) => a.nome.localeCompare(b.nome)) };
   }
+
+  // Analytics: Get TRTs with aggregated statistics
+  async getTRTsComEstatisticas(): Promise<Array<{
+    nome: string;
+    totalTurmas: number;
+    totalDesembargadores: number;
+    totalDecisoes: number;
+    favoraveis: number;
+    desfavoraveis: number;
+    emAnalise: number;
+    percentualFavoravel: number;
+  }>> {
+    const turmasList = await this.getAllTurmas();
+    const trtMap = new Map<string, { turmas: Turma[], desembargadores: Desembargador[], decisoes: DecisaoRpac[] }>();
+
+    for (const turma of turmasList) {
+      const trtNome = turma.regiao || 'Sem Região';
+      if (!trtMap.has(trtNome)) {
+        trtMap.set(trtNome, { turmas: [], desembargadores: [], decisoes: [] });
+      }
+      trtMap.get(trtNome)!.turmas.push(turma);
+      
+      const desembargadores = await this.getDesembargadoresByTurma(turma.id);
+      for (const d of desembargadores) {
+        trtMap.get(trtNome)!.desembargadores.push(d);
+        const decisoes = await this.getDecisoesRpacByDesembargador(d.id);
+        trtMap.get(trtNome)!.decisoes.push(...decisoes);
+      }
+    }
+
+    const result = [];
+    for (const [nome, data] of Array.from(trtMap.entries())) {
+      const favoraveis = data.decisoes.filter(d => d.resultado?.toUpperCase().includes('FAVORÁVEL') && !d.resultado?.toUpperCase().includes('DESFAVORÁVEL')).length;
+      const desfavoraveis = data.decisoes.filter(d => d.resultado?.toUpperCase().includes('DESFAVORÁVEL')).length;
+      const emAnalise = data.decisoes.filter(d => d.resultado?.toUpperCase().includes('ANÁLISE')).length;
+      const total = data.decisoes.length;
+
+      result.push({
+        nome,
+        totalTurmas: data.turmas.length,
+        totalDesembargadores: data.desembargadores.length,
+        totalDecisoes: total,
+        favoraveis,
+        desfavoraveis,
+        emAnalise,
+        percentualFavoravel: total > 0 ? Math.round((favoraveis / total) * 100) : 0,
+      });
+    }
+
+    return result.sort((a, b) => a.nome.localeCompare(b.nome));
+  }
+
+  // Analytics: Get Turmas by TRT with statistics
+  async getTurmasByTRT(trtNome: string): Promise<Array<{
+    id: string;
+    nome: string;
+    totalDesembargadores: number;
+    totalDecisoes: number;
+    favoraveis: number;
+    desfavoraveis: number;
+    percentualFavoravel: number;
+  }>> {
+    const turmasList = await this.getAllTurmas();
+    const turmasDoTrt = turmasList.filter(t => (t.regiao || 'Sem Região') === trtNome);
+
+    const result = [];
+    for (const turma of turmasDoTrt) {
+      const desembargadores = await this.getDesembargadoresByTurma(turma.id);
+      let totalDecisoes = 0;
+      let favoraveis = 0;
+      let desfavoraveis = 0;
+
+      for (const d of desembargadores) {
+        const decisoes = await this.getDecisoesRpacByDesembargador(d.id);
+        totalDecisoes += decisoes.length;
+        favoraveis += decisoes.filter(dec => dec.resultado?.toUpperCase().includes('FAVORÁVEL') && !dec.resultado?.toUpperCase().includes('DESFAVORÁVEL')).length;
+        desfavoraveis += decisoes.filter(dec => dec.resultado?.toUpperCase().includes('DESFAVORÁVEL')).length;
+      }
+
+      result.push({
+        id: turma.id,
+        nome: turma.nome,
+        totalDesembargadores: desembargadores.length,
+        totalDecisoes,
+        favoraveis,
+        desfavoraveis,
+        percentualFavoravel: totalDecisoes > 0 ? Math.round((favoraveis / totalDecisoes) * 100) : 0,
+      });
+    }
+
+    return result.sort((a, b) => a.nome.localeCompare(b.nome));
+  }
+
+  // Analytics: Get Desembargadores by Turma with decisions
+  async getDesembargadoresComDecisoesByTurma(turmaId: string): Promise<Array<{
+    id: string;
+    nome: string;
+    voto: string;
+    decisoes: DecisaoRpac[];
+    favoraveis: number;
+    desfavoraveis: number;
+    percentualFavoravel: number;
+  }>> {
+    const desembargadores = await this.getDesembargadoresByTurma(turmaId);
+    const result = [];
+
+    for (const d of desembargadores) {
+      const decisoes = await this.getDecisoesRpacByDesembargador(d.id);
+      const favoraveis = decisoes.filter(dec => dec.resultado?.toUpperCase().includes('FAVORÁVEL') && !dec.resultado?.toUpperCase().includes('DESFAVORÁVEL')).length;
+      const desfavoraveis = decisoes.filter(dec => dec.resultado?.toUpperCase().includes('DESFAVORÁVEL')).length;
+
+      result.push({
+        id: d.id,
+        nome: d.nome,
+        voto: d.voto,
+        decisoes,
+        favoraveis,
+        desfavoraveis,
+        percentualFavoravel: decisoes.length > 0 ? Math.round((favoraveis / decisoes.length) * 100) : 0,
+      });
+    }
+
+    return result.sort((a, b) => a.nome.localeCompare(b.nome));
+  }
+
+  // Analytics: Top 5 Turmas by favorability
+  async getTopTurmasFavorabilidade(limit: number = 5): Promise<Array<{
+    id: string;
+    nome: string;
+    trt: string;
+    totalDecisoes: number;
+    favoraveis: number;
+    percentualFavoravel: number;
+  }>> {
+    const turmasList = await this.getAllTurmas();
+    const turmasComStats = [];
+
+    for (const turma of turmasList) {
+      const desembargadores = await this.getDesembargadoresByTurma(turma.id);
+      let totalDecisoes = 0;
+      let favoraveis = 0;
+
+      for (const d of desembargadores) {
+        const decisoes = await this.getDecisoesRpacByDesembargador(d.id);
+        totalDecisoes += decisoes.length;
+        favoraveis += decisoes.filter(dec => dec.resultado?.toUpperCase().includes('FAVORÁVEL') && !dec.resultado?.toUpperCase().includes('DESFAVORÁVEL')).length;
+      }
+
+      if (totalDecisoes > 0) {
+        turmasComStats.push({
+          id: turma.id,
+          nome: turma.nome,
+          trt: turma.regiao || 'Sem Região',
+          totalDecisoes,
+          favoraveis,
+          percentualFavoravel: Math.round((favoraveis / totalDecisoes) * 100),
+        });
+      }
+    }
+
+    return turmasComStats
+      .sort((a, b) => b.percentualFavoravel - a.percentualFavoravel)
+      .slice(0, limit);
+  }
+
+  // Analytics: General favorability statistics
+  async getEstatisticasGerais(): Promise<{
+    totalTRTs: number;
+    totalTurmas: number;
+    totalDesembargadores: number;
+    totalDecisoes: number;
+    favoraveis: number;
+    desfavoraveis: number;
+    emAnalise: number;
+    percentualFavoravel: number;
+    percentualDesfavoravel: number;
+  }> {
+    const turmasList = await this.getAllTurmas();
+    const trtSet = new Set(turmasList.map(t => t.regiao || 'Sem Região'));
+    let totalDesembargadores = 0;
+    let totalDecisoes = 0;
+    let favoraveis = 0;
+    let desfavoraveis = 0;
+    let emAnalise = 0;
+
+    for (const turma of turmasList) {
+      const desembargadores = await this.getDesembargadoresByTurma(turma.id);
+      totalDesembargadores += desembargadores.length;
+
+      for (const d of desembargadores) {
+        const decisoes = await this.getDecisoesRpacByDesembargador(d.id);
+        totalDecisoes += decisoes.length;
+        favoraveis += decisoes.filter(dec => dec.resultado?.toUpperCase().includes('FAVORÁVEL') && !dec.resultado?.toUpperCase().includes('DESFAVORÁVEL')).length;
+        desfavoraveis += decisoes.filter(dec => dec.resultado?.toUpperCase().includes('DESFAVORÁVEL')).length;
+        emAnalise += decisoes.filter(dec => dec.resultado?.toUpperCase().includes('ANÁLISE')).length;
+      }
+    }
+
+    return {
+      totalTRTs: trtSet.size,
+      totalTurmas: turmasList.length,
+      totalDesembargadores,
+      totalDecisoes,
+      favoraveis,
+      desfavoraveis,
+      emAnalise,
+      percentualFavoravel: totalDecisoes > 0 ? Math.round((favoraveis / totalDecisoes) * 100) : 0,
+      percentualDesfavoravel: totalDecisoes > 0 ? Math.round((desfavoraveis / totalDecisoes) * 100) : 0,
+    };
+  }
+
+  // Analytics: Timeline data by month
+  async getTimelineData(): Promise<Array<{
+    mes: string;
+    ano: number;
+    totalDecisoes: number;
+    favoraveis: number;
+    desfavoraveis: number;
+    percentualFavoravel: number;
+  }>> {
+    const allDecisoes = await this.getAllDecisoesRpac();
+    const monthlyData = new Map<string, { total: number; favoraveis: number; desfavoraveis: number }>();
+
+    for (const decisao of allDecisoes) {
+      const data = decisao.dataDecisao || decisao.createdAt;
+      if (!data) continue;
+
+      const date = new Date(data);
+      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+
+      if (!monthlyData.has(key)) {
+        monthlyData.set(key, { total: 0, favoraveis: 0, desfavoraveis: 0 });
+      }
+
+      const stats = monthlyData.get(key)!;
+      stats.total++;
+      if (decisao.resultado?.toUpperCase().includes('FAVORÁVEL') && !decisao.resultado?.toUpperCase().includes('DESFAVORÁVEL')) {
+        stats.favoraveis++;
+      }
+      if (decisao.resultado?.toUpperCase().includes('DESFAVORÁVEL')) {
+        stats.desfavoraveis++;
+      }
+    }
+
+    const meses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+    const result = [];
+
+    for (const [key, stats] of Array.from(monthlyData.entries())) {
+      const [ano, mesNum] = key.split('-').map(Number);
+      result.push({
+        mes: meses[mesNum - 1],
+        ano,
+        totalDecisoes: stats.total,
+        favoraveis: stats.favoraveis,
+        desfavoraveis: stats.desfavoraveis,
+        percentualFavoravel: stats.total > 0 ? Math.round((stats.favoraveis / stats.total) * 100) : 0,
+      });
+    }
+
+    return result.sort((a, b) => {
+      if (a.ano !== b.ano) return a.ano - b.ano;
+      return meses.indexOf(a.mes) - meses.indexOf(b.mes);
+    });
+  }
 }
 
 export const storage = new MemStorage();
