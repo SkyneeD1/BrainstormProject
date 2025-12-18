@@ -1,14 +1,14 @@
-import { useState, useMemo, useRef } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Database, Download, RefreshCw, AlertTriangle, Search, Upload, FileSpreadsheet, X, Shield, Trash2, Loader2 } from "lucide-react";
+import { Database, Download, RefreshCw, AlertTriangle, Search, Upload, FileSpreadsheet, X, Trash2, Loader2, Scale, Map, Lightbulb, Building2, User, Gavel } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { apiRequest } from "@/lib/queryClient";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/hooks/useAuth";
 import { queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import {
@@ -19,7 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import type { PassivoData } from "@shared/schema";
+import type { PassivoData, TRT, Vara, Juiz, Distribuido, Encerrado, SentencaMerito, AcordaoMerito } from "@shared/schema";
 import { formatCurrencyFull, formatCurrencyValue } from "@/lib/formatters";
 
 function TableSkeleton() {
@@ -30,23 +30,18 @@ function TableSkeleton() {
           <Skeleton className="h-8 flex-1" />
           <Skeleton className="h-8 flex-1" />
           <Skeleton className="h-8 flex-1" />
-          <Skeleton className="h-8 flex-1" />
-          <Skeleton className="h-8 flex-1" />
-          <Skeleton className="h-8 flex-1" />
-          <Skeleton className="h-8 flex-1" />
         </div>
       ))}
     </div>
   );
 }
 
-export default function AdminDados() {
+function PassivoTab() {
   const [searchTerm, setSearchTerm] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
-  const { isAdmin } = useAuth();
 
-  const { data: passivoData, isLoading, error, refetch, isRefetching } = useQuery<PassivoData>({
+  const { data: passivoData, isLoading, refetch, isRefetching } = useQuery<PassivoData>({
     queryKey: ["/api/passivo"],
   });
 
@@ -54,112 +49,58 @@ export default function AdminDados() {
     mutationFn: async (file: File) => {
       const formData = new FormData();
       formData.append("file", file);
-      
-      const response = await fetch("/api/passivo/upload", {
-        method: "POST",
-        body: formData,
-      });
-      
+      const response = await fetch("/api/passivo/upload", { method: "POST", body: formData });
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.error || "Erro ao fazer upload");
       }
-      
       return response.json();
     },
     onSuccess: (data) => {
-      toast({
-        title: "Upload realizado com sucesso",
-        description: `${data.count} processos importados`,
-      });
+      toast({ title: "Upload realizado", description: `${data.count} processos importados` });
       queryClient.invalidateQueries({ queryKey: ["/api/passivo"] });
     },
     onError: (error: Error) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "Sem permissão",
-          description: "Você precisa ser administrador para fazer upload",
-          variant: "destructive",
-        });
-        return;
-      }
-      toast({
-        title: "Erro no upload",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast({ title: "Erro no upload", description: error.message, variant: "destructive" });
     },
   });
 
   const deleteAllMutation = useMutation({
-    mutationFn: async () => {
-      await apiRequest("DELETE", "/api/passivo");
-    },
+    mutationFn: async () => { await apiRequest("DELETE", "/api/passivo"); },
     onSuccess: () => {
       toast({ title: "Todos os dados foram apagados" });
       queryClient.invalidateQueries({ queryKey: ["/api/passivo"] });
     },
     onError: (error: Error) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "Sem permissão",
-          description: "Você precisa ser administrador para apagar dados",
-          variant: "destructive",
-        });
-        return;
-      }
-      toast({
-        title: "Erro ao apagar dados",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast({ title: "Erro ao apagar", description: error.message, variant: "destructive" });
     },
   });
 
-  const filteredData = useMemo(() => {
-    if (!passivoData?.rawData) return [];
-    if (!searchTerm.trim()) return passivoData.rawData;
-    
-    const term = searchTerm.toLowerCase().trim();
-    return passivoData.rawData.filter(row => 
-      row.numeroProcesso.toLowerCase().includes(term)
-    );
-  }, [passivoData?.rawData, searchTerm]);
+  const filteredData = passivoData?.rawData?.filter(row => 
+    !searchTerm.trim() || row.numeroProcesso.toLowerCase().includes(searchTerm.toLowerCase())
+  ) || [];
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
-        toast({
-          title: "Arquivo inválido",
-          description: "Por favor, selecione um arquivo Excel (.xlsx ou .xls)",
-          variant: "destructive",
-        });
+        toast({ title: "Arquivo inválido", description: "Selecione um arquivo Excel", variant: "destructive" });
         return;
       }
       uploadMutation.mutate(file);
     }
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const handleExport = () => {
     if (!passivoData) return;
-    
     const csvContent = [
-      ["NÚMERO DO PROCESSO (PADRÃO CNJ)", "PRÓPRIO/OI/TERCEIRO", "EMPRESA EMPREGADORA / TERCEIRA", "STATUS", "FASE", "VALOR TOTAL (NOVO)", "PROGNÓSTICO DE PERDA"].join(";"),
+      ["NÚMERO DO PROCESSO", "PRÓPRIO/OI/TERCEIRO", "EMPRESA", "STATUS", "FASE", "VALOR TOTAL", "PROGNÓSTICO"].join(";"),
       ...passivoData.rawData.map((row) => [
-        row.numeroProcesso,
-        row.tipoOrigem,
-        row.empresaOriginal,
-        row.status,
-        row.fase,
-        row.valorTotal.toFixed(2).replace(".", ","),
-        row.prognostico,
+        row.numeroProcesso, row.tipoOrigem, row.empresaOriginal, row.status, row.fase,
+        row.valorTotal.toFixed(2).replace(".", ","), row.prognostico,
       ].join(";"))
     ].join("\n");
-
     const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
@@ -167,269 +108,308 @@ export default function AdminDados() {
     link.click();
   };
 
-  if (isLoading) {
-    return (
-      <div className="p-6 space-y-6 max-w-[1800px] mx-auto">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground tracking-tight">
-              Administração de Dados
-            </h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Visualização e gerenciamento dos dados do passivo
-            </p>
-          </div>
-        </div>
-        <Card className="p-6">
-          <TableSkeleton />
-        </Card>
-      </div>
-    );
-  }
-
-  if (error || !passivoData) {
-    return (
-      <div className="p-6">
-        <Card className="p-8 text-center">
-          <AlertTriangle className="h-12 w-12 text-destructive mx-auto mb-4" />
-          <h2 className="text-lg font-semibold text-foreground mb-2">Erro ao carregar dados</h2>
-          <p className="text-muted-foreground mb-4">
-            Não foi possível carregar os dados. Verifique se o arquivo Excel foi processado corretamente.
-          </p>
-          <Button onClick={() => refetch()} data-testid="button-retry">
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Tentar novamente
-          </Button>
-        </Card>
-      </div>
-    );
-  }
+  if (isLoading) return <TableSkeleton />;
 
   return (
-    <div className="p-6 space-y-6 max-w-[1800px] mx-auto">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground tracking-tight flex items-center gap-3">
-            <Database className="h-6 w-6 text-primary" />
-            Administração de Dados
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Dados extraídos da planilha brainstorm.xlsx - Base Dez/24
-          </p>
-        </div>
-        <div className="flex items-center gap-3 flex-wrap">
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleFileSelect}
-            accept=".xlsx,.xls"
-            className="hidden"
-            data-testid="input-file-upload"
-          />
-          {isAdmin && (
-            <>
-              <Button
-                variant="outline"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploadMutation.isPending}
-                data-testid="button-upload"
-              >
-                {uploadMutation.isPending ? (
-                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <Upload className="h-4 w-4 mr-2" />
-                )}
-                Importar XLSX
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-3">
+        <input type="file" ref={fileInputRef} onChange={handleFileSelect} accept=".xlsx,.xls" className="hidden" data-testid="input-file-passivo" />
+        <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={uploadMutation.isPending} data-testid="button-upload-passivo">
+          {uploadMutation.isPending ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
+          Importar XLSX
+        </Button>
+        {(passivoData?.rawData?.length || 0) > 0 && (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="outline" className="text-destructive border-destructive hover:bg-destructive/10" data-testid="button-delete-all-passivo">
+                <Trash2 className="h-4 w-4 mr-2" />Apagar Todos
               </Button>
-              {passivoData.rawData.length > 0 && (
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className="text-destructive border-destructive hover:bg-destructive/10"
-                      data-testid="button-delete-all-passivo"
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Apagar Todos
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle className="flex items-center gap-2">
-                        <AlertTriangle className="h-5 w-5 text-destructive" />
-                        Confirmar exclusão
-                      </AlertDialogTitle>
-                      <AlertDialogDescription>
-                        Tem certeza que deseja apagar todos os {passivoData.rawData.length.toLocaleString('pt-BR')} registros do passivo? Esta ação não pode ser desfeita.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel data-testid="button-cancel-delete-all-passivo">Cancelar</AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={() => deleteAllMutation.mutate()}
-                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                        data-testid="button-confirm-delete-all-passivo"
-                      >
-                        {deleteAllMutation.isPending ? (
-                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                        ) : null}
-                        Apagar Todos
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              )}
-            </>
-          )}
-          <Button
-            variant="outline"
-            onClick={() => refetch()}
-            disabled={isRefetching}
-            data-testid="button-refresh"
-          >
-            <RefreshCw className={`h-4 w-4 mr-2 ${isRefetching ? "animate-spin" : ""}`} />
-            Atualizar
-          </Button>
-          <Button onClick={handleExport} data-testid="button-export">
-            <Download className="h-4 w-4 mr-2" />
-            Exportar CSV
-          </Button>
-        </div>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle className="flex items-center gap-2"><AlertTriangle className="h-5 w-5 text-destructive" />Confirmar exclusão</AlertDialogTitle>
+                <AlertDialogDescription>Apagar todos os {passivoData?.rawData.length.toLocaleString('pt-BR')} registros do passivo?</AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction onClick={() => deleteAllMutation.mutate()} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                  {deleteAllMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}Apagar Todos
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
+        <Button variant="outline" onClick={() => refetch()} disabled={isRefetching} data-testid="button-refresh-passivo">
+          <RefreshCw className={`h-4 w-4 mr-2 ${isRefetching ? "animate-spin" : ""}`} />Atualizar
+        </Button>
+        <Button onClick={handleExport} data-testid="button-export-passivo"><Download className="h-4 w-4 mr-2" />Exportar CSV</Button>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card className="p-4">
-          <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Total de Registros</p>
-          <p className="text-2xl font-bold">{passivoData.rawData.length.toLocaleString('pt-BR')}</p>
+          <p className="text-xs text-muted-foreground uppercase mb-1">Total de Registros</p>
+          <p className="text-2xl font-bold">{passivoData?.rawData?.length?.toLocaleString('pt-BR') || 0}</p>
         </Card>
         <Card className="p-4">
-          <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Total de Processos</p>
-          <p className="text-2xl font-bold">{passivoData.summary.totalProcessos.toLocaleString('pt-BR')}</p>
+          <p className="text-xs text-muted-foreground uppercase mb-1">Total de Processos</p>
+          <p className="text-2xl font-bold">{passivoData?.summary?.totalProcessos?.toLocaleString('pt-BR') || 0}</p>
         </Card>
         <Card className="p-4">
-          <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Valor Total do Passivo</p>
-          <p className="text-2xl font-bold">R$ {formatCurrencyValue(passivoData.summary.totalPassivo)}</p>
+          <p className="text-xs text-muted-foreground uppercase mb-1">Valor Total</p>
+          <p className="text-2xl font-bold">R$ {formatCurrencyValue(passivoData?.summary?.totalPassivo || 0)}</p>
         </Card>
       </div>
 
       <Card className="overflow-hidden">
-        <div className="p-4 border-b border-border bg-muted/30">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                <FileSpreadsheet className="h-4 w-4" />
-                Tabela de Dados (Estilo Excel)
-              </h2>
-              <p className="text-xs text-muted-foreground mt-1">
-                {filteredData.length === passivoData.rawData.length 
-                  ? `${passivoData.rawData.length.toLocaleString('pt-BR')} registros` 
-                  : `${filteredData.length.toLocaleString('pt-BR')} de ${passivoData.rawData.length.toLocaleString('pt-BR')} registros`
-                }
-              </p>
-            </div>
-            <div className="relative w-full sm:w-80">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Pesquisar número do processo..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9 pr-9"
-                data-testid="input-search"
-              />
-              {searchTerm && (
-                <button
-                  onClick={() => setSearchTerm("")}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  data-testid="button-clear-search"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              )}
-            </div>
+        <div className="p-4 border-b border-border bg-muted/30 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h2 className="text-sm font-semibold flex items-center gap-2"><FileSpreadsheet className="h-4 w-4" />Processos do Passivo</h2>
+            <p className="text-xs text-muted-foreground">{filteredData.length.toLocaleString('pt-BR')} registros</p>
+          </div>
+          <div className="relative w-full sm:w-80">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input placeholder="Pesquisar processo..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9 pr-9" data-testid="input-search-passivo" />
+            {searchTerm && <button onClick={() => setSearchTerm("")} className="absolute right-3 top-1/2 -translate-y-1/2"><X className="h-4 w-4" /></button>}
           </div>
         </div>
-        <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
+        <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
           <Table>
             <TableHeader className="sticky top-0 bg-secondary z-10">
               <TableRow className="bg-secondary hover:bg-secondary">
-                <TableHead className="text-secondary-foreground font-semibold text-xs uppercase tracking-wider min-w-[280px]">
-                  Número do Processo (Padrão CNJ)
-                </TableHead>
-                <TableHead className="text-secondary-foreground font-semibold text-xs uppercase tracking-wider min-w-[120px]">
-                  Próprio/OI/Terceiro
-                </TableHead>
-                <TableHead className="text-secondary-foreground font-semibold text-xs uppercase tracking-wider min-w-[180px]">
-                  Empresa Empregadora / Terceira
-                </TableHead>
-                <TableHead className="text-secondary-foreground font-semibold text-xs uppercase tracking-wider min-w-[100px]">
-                  Status
-                </TableHead>
-                <TableHead className="text-secondary-foreground font-semibold text-xs uppercase tracking-wider min-w-[120px]">
-                  Fase
-                </TableHead>
-                <TableHead className="text-secondary-foreground font-semibold text-xs uppercase tracking-wider text-right min-w-[150px]">
-                  Valor Total (Novo)
-                </TableHead>
-                <TableHead className="text-secondary-foreground font-semibold text-xs uppercase tracking-wider min-w-[120px]">
-                  Prognóstico de Perda
-                </TableHead>
+                <TableHead className="text-xs uppercase min-w-[280px]">Processo</TableHead>
+                <TableHead className="text-xs uppercase min-w-[100px]">Tipo</TableHead>
+                <TableHead className="text-xs uppercase min-w-[150px]">Empresa</TableHead>
+                <TableHead className="text-xs uppercase min-w-[100px]">Status</TableHead>
+                <TableHead className="text-xs uppercase min-w-[100px]">Fase</TableHead>
+                <TableHead className="text-xs uppercase text-right min-w-[120px]">Valor</TableHead>
+                <TableHead className="text-xs uppercase min-w-[100px]">Prognóstico</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredData.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                    {searchTerm ? "Nenhum processo encontrado com esse número" : "Nenhum dado disponível"}
-                  </TableCell>
-                </TableRow>
+                <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Nenhum dado disponível</TableCell></TableRow>
               ) : (
-                filteredData.map((row, index) => (
-                  <TableRow
-                    key={row.id}
-                    className={index % 2 === 0 ? "bg-card" : "bg-muted/30"}
-                    data-testid={`row-data-${index}`}
-                  >
+                filteredData.slice(0, 100).map((row, index) => (
+                  <TableRow key={row.id} className={index % 2 === 0 ? "bg-card" : "bg-muted/30"}>
                     <TableCell className="font-mono text-sm">{row.numeroProcesso}</TableCell>
                     <TableCell>{row.tipoOrigem}</TableCell>
-                    <TableCell className="font-medium">{row.empresaOriginal}</TableCell>
-                    <TableCell>
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                        row.status === "ACORDO" ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" :
-                        row.status === "ATIVO" ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" :
-                        row.status === "ENCERRADO" ? "bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400" :
-                        "bg-muted text-muted-foreground"
-                      }`}>
-                        {row.status}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                        row.fase.toUpperCase().includes("CONHECIMENTO") ? "bg-primary/20 text-primary" :
-                        row.fase.toUpperCase().includes("RECURSAL") ? "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400" :
-                        "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
-                      }`}>
-                        {row.fase}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-right font-medium tabular-nums">
-                      {formatCurrencyFull(row.valorTotal)}
-                    </TableCell>
-                    <TableCell>
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                        row.prognostico.toUpperCase().includes("REMOTO") ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" :
-                        row.prognostico.toUpperCase().includes("POSS") ? "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400" :
-                        "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
-                      }`}>
-                        {row.prognostico}
-                      </span>
-                    </TableCell>
+                    <TableCell>{row.empresaOriginal}</TableCell>
+                    <TableCell><span className="px-2 py-1 text-xs rounded-full bg-muted">{row.status}</span></TableCell>
+                    <TableCell><span className="px-2 py-1 text-xs rounded-full bg-primary/20 text-primary">{row.fase}</span></TableCell>
+                    <TableCell className="text-right font-medium">{formatCurrencyFull(row.valorTotal)}</TableCell>
+                    <TableCell><span className="px-2 py-1 text-xs rounded-full bg-muted">{row.prognostico}</span></TableCell>
                   </TableRow>
                 ))
               )}
             </TableBody>
           </Table>
         </div>
+        {filteredData.length > 100 && <div className="p-2 text-center text-xs text-muted-foreground border-t">Mostrando 100 de {filteredData.length} registros</div>}
       </Card>
+    </div>
+  );
+}
+
+function BrainstormTab() {
+  const { toast } = useToast();
+  const fileRefs = {
+    distribuidos: useRef<HTMLInputElement>(null),
+    encerrados: useRef<HTMLInputElement>(null),
+    sentencas: useRef<HTMLInputElement>(null),
+    acordaos: useRef<HTMLInputElement>(null),
+  };
+
+  const { data: distribuidos, refetch: refetchDist } = useQuery<Distribuido[]>({ queryKey: ["/api/brainstorm/distribuidos"] });
+  const { data: encerrados, refetch: refetchEnc } = useQuery<Encerrado[]>({ queryKey: ["/api/brainstorm/encerrados"] });
+  const { data: sentencas, refetch: refetchSent } = useQuery<SentencaMerito[]>({ queryKey: ["/api/brainstorm/sentencas"] });
+  const { data: acordaos, refetch: refetchAc } = useQuery<AcordaoMerito[]>({ queryKey: ["/api/brainstorm/acordaos"] });
+
+  const createUploadMutation = (endpoint: string, queryKey: string[]) => useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append("file", file);
+      const response = await fetch(endpoint, { method: "POST", body: formData });
+      if (!response.ok) throw new Error((await response.json()).error || "Erro no upload");
+      return response.json();
+    },
+    onSuccess: (data) => {
+      toast({ title: "Upload realizado", description: `${data.count} registros importados` });
+      queryClient.invalidateQueries({ queryKey });
+    },
+    onError: (error: Error) => toast({ title: "Erro no upload", description: error.message, variant: "destructive" }),
+  });
+
+  const createDeleteMutation = (endpoint: string, queryKey: string[]) => useMutation({
+    mutationFn: async () => { await apiRequest("DELETE", endpoint); },
+    onSuccess: () => {
+      toast({ title: "Dados apagados" });
+      queryClient.invalidateQueries({ queryKey });
+    },
+    onError: (error: Error) => toast({ title: "Erro ao apagar", description: error.message, variant: "destructive" }),
+  });
+
+  const uploadDist = createUploadMutation("/api/brainstorm/distribuidos/upload", ["/api/brainstorm/distribuidos"]);
+  const uploadEnc = createUploadMutation("/api/brainstorm/encerrados/upload", ["/api/brainstorm/encerrados"]);
+  const uploadSent = createUploadMutation("/api/brainstorm/sentencas/upload", ["/api/brainstorm/sentencas"]);
+  const uploadAc = createUploadMutation("/api/brainstorm/acordaos/upload", ["/api/brainstorm/acordaos"]);
+
+  const deleteDist = createDeleteMutation("/api/brainstorm/distribuidos", ["/api/brainstorm/distribuidos"]);
+  const deleteEnc = createDeleteMutation("/api/brainstorm/encerrados", ["/api/brainstorm/encerrados"]);
+  const deleteSent = createDeleteMutation("/api/brainstorm/sentencas", ["/api/brainstorm/sentencas"]);
+  const deleteAc = createDeleteMutation("/api/brainstorm/acordaos", ["/api/brainstorm/acordaos"]);
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>, mutation: any, ref: any) => {
+    const file = event.target.files?.[0];
+    if (file) mutation.mutate(file);
+    if (ref.current) ref.current.value = "";
+  };
+
+  const DataSection = ({ title, icon: Icon, count, uploadMutation, deleteMutation, fileRef, refetch, testId }: any) => (
+    <Card className="p-4">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <Icon className="h-5 w-5 text-primary" />
+          <h3 className="font-semibold">{title}</h3>
+          <span className="text-sm text-muted-foreground">({count || 0} registros)</span>
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <input type="file" ref={fileRef} onChange={(e) => handleFileSelect(e, uploadMutation, fileRef)} accept=".xlsx,.xls" className="hidden" />
+        <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()} disabled={uploadMutation.isPending} data-testid={`button-upload-${testId}`}>
+          {uploadMutation.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
+          Importar XLSX
+        </Button>
+        {(count || 0) > 0 && (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="outline" size="sm" className="text-destructive border-destructive hover:bg-destructive/10" data-testid={`button-delete-${testId}`}>
+                <Trash2 className="h-4 w-4 mr-2" />Apagar Todos
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle className="flex items-center gap-2"><AlertTriangle className="h-5 w-5 text-destructive" />Confirmar exclusão</AlertDialogTitle>
+                <AlertDialogDescription>Apagar todos os {count} registros de {title}?</AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction onClick={() => deleteMutation.mutate()} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                  {deleteMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}Apagar
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
+        <Button variant="ghost" size="sm" onClick={() => refetch()} data-testid={`button-refresh-${testId}`}>
+          <RefreshCw className="h-4 w-4" />
+        </Button>
+      </div>
+    </Card>
+  );
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <DataSection title="Distribuídos" icon={FileSpreadsheet} count={distribuidos?.length} uploadMutation={uploadDist} deleteMutation={deleteDist} fileRef={fileRefs.distribuidos} refetch={refetchDist} testId="distribuidos" />
+      <DataSection title="Encerrados" icon={FileSpreadsheet} count={encerrados?.length} uploadMutation={uploadEnc} deleteMutation={deleteEnc} fileRef={fileRefs.encerrados} refetch={refetchEnc} testId="encerrados" />
+      <DataSection title="Sentenças de Mérito" icon={Gavel} count={sentencas?.length} uploadMutation={uploadSent} deleteMutation={deleteSent} fileRef={fileRefs.sentencas} refetch={refetchSent} testId="sentencas" />
+      <DataSection title="Acórdãos de Mérito" icon={Gavel} count={acordaos?.length} uploadMutation={uploadAc} deleteMutation={deleteAc} fileRef={fileRefs.acordaos} refetch={refetchAc} testId="acordaos" />
+    </div>
+  );
+}
+
+function MapasTab() {
+  const { toast } = useToast();
+
+  const { data: trts, refetch: refetchTrts } = useQuery<TRT[]>({ queryKey: ["/api/trts"] });
+  const { data: varas, refetch: refetchVaras } = useQuery<Vara[]>({ queryKey: ["/api/varas"] });
+  const { data: juizes, refetch: refetchJuizes } = useQuery<Juiz[]>({ queryKey: ["/api/juizes"] });
+
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">
+        Os dados de Mapas (TRTs, Varas, Juízes e Julgamentos) são gerenciados diretamente nas páginas do módulo Mapas.
+        Aqui você pode ver um resumo dos dados cadastrados.
+      </p>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card className="p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <Building2 className="h-5 w-5 text-primary" />
+            <h3 className="font-semibold">TRTs</h3>
+          </div>
+          <p className="text-3xl font-bold">{trts?.length || 0}</p>
+          <p className="text-xs text-muted-foreground">Tribunais Regionais do Trabalho</p>
+          <Button variant="ghost" size="sm" onClick={() => refetchTrts()} className="mt-2" data-testid="button-refresh-trts">
+            <RefreshCw className="h-4 w-4 mr-2" />Atualizar
+          </Button>
+        </Card>
+        <Card className="p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <Building2 className="h-5 w-5 text-primary" />
+            <h3 className="font-semibold">Varas</h3>
+          </div>
+          <p className="text-3xl font-bold">{varas?.length || 0}</p>
+          <p className="text-xs text-muted-foreground">Varas do Trabalho</p>
+          <Button variant="ghost" size="sm" onClick={() => refetchVaras()} className="mt-2" data-testid="button-refresh-varas">
+            <RefreshCw className="h-4 w-4 mr-2" />Atualizar
+          </Button>
+        </Card>
+        <Card className="p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <User className="h-5 w-5 text-primary" />
+            <h3 className="font-semibold">Juízes</h3>
+          </div>
+          <p className="text-3xl font-bold">{juizes?.length || 0}</p>
+          <p className="text-xs text-muted-foreground">Juízes Cadastrados</p>
+          <Button variant="ghost" size="sm" onClick={() => refetchJuizes()} className="mt-2" data-testid="button-refresh-juizes">
+            <RefreshCw className="h-4 w-4 mr-2" />Atualizar
+          </Button>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+export default function AdminDados() {
+  return (
+    <div className="p-6 space-y-6 max-w-[1800px] mx-auto">
+      <div>
+        <h1 className="text-2xl font-bold text-foreground tracking-tight flex items-center gap-3">
+          <Database className="h-6 w-6 text-primary" />
+          Administração de Dados
+        </h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          Alimentação e gerenciamento de dados por módulo
+        </p>
+      </div>
+
+      <Tabs defaultValue="passivo" className="space-y-4">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="passivo" className="flex items-center gap-2" data-testid="tab-passivo">
+            <Scale className="h-4 w-4" />
+            Passivo Sob Gestão
+          </TabsTrigger>
+          <TabsTrigger value="brainstorm" className="flex items-center gap-2" data-testid="tab-brainstorm">
+            <Lightbulb className="h-4 w-4" />
+            Brainstorm
+          </TabsTrigger>
+          <TabsTrigger value="mapas" className="flex items-center gap-2" data-testid="tab-mapas">
+            <Map className="h-4 w-4" />
+            Mapas
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="passivo">
+          <PassivoTab />
+        </TabsContent>
+
+        <TabsContent value="brainstorm">
+          <BrainstormTab />
+        </TabsContent>
+
+        <TabsContent value="mapas">
+          <MapasTab />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

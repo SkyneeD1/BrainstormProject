@@ -72,11 +72,6 @@ const menuItems = [
         url: "/brainstorm/relatorio",
         icon: FileSpreadsheet,
       },
-      {
-        title: "Gestão de Dados",
-        url: "/brainstorm/gestao",
-        icon: Table2,
-      },
     ],
   },
 ];
@@ -160,29 +155,29 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        <SidebarGroup className="mt-6">
-          <SidebarGroupLabel className="text-sidebar-foreground/50 text-xs font-medium uppercase tracking-wider px-3 mb-2">
-            Administração
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  className={`${
-                    location === "/admin/dados"
-                      ? "bg-primary/10 text-primary"
-                      : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent"
-                  }`}
-                >
-                  <Link href="/admin/dados" data-testid="link-admin-dados">
-                    <Database className="h-4 w-4" />
-                    <span className="font-medium">Dados</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+        {isAdmin && (
+          <SidebarGroup className="mt-6">
+            <SidebarGroupLabel className="text-sidebar-foreground/50 text-xs font-medium uppercase tracking-wider px-3 mb-2">
+              Administração
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    asChild
+                    className={`${
+                      location === "/admin/dados" || location.startsWith("/admin/dados")
+                        ? "bg-primary/10 text-primary"
+                        : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent"
+                    }`}
+                  >
+                    <Link href="/admin/dados" data-testid="link-admin-dados">
+                      <Database className="h-4 w-4" />
+                      <span className="font-medium">Dados</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
 
-              {isAdmin && (
                 <SidebarMenuItem>
                   <SidebarMenuButton
                     asChild
@@ -198,10 +193,10 @@ export function AppSidebar() {
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
-              )}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
       <SidebarFooter className="p-4 mt-auto border-t border-sidebar-accent">
         {user && (
