@@ -38,10 +38,14 @@ interface AdminData {
 function DecisaoItem({ decisao, onRefresh }: { decisao: DecisaoRpac; onRefresh: () => void }) {
   const { toast } = useToast();
   const [editing, setEditing] = useState(false);
-  const [editData, setEditData] = useState({ resultado: decisao.resultado, observacoes: decisao.observacoes || "" });
+  const [editData, setEditData] = useState({ 
+    resultado: decisao.resultado, 
+    observacoes: decisao.observacoes || "",
+    dataDecisao: decisao.dataDecisao ? new Date(decisao.dataDecisao).toISOString().split('T')[0] : ""
+  });
 
   const updateMutation = useMutation({
-    mutationFn: async (data: { resultado: string; observacoes?: string }) => apiRequest("PATCH", `/api/decisoes/${decisao.id}`, data),
+    mutationFn: async (data: { resultado: string; observacoes?: string; dataDecisao?: string }) => apiRequest("PATCH", `/api/decisoes/${decisao.id}`, data),
     onSuccess: () => {
       toast({ title: "Decisão atualizada" });
       setEditing(false);
@@ -66,8 +70,15 @@ function DecisaoItem({ decisao, onRefresh }: { decisao: DecisaoRpac; onRefresh: 
 
   if (editing) {
     return (
-      <div className="flex items-center gap-2 p-2 bg-muted rounded">
-        <span className="text-xs flex-1">{decisao.numeroProcesso}</span>
+      <div className="flex items-center gap-2 p-2 bg-muted rounded flex-wrap">
+        <span className="text-xs font-mono">{decisao.numeroProcesso}</span>
+        <Input
+          type="date"
+          className="h-7 text-xs w-32"
+          value={editData.dataDecisao}
+          onChange={(e) => setEditData(prev => ({ ...prev, dataDecisao: e.target.value }))}
+          data-testid="input-edit-data"
+        />
         <Select value={editData.resultado} onValueChange={(v) => setEditData(prev => ({ ...prev, resultado: v }))}>
           <SelectTrigger className="w-32 h-7 text-xs">
             <SelectValue />
@@ -122,13 +133,13 @@ function DesembargadorCard({ desembargador, onRefresh }: { desembargador: Desemb
   const { toast } = useToast();
   const [expanded, setExpanded] = useState(false);
   const [showAddDecisao, setShowAddDecisao] = useState(false);
-  const [newDecisao, setNewDecisao] = useState({ numeroProcesso: "", resultado: "EM ANÁLISE" });
+  const [newDecisao, setNewDecisao] = useState({ numeroProcesso: "", resultado: "EM ANÁLISE", dataDecisao: new Date().toISOString().split('T')[0] });
 
   const createDecisaoMutation = useMutation({
-    mutationFn: async (data: { desembargadorId: string; numeroProcesso: string; resultado: string }) => apiRequest("POST", "/api/decisoes", data),
+    mutationFn: async (data: { desembargadorId: string; numeroProcesso: string; resultado: string; dataDecisao: string }) => apiRequest("POST", "/api/decisoes", data),
     onSuccess: () => {
       toast({ title: "Decisão adicionada" });
-      setNewDecisao({ numeroProcesso: "", resultado: "EM ANÁLISE" });
+      setNewDecisao({ numeroProcesso: "", resultado: "EM ANÁLISE", dataDecisao: new Date().toISOString().split('T')[0] });
       setShowAddDecisao(false);
       onRefresh();
     },
@@ -197,13 +208,20 @@ function DesembargadorCard({ desembargador, onRefresh }: { desembargador: Desemb
           </div>
 
           {showAddDecisao && (
-            <div className="flex items-center gap-2 p-2 bg-muted rounded mb-2">
+            <div className="flex items-center gap-2 p-2 bg-muted rounded mb-2 flex-wrap">
               <Input
                 placeholder="Número do processo"
-                className="h-8 text-xs flex-1"
+                className="h-8 text-xs flex-1 min-w-[150px]"
                 value={newDecisao.numeroProcesso}
                 onChange={(e) => setNewDecisao(prev => ({ ...prev, numeroProcesso: e.target.value }))}
                 data-testid="input-new-processo"
+              />
+              <Input
+                type="date"
+                className="h-8 text-xs w-32"
+                value={newDecisao.dataDecisao}
+                onChange={(e) => setNewDecisao(prev => ({ ...prev, dataDecisao: e.target.value }))}
+                data-testid="input-new-data"
               />
               <Select value={newDecisao.resultado} onValueChange={(v) => setNewDecisao(prev => ({ ...prev, resultado: v }))}>
                 <SelectTrigger className="w-32 h-8 text-xs" data-testid="select-new-resultado">
@@ -219,7 +237,7 @@ function DesembargadorCard({ desembargador, onRefresh }: { desembargador: Desemb
                 size="sm"
                 className="h-8"
                 onClick={() => createDecisaoMutation.mutate({ desembargadorId: desembargador.id, ...newDecisao })}
-                disabled={!newDecisao.numeroProcesso.trim() || createDecisaoMutation.isPending}
+                disabled={!newDecisao.numeroProcesso.trim() || !newDecisao.dataDecisao || createDecisaoMutation.isPending}
                 data-testid="button-save-decisao"
               >
                 Salvar

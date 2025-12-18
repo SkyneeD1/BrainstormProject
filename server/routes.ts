@@ -866,7 +866,11 @@ export async function registerRoutes(
 
   app.patch("/api/decisoes/:id", isAuthenticated, isAdmin, async (req, res) => {
     try {
-      const decisao = await storage.updateDecisaoRpac(req.params.id, req.body);
+      const updateData = {
+        ...req.body,
+        dataDecisao: req.body.dataDecisao ? new Date(req.body.dataDecisao) : undefined,
+      };
+      const decisao = await storage.updateDecisaoRpac(req.params.id, updateData);
       if (!decisao) {
         return res.status(404).json({ error: "Decisão não encontrada" });
       }
