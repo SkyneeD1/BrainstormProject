@@ -1590,8 +1590,21 @@ export class MemStorage implements IStorage {
     return result.sort((a, b) => a.nome.localeCompare(b.nome));
   }
 
+  // Helper: Filter decisoes by date range
+  private filterDecisoesByDate(decisoes: DecisaoRpac[], dataInicio?: Date, dataFim?: Date): DecisaoRpac[] {
+    if (!dataInicio && !dataFim) return decisoes;
+    return decisoes.filter(dec => {
+      const data = dec.dataDecisao || dec.createdAt;
+      if (!data) return false;
+      const date = new Date(data);
+      if (dataInicio && date < dataInicio) return false;
+      if (dataFim && date > dataFim) return false;
+      return true;
+    });
+  }
+
   // Analytics: Top 5 Turmas by favorability
-  async getTopTurmasFavorabilidade(limit: number = 5): Promise<Array<{
+  async getTopTurmasFavorabilidade(limit: number = 5, dataInicio?: Date, dataFim?: Date): Promise<Array<{
     id: string;
     nome: string;
     trt: string;
@@ -1608,7 +1621,8 @@ export class MemStorage implements IStorage {
       let favoraveis = 0;
 
       for (const d of desembargadores) {
-        const decisoes = await this.getDecisoesRpacByDesembargador(d.id);
+        const allDecisoes = await this.getDecisoesRpacByDesembargador(d.id);
+        const decisoes = this.filterDecisoesByDate(allDecisoes, dataInicio, dataFim);
         totalDecisoes += decisoes.length;
         favoraveis += decisoes.filter(dec => dec.resultado?.toUpperCase().includes('FAVORÁVEL') && !dec.resultado?.toUpperCase().includes('DESFAVORÁVEL')).length;
       }
@@ -1630,8 +1644,97 @@ export class MemStorage implements IStorage {
       .slice(0, limit);
   }
 
+  // Analytics: Top 5 Regiões (TRTs) by favorability
+  async getTopRegioes(limit: number = 5, dataInicio?: Date, dataFim?: Date): Promise<Array<{
+    nome: string;
+    totalDecisoes: number;
+    favoraveis: number;
+    desfavoraveis: number;
+    percentualFavoravel: number;
+  }>> {
+    const turmasList = await this.getAllTurmas();
+    const trtMap = new Map<string, { totalDecisoes: number; favoraveis: number; desfavoraveis: number }>();
+
+    for (const turma of turmasList) {
+      const trtNome = this.formatTRTDisplayName(turma.regiao);
+      if (!trtMap.has(trtNome)) {
+        trtMap.set(trtNome, { totalDecisoes: 0, favoraveis: 0, desfavoraveis: 0 });
+      }
+
+      const desembargadores = await this.getDesembargadoresByTurma(turma.id);
+      for (const d of desembargadores) {
+        const allDecisoes = await this.getDecisoesRpacByDesembargador(d.id);
+        const decisoes = this.filterDecisoesByDate(allDecisoes, dataInicio, dataFim);
+        const stats = trtMap.get(trtNome)!;
+        stats.totalDecisoes += decisoes.length;
+        stats.favoraveis += decisoes.filter(dec => dec.resultado?.toUpperCase().includes('FAVORÁVEL') && !dec.resultado?.toUpperCase().includes('DESFAVORÁVEL')).length;
+        stats.desfavoraveis += decisoes.filter(dec => dec.resultado?.toUpperCase().includes('DESFAVORÁVEL')).length;
+      }
+    }
+
+    const result = [];
+    const entries = Array.from(trtMap.entries());
+    for (const [nome, stats] of entries) {
+      if (stats.totalDecisoes > 0) {
+        result.push({
+          nome,
+          totalDecisoes: stats.totalDecisoes,
+          favoraveis: stats.favoraveis,
+          desfavoraveis: stats.desfavoraveis,
+          percentualFavoravel: Math.round((stats.favoraveis / stats.totalDecisoes) * 100),
+        });
+      }
+    }
+
+    return result
+      .sort((a, b) => b.percentualFavoravel - a.percentualFavoravel)
+      .slice(0, limit);
+  }
+
+  // Analytics: Top 5 Desembargadores by favorability
+  async getTopDesembargadores(limit: number = 5, dataInicio?: Date, dataFim?: Date): Promise<Array<{
+    id: string;
+    nome: string;
+    turma: string;
+    trt: string;
+    totalDecisoes: number;
+    favoraveis: number;
+    desfavoraveis: number;
+    percentualFavoravel: number;
+  }>> {
+    const turmasList = await this.getAllTurmas();
+    const desembargadoresStats = [];
+
+    for (const turma of turmasList) {
+      const desembargadores = await this.getDesembargadoresByTurma(turma.id);
+      for (const d of desembargadores) {
+        const allDecisoes = await this.getDecisoesRpacByDesembargador(d.id);
+        const decisoes = this.filterDecisoesByDate(allDecisoes, dataInicio, dataFim);
+        const favoraveis = decisoes.filter(dec => dec.resultado?.toUpperCase().includes('FAVORÁVEL') && !dec.resultado?.toUpperCase().includes('DESFAVORÁVEL')).length;
+        const desfavoraveis = decisoes.filter(dec => dec.resultado?.toUpperCase().includes('DESFAVORÁVEL')).length;
+
+        if (decisoes.length > 0) {
+          desembargadoresStats.push({
+            id: d.id,
+            nome: d.nome,
+            turma: turma.nome,
+            trt: this.formatTRTDisplayName(turma.regiao),
+            totalDecisoes: decisoes.length,
+            favoraveis,
+            desfavoraveis,
+            percentualFavoravel: Math.round((favoraveis / decisoes.length) * 100),
+          });
+        }
+      }
+    }
+
+    return desembargadoresStats
+      .sort((a, b) => b.percentualFavoravel - a.percentualFavoravel)
+      .slice(0, limit);
+  }
+
   // Analytics: General favorability statistics
-  async getEstatisticasGerais(): Promise<{
+  async getEstatisticasGerais(dataInicio?: Date, dataFim?: Date): Promise<{
     totalTRTs: number;
     totalTurmas: number;
     totalDesembargadores: number;
@@ -1655,7 +1758,8 @@ export class MemStorage implements IStorage {
       totalDesembargadores += desembargadores.length;
 
       for (const d of desembargadores) {
-        const decisoes = await this.getDecisoesRpacByDesembargador(d.id);
+        const allDecisoes = await this.getDecisoesRpacByDesembargador(d.id);
+        const decisoes = this.filterDecisoesByDate(allDecisoes, dataInicio, dataFim);
         totalDecisoes += decisoes.length;
         favoraveis += decisoes.filter(dec => dec.resultado?.toUpperCase().includes('FAVORÁVEL') && !dec.resultado?.toUpperCase().includes('DESFAVORÁVEL')).length;
         desfavoraveis += decisoes.filter(dec => dec.resultado?.toUpperCase().includes('DESFAVORÁVEL')).length;

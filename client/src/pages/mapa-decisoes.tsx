@@ -400,30 +400,63 @@ function AnalyticsPanel() {
     return new Date().toISOString().split('T')[0];
   });
 
+  const buildUrl = (base: string) => {
+    if (dataInicio && dataFim) {
+      return `${base}?dataInicio=${dataInicio}&dataFim=${dataFim}`;
+    }
+    return base;
+  };
+
+  const fetchWithCredentials = async (url: string) => {
+    const res = await fetch(url, { credentials: "include" });
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`${res.status}: ${text}`);
+    }
+    return res.json();
+  };
+
   const { data: estatisticas, isLoading: loadingEstat } = useQuery<Estatisticas>({
-    queryKey: ["/api/mapa-decisoes/analytics/estatisticas"],
+    queryKey: ["/api/mapa-decisoes/analytics/estatisticas", { dataInicio, dataFim }],
+    queryFn: () => fetchWithCredentials(buildUrl("/api/mapa-decisoes/analytics/estatisticas")),
   });
 
   const { data: topTurmas, isLoading: loadingTop } = useQuery<TopTurma[]>({
-    queryKey: ["/api/mapa-decisoes/analytics/top-turmas"],
+    queryKey: ["/api/mapa-decisoes/analytics/top-turmas", { dataInicio, dataFim }],
+    queryFn: () => fetchWithCredentials(buildUrl("/api/mapa-decisoes/analytics/top-turmas")),
+  });
+
+  const { data: topRegioes, isLoading: loadingRegioes } = useQuery<Array<{
+    nome: string;
+    totalDecisoes: number;
+    favoraveis: number;
+    desfavoraveis: number;
+    percentualFavoravel: number;
+  }>>({
+    queryKey: ["/api/mapa-decisoes/analytics/top-regioes", { dataInicio, dataFim }],
+    queryFn: () => fetchWithCredentials(buildUrl("/api/mapa-decisoes/analytics/top-regioes")),
+  });
+
+  const { data: topDesembargadores, isLoading: loadingDesemb } = useQuery<Array<{
+    id: string;
+    nome: string;
+    turma: string;
+    trt: string;
+    totalDecisoes: number;
+    favoraveis: number;
+    desfavoraveis: number;
+    percentualFavoravel: number;
+  }>>({
+    queryKey: ["/api/mapa-decisoes/analytics/top-desembargadores", { dataInicio, dataFim }],
+    queryFn: () => fetchWithCredentials(buildUrl("/api/mapa-decisoes/analytics/top-desembargadores")),
   });
 
   const { data: timeline, isLoading: loadingTimeline } = useQuery<TimelineData[]>({
     queryKey: ["/api/mapa-decisoes/analytics/timeline", { dataInicio, dataFim }],
-    queryFn: async () => {
-      const url = dataInicio && dataFim 
-        ? `/api/mapa-decisoes/analytics/timeline?dataInicio=${dataInicio}&dataFim=${dataFim}`
-        : "/api/mapa-decisoes/analytics/timeline";
-      const res = await fetch(url, { credentials: "include" });
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`${res.status}: ${text}`);
-      }
-      return res.json();
-    },
+    queryFn: () => fetchWithCredentials(buildUrl("/api/mapa-decisoes/analytics/timeline")),
   });
 
-  if (loadingEstat || loadingTop || loadingTimeline) {
+  if (loadingEstat || loadingTop || loadingTimeline || loadingRegioes || loadingDesemb) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-24" />
@@ -441,6 +474,33 @@ function AnalyticsPanel() {
 
   return (
     <div className="space-y-6">
+      <Card className="p-4">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <h3 className="font-semibold flex items-center gap-2">
+            <Calendar className="h-5 w-5 text-primary" />
+            Período de Análise
+          </h3>
+          <div className="flex items-center gap-2">
+            <label className="text-sm text-muted-foreground">De:</label>
+            <Input
+              type="date"
+              className="w-36 h-8"
+              value={dataInicio}
+              onChange={(e) => setDataInicio(e.target.value)}
+              data-testid="input-periodo-inicio"
+            />
+            <label className="text-sm text-muted-foreground">Até:</label>
+            <Input
+              type="date"
+              className="w-36 h-8"
+              value={dataFim}
+              onChange={(e) => setDataFim(e.target.value)}
+              data-testid="input-periodo-fim"
+            />
+          </div>
+        </div>
+      </Card>
+
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <KPICard 
           title="Total TRTs" 
@@ -540,31 +600,87 @@ function AnalyticsPanel() {
         </Card>
       </div>
 
-      <Card className="p-4">
-        <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
-          <h3 className="font-semibold flex items-center gap-2">
-            <Calendar className="h-5 w-5 text-primary" />
-            Linha do Tempo - Favorabilidade por Mês
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card className="p-4">
+          <h3 className="font-semibold flex items-center gap-2 mb-4">
+            <Building2 className="h-5 w-5 text-primary" />
+            Top 5 Regiões - Favorabilidade
           </h3>
-          <div className="flex items-center gap-2">
-            <label className="text-sm text-muted-foreground">De:</label>
-            <Input
-              type="date"
-              className="w-36 h-8"
-              value={dataInicio}
-              onChange={(e) => setDataInicio(e.target.value)}
-              data-testid="input-timeline-inicio"
-            />
-            <label className="text-sm text-muted-foreground">Até:</label>
-            <Input
-              type="date"
-              className="w-36 h-8"
-              value={dataFim}
-              onChange={(e) => setDataFim(e.target.value)}
-              data-testid="input-timeline-fim"
-            />
-          </div>
-        </div>
+          {topRegioes && topRegioes.length > 0 ? (
+            <div className="space-y-3">
+              {topRegioes.map((regiao, index) => (
+                <div key={regiao.nome} className="flex items-center gap-3">
+                  <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                    index === 0 ? "bg-yellow-500 text-white" :
+                    index === 1 ? "bg-slate-400 text-white" :
+                    index === 2 ? "bg-amber-600 text-white" :
+                    "bg-muted text-muted-foreground"
+                  }`}>
+                    {index + 1}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium truncate">{regiao.nome}</p>
+                    <p className="text-xs text-muted-foreground">{regiao.totalDecisoes} decisões</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-bold text-emerald-600 dark:text-emerald-400">
+                      {regiao.percentualFavoravel}%
+                    </p>
+                    <p className="text-xs text-muted-foreground">{regiao.favoraveis} fav.</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-center text-muted-foreground py-8">
+              Nenhuma região com decisões registradas
+            </p>
+          )}
+        </Card>
+
+        <Card className="p-4">
+          <h3 className="font-semibold flex items-center gap-2 mb-4">
+            <Gavel className="h-5 w-5 text-primary" />
+            Top 5 Desembargadores - Favorabilidade
+          </h3>
+          {topDesembargadores && topDesembargadores.length > 0 ? (
+            <div className="space-y-3">
+              {topDesembargadores.map((desemb, index) => (
+                <div key={desemb.id} className="flex items-center gap-3">
+                  <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                    index === 0 ? "bg-yellow-500 text-white" :
+                    index === 1 ? "bg-slate-400 text-white" :
+                    index === 2 ? "bg-amber-600 text-white" :
+                    "bg-muted text-muted-foreground"
+                  }`}>
+                    {index + 1}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium truncate text-sm">{desemb.nome}</p>
+                    <p className="text-xs text-muted-foreground">{desemb.turma} - {desemb.trt}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-bold text-emerald-600 dark:text-emerald-400">
+                      {desemb.percentualFavoravel}%
+                    </p>
+                    <p className="text-xs text-muted-foreground">{desemb.totalDecisoes} dec.</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-center text-muted-foreground py-8">
+              Nenhum desembargador com decisões registradas
+            </p>
+          )}
+        </Card>
+      </div>
+
+      <Card className="p-4">
+        <h3 className="font-semibold flex items-center gap-2 mb-4">
+          <Calendar className="h-5 w-5 text-primary" />
+          Linha do Tempo - Favorabilidade por Mês
+        </h3>
         {timeline && timeline.length > 0 ? (
           <>
             <ResponsiveContainer width="100%" height={300}>

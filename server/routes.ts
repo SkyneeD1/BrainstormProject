@@ -925,7 +925,9 @@ export async function registerRoutes(
   app.get("/api/mapa-decisoes/analytics/top-turmas", isAuthenticated, async (req, res) => {
     try {
       const limit = parseInt(req.query.limit as string) || 5;
-      const topTurmas = await storage.getTopTurmasFavorabilidade(limit);
+      const dataInicio = req.query.dataInicio ? new Date(req.query.dataInicio as string) : undefined;
+      const dataFim = req.query.dataFim ? new Date(req.query.dataFim as string) : undefined;
+      const topTurmas = await storage.getTopTurmasFavorabilidade(limit, dataInicio, dataFim);
       res.json(topTurmas);
     } catch (error) {
       console.error("Error fetching top turmas:", error);
@@ -933,9 +935,37 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/mapa-decisoes/analytics/top-regioes", isAuthenticated, async (req, res) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 5;
+      const dataInicio = req.query.dataInicio ? new Date(req.query.dataInicio as string) : undefined;
+      const dataFim = req.query.dataFim ? new Date(req.query.dataFim as string) : undefined;
+      const topRegioes = await storage.getTopRegioes(limit, dataInicio, dataFim);
+      res.json(topRegioes);
+    } catch (error) {
+      console.error("Error fetching top regioes:", error);
+      res.status(500).json({ error: "Erro ao buscar top regiões" });
+    }
+  });
+
+  app.get("/api/mapa-decisoes/analytics/top-desembargadores", isAuthenticated, async (req, res) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 5;
+      const dataInicio = req.query.dataInicio ? new Date(req.query.dataInicio as string) : undefined;
+      const dataFim = req.query.dataFim ? new Date(req.query.dataFim as string) : undefined;
+      const topDesembargadores = await storage.getTopDesembargadores(limit, dataInicio, dataFim);
+      res.json(topDesembargadores);
+    } catch (error) {
+      console.error("Error fetching top desembargadores:", error);
+      res.status(500).json({ error: "Erro ao buscar top desembargadores" });
+    }
+  });
+
   app.get("/api/mapa-decisoes/analytics/estatisticas", isAuthenticated, async (req, res) => {
     try {
-      const estatisticas = await storage.getEstatisticasGerais();
+      const dataInicio = req.query.dataInicio ? new Date(req.query.dataInicio as string) : undefined;
+      const dataFim = req.query.dataFim ? new Date(req.query.dataFim as string) : undefined;
+      const estatisticas = await storage.getEstatisticasGerais(dataInicio, dataFim);
       res.json(estatisticas);
     } catch (error) {
       console.error("Error fetching estatisticas:", error);
