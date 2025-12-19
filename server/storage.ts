@@ -1437,8 +1437,9 @@ export class MemStorage implements IStorage {
   // Helper: Normalize TRT name to extract number for consistent grouping
   private normalizeTRTKey(regiao: string | null): string {
     if (!regiao) return 'Sem Região';
-    // Extract the TRT number from various formats like "TRT1 - RJ", "TRT 13 - PB", "TRTR20 - SE"
-    const match = regiao.match(/TRT[R]?\s*(\d+)/i);
+    // Extract the TRT number from various formats:
+    // "TRT1 - RJ", "TRT 13 - PB", "TRTR20 - SE", "TRT - 1" (display format)
+    const match = regiao.match(/TRT[R]?\s*[-]?\s*(\d+)/i);
     if (match) {
       return `TRT_${match[1].padStart(2, '0')}`; // TRT_01, TRT_02, etc for sorting
     }
@@ -1448,7 +1449,7 @@ export class MemStorage implements IStorage {
   // Helper: Format TRT display name
   private formatTRTDisplayName(regiao: string | null): string {
     if (!regiao) return 'Sem Região';
-    const match = regiao.match(/TRT[R]?\s*(\d+)/i);
+    const match = regiao.match(/TRT[R]?\s*[-]?\s*(\d+)/i);
     if (match) {
       return `TRT - ${match[1]}`;
     }
