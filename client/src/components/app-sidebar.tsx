@@ -31,9 +31,14 @@ const menuItems = [
     icon: Scale,
     subItems: [
       {
-        title: "Dashboard (Base Dez/24)",
+        title: "Dashboard",
         url: "/",
         icon: BarChart3,
+      },
+      {
+        title: "Comparação de Períodos",
+        url: "/passivo/comparacao",
+        icon: TrendingUp,
       },
     ],
   },

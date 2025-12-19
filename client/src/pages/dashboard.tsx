@@ -1,10 +1,11 @@
 import { useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { FileText, TrendingUp, AlertTriangle, Scale, Download, Loader2 } from "lucide-react";
+import { FileText, TrendingUp, AlertTriangle, Scale, Download, Loader2, Calendar } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { KPICard } from "@/components/kpi-card";
 import { DataTableFase } from "@/components/data-table-fase";
 import { DataTableRisco } from "@/components/data-table-risco";
@@ -19,6 +20,12 @@ import { useToast } from "@/hooks/use-toast";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import type { PassivoData } from "@shared/schema";
+
+const MESES_LABEL: Record<string, string> = {
+  "01": "Janeiro", "02": "Fevereiro", "03": "Março", "04": "Abril",
+  "05": "Maio", "06": "Junho", "07": "Julho", "08": "Agosto",
+  "09": "Setembro", "10": "Outubro", "11": "Novembro", "12": "Dezembro",
+};
 
 function DashboardSkeleton() {
   return (
@@ -48,11 +55,32 @@ export default function Dashboard() {
   const detalhamentoRef = useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [activeTab, setActiveTab] = useState("visao-geral");
+  const [selectedPeriodo, setSelectedPeriodo] = useState<string>("atual");
   const { toast } = useToast();
 
-  const { data: passivoData, isLoading, error } = useQuery<PassivoData>({
-    queryKey: ["/api/passivo"],
+  const { data: periodos } = useQuery<Array<{ mes: string; ano: string }>>({
+    queryKey: ["/api/passivo/periodos"],
   });
+
+  const selectedMesAno = selectedPeriodo !== "atual" ? selectedPeriodo.split("-") : null;
+  
+  const { data: passivoData, isLoading, error } = useQuery<PassivoData>({
+    queryKey: selectedMesAno 
+      ? ["/api/passivo/mensal", selectedMesAno[1], selectedMesAno[0]]
+      : ["/api/passivo"],
+    queryFn: async () => {
+      const url = selectedMesAno 
+        ? `/api/passivo/mensal/${selectedMesAno[1]}/${selectedMesAno[0]}`
+        : "/api/passivo";
+      const res = await fetch(url, { credentials: "include" });
+      if (!res.ok) throw new Error("Erro ao carregar dados");
+      return res.json();
+    },
+  });
+
+  const periodoLabel = selectedMesAno 
+    ? `${MESES_LABEL[selectedMesAno[0]]} ${selectedMesAno[1]}`
+    : "Atual";
 
   const exportToPDF = async () => {
     setIsExporting(true);
@@ -249,10 +277,26 @@ export default function Dashboard() {
             Contencioso – Passivo sob Gestão
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Baseado nos dados de Dezembro/24
+            Período: {periodoLabel}
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2">
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+            <Select value={selectedPeriodo} onValueChange={setSelectedPeriodo}>
+              <SelectTrigger className="w-[180px]" data-testid="select-periodo">
+                <SelectValue placeholder="Selecione o período" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="atual">Dados Atuais</SelectItem>
+                {periodos && periodos.length > 0 && periodos.map((p) => (
+                  <SelectItem key={`${p.mes}-${p.ano}`} value={`${p.mes}-${p.ano}`}>
+                    {MESES_LABEL[p.mes]} {p.ano}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <Button
             onClick={exportToPDF}
             disabled={isExporting}

@@ -1,7 +1,9 @@
 import { useState, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Database, Download, RefreshCw, AlertTriangle, Search, Upload, FileSpreadsheet, X, Trash2, Loader2, Scale, Map, Lightbulb, Building2, User, Gavel } from "lucide-react";
+import { Database, Download, RefreshCw, AlertTriangle, Search, Upload, FileSpreadsheet, X, Trash2, Loader2, Scale, Map, Lightbulb, Building2, User, Gavel, Calendar } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { apiRequest } from "@/lib/queryClient";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -36,8 +38,30 @@ function TableSkeleton() {
   );
 }
 
+const MESES = [
+  { value: "01", label: "Janeiro" },
+  { value: "02", label: "Fevereiro" },
+  { value: "03", label: "Março" },
+  { value: "04", label: "Abril" },
+  { value: "05", label: "Maio" },
+  { value: "06", label: "Junho" },
+  { value: "07", label: "Julho" },
+  { value: "08", label: "Agosto" },
+  { value: "09", label: "Setembro" },
+  { value: "10", label: "Outubro" },
+  { value: "11", label: "Novembro" },
+  { value: "12", label: "Dezembro" },
+];
+
+const currentYear = new Date().getFullYear();
+const ANOS = Array.from({ length: 5 }, (_, i) => String(currentYear - 2 + i));
+
 function PassivoTab() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedMes, setSelectedMes] = useState<string>(String(new Date().getMonth() + 1).padStart(2, '0'));
+  const [selectedAno, setSelectedAno] = useState<string>(String(currentYear));
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -45,11 +69,21 @@ function PassivoTab() {
     queryKey: ["/api/passivo"],
   });
 
+  const { data: periodos, refetch: refetchPeriodos } = useQuery<Array<{ mes: string; ano: string }>>({
+    queryKey: ["/api/passivo/periodos"],
+  });
+
   const uploadMutation = useMutation({
-    mutationFn: async (file: File) => {
+    mutationFn: async ({ file, mes, ano }: { file: File; mes: string; ano: string }) => {
       const formData = new FormData();
       formData.append("file", file);
-      const response = await fetch("/api/passivo/upload", { method: "POST", body: formData });
+      formData.append("mes", mes);
+      formData.append("ano", ano);
+      const response = await fetch("/api/passivo/mensal/upload", { 
+        method: "POST", 
+        body: formData,
+        credentials: "include"
+      });
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.error || "Erro ao fazer upload");
@@ -57,8 +91,14 @@ function PassivoTab() {
       return response.json();
     },
     onSuccess: (data) => {
-      toast({ title: "Upload realizado", description: `${data.count} processos importados` });
+      toast({ 
+        title: "Upload realizado", 
+        description: `${data.count} processos importados para ${MESES.find(m => m.value === data.mes)?.label}/${data.ano}` 
+      });
       queryClient.invalidateQueries({ queryKey: ["/api/passivo"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/passivo/periodos"] });
+      setUploadDialogOpen(false);
+      setSelectedFile(null);
     },
     onError: (error: Error) => {
       toast({ title: "Erro no upload", description: error.message, variant: "destructive" });
@@ -85,11 +125,18 @@ function PassivoTab() {
     if (file) {
       if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
         toast({ title: "Arquivo inválido", description: "Selecione um arquivo Excel", variant: "destructive" });
+        if (fileInputRef.current) fileInputRef.current.value = "";
         return;
       }
-      uploadMutation.mutate(file);
+      setSelectedFile(file);
+      setUploadDialogOpen(true);
     }
     if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleUploadConfirm = () => {
+    if (!selectedFile || !selectedMes || !selectedAno) return;
+    uploadMutation.mutate({ file: selectedFile, mes: selectedMes, ano: selectedAno });
   };
 
   const handleExport = () => {
@@ -112,6 +159,57 @@ function PassivoTab() {
 
   return (
     <div className="space-y-4">
+      <Dialog open={uploadDialogOpen} onOpenChange={(open) => { setUploadDialogOpen(open); if (!open) setSelectedFile(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5" />
+              Selecionar Período
+            </DialogTitle>
+            <DialogDescription>
+              Escolha o mês e ano que esta planilha representa. O arquivo selecionado: <strong>{selectedFile?.name}</strong>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Mês</label>
+              <Select value={selectedMes} onValueChange={setSelectedMes}>
+                <SelectTrigger data-testid="select-mes">
+                  <SelectValue placeholder="Selecione o mês" />
+                </SelectTrigger>
+                <SelectContent>
+                  {MESES.map((m) => (
+                    <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Ano</label>
+              <Select value={selectedAno} onValueChange={setSelectedAno}>
+                <SelectTrigger data-testid="select-ano">
+                  <SelectValue placeholder="Selecione o ano" />
+                </SelectTrigger>
+                <SelectContent>
+                  {ANOS.map((a) => (
+                    <SelectItem key={a} value={a}>{a}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setUploadDialogOpen(false); setSelectedFile(null); }}>
+              Cancelar
+            </Button>
+            <Button onClick={handleUploadConfirm} disabled={uploadMutation.isPending}>
+              {uploadMutation.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
+              Importar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <div className="flex flex-wrap items-center gap-3">
         <input type="file" ref={fileInputRef} onChange={handleFileSelect} accept=".xlsx,.xls" className="hidden" data-testid="input-file-passivo" />
         <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={uploadMutation.isPending} data-testid="button-upload-passivo">

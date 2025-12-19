@@ -9,6 +9,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { useAuth } from "@/hooks/useAuth";
 import Dashboard from "@/pages/dashboard";
+import PassivoComparacao from "@/pages/passivo-comparacao";
 import AdminDados from "@/pages/admin-dados";
 import AdminUsers from "@/pages/admin-users";
 import BrainstormRelatorio from "@/pages/brainstorm-relatorio";
@@ -23,6 +24,7 @@ function AuthenticatedRouter() {
   return (
     <Switch>
       <Route path="/" component={Dashboard} />
+      <Route path="/passivo/comparacao" component={PassivoComparacao} />
       <Route path="/admin/dados" component={AdminDados} />
       <Route path="/admin/usuarios" component={AdminUsers} />
       <Route path="/mapas/decisoes" component={MapaDecisoes} />
