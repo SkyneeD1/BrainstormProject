@@ -1115,6 +1115,7 @@ export class MemStorage implements IStorage {
     const existingTurmas = await this.getAllTurmas();
     if (existingTurmas.length > 0) {
       console.log('Dados Mapa de Decisões já carregados:', existingTurmas.length, 'turmas');
+      await this.seedFictionalDecisions();
       return;
     }
 
@@ -1174,6 +1175,45 @@ export class MemStorage implements IStorage {
     }
 
     console.log(`Dados Mapa de Decisões carregados: ${totalTurmas} turmas, ${totalDesembargadores} desembargadores`);
+    
+    await this.seedFictionalDecisions();
+  }
+
+  async seedFictionalDecisions(): Promise<void> {
+    const existingDecisoes = await db.select().from(decisoesRpac).limit(1);
+    if (existingDecisoes.length > 0) {
+      console.log('Decisões já existem, pulando seed');
+      return;
+    }
+
+    console.log('Gerando decisões fictícias para teste da timeline...');
+    
+    const allDesembargadores = await this.getAllDesembargadores();
+    const resultados = ['FAVORÁVEL', 'DESFAVORÁVEL'];
+    let totalDecisoes = 0;
+
+    for (const desembargador of allDesembargadores) {
+      const numDecisoes = Math.floor(Math.random() * 5) + 2;
+      
+      for (let i = 0; i < numDecisoes; i++) {
+        const daysAgo = Math.floor(Math.random() * 365);
+        const dataDecisao = new Date();
+        dataDecisao.setDate(dataDecisao.getDate() - daysAgo);
+        
+        const resultado = resultados[Math.floor(Math.random() * resultados.length)];
+        const numeroProcesso = `${String(Math.floor(Math.random() * 9000000) + 1000000).padStart(7, '0')}-${String(Math.floor(Math.random() * 90) + 10)}.${2024 - Math.floor(daysAgo / 365)}.5.${String(Math.floor(Math.random() * 24) + 1).padStart(2, '0')}.${String(Math.floor(Math.random() * 9000) + 1000)}`;
+        
+        await this.createDecisaoRpac({
+          desembargadorId: desembargador.id,
+          numeroProcesso,
+          resultado,
+          dataDecisao,
+        });
+        totalDecisoes++;
+      }
+    }
+
+    console.log(`Geradas ${totalDecisoes} decisões fictícias para ${allDesembargadores.length} desembargadores`);
   }
 
   // Mapas Estratégicos - Turmas
@@ -1394,6 +1434,27 @@ export class MemStorage implements IStorage {
   }
 
   // Analytics: Get TRTs with aggregated statistics
+  // Helper: Normalize TRT name to extract number for consistent grouping
+  private normalizeTRTKey(regiao: string | null): string {
+    if (!regiao) return 'Sem Região';
+    // Extract the TRT number from various formats like "TRT1 - RJ", "TRT 13 - PB", "TRTR20 - SE"
+    const match = regiao.match(/TRT[R]?\s*(\d+)/i);
+    if (match) {
+      return `TRT_${match[1].padStart(2, '0')}`; // TRT_01, TRT_02, etc for sorting
+    }
+    return regiao;
+  }
+
+  // Helper: Format TRT display name
+  private formatTRTDisplayName(regiao: string | null): string {
+    if (!regiao) return 'Sem Região';
+    const match = regiao.match(/TRT[R]?\s*(\d+)/i);
+    if (match) {
+      return `TRT - ${match[1]}`;
+    }
+    return regiao;
+  }
+
   async getTRTsComEstatisticas(): Promise<Array<{
     nome: string;
     totalTurmas: number;
@@ -1405,32 +1466,34 @@ export class MemStorage implements IStorage {
     percentualFavoravel: number;
   }>> {
     const turmasList = await this.getAllTurmas();
-    const trtMap = new Map<string, { turmas: Turma[], desembargadores: Desembargador[], decisoes: DecisaoRpac[] }>();
+    const trtMap = new Map<string, { displayName: string, turmas: Turma[], desembargadores: Desembargador[], decisoes: DecisaoRpac[] }>();
 
     for (const turma of turmasList) {
-      const trtNome = turma.regiao || 'Sem Região';
-      if (!trtMap.has(trtNome)) {
-        trtMap.set(trtNome, { turmas: [], desembargadores: [], decisoes: [] });
+      const trtKey = this.normalizeTRTKey(turma.regiao);
+      const displayName = this.formatTRTDisplayName(turma.regiao);
+      
+      if (!trtMap.has(trtKey)) {
+        trtMap.set(trtKey, { displayName, turmas: [], desembargadores: [], decisoes: [] });
       }
-      trtMap.get(trtNome)!.turmas.push(turma);
+      trtMap.get(trtKey)!.turmas.push(turma);
       
       const desembargadores = await this.getDesembargadoresByTurma(turma.id);
       for (const d of desembargadores) {
-        trtMap.get(trtNome)!.desembargadores.push(d);
+        trtMap.get(trtKey)!.desembargadores.push(d);
         const decisoes = await this.getDecisoesRpacByDesembargador(d.id);
-        trtMap.get(trtNome)!.decisoes.push(...decisoes);
+        trtMap.get(trtKey)!.decisoes.push(...decisoes);
       }
     }
 
     const result = [];
-    for (const [nome, data] of Array.from(trtMap.entries())) {
+    for (const [key, data] of Array.from(trtMap.entries())) {
       const favoraveis = data.decisoes.filter(d => d.resultado?.toUpperCase().includes('FAVORÁVEL') && !d.resultado?.toUpperCase().includes('DESFAVORÁVEL')).length;
       const desfavoraveis = data.decisoes.filter(d => d.resultado?.toUpperCase().includes('DESFAVORÁVEL')).length;
       const emAnalise = data.decisoes.filter(d => d.resultado?.toUpperCase().includes('ANÁLISE')).length;
       const total = data.decisoes.length;
 
       result.push({
-        nome,
+        nome: data.displayName,
         totalTurmas: data.turmas.length,
         totalDesembargadores: data.desembargadores.length,
         totalDecisoes: total,
@@ -1441,16 +1504,11 @@ export class MemStorage implements IStorage {
       });
     }
 
-    return result
-      .map(item => ({
-        ...item,
-        nome: item.nome.replace(/^(TRT)\s*(\d+)/i, 'TRT - $2')
-      }))
-      .sort((a, b) => {
-        const numA = parseInt(a.nome.match(/\d+/)?.[0] || '999');
-        const numB = parseInt(b.nome.match(/\d+/)?.[0] || '999');
-        return numA - numB;
-      });
+    return result.sort((a, b) => {
+      const numA = parseInt(a.nome.match(/\d+/)?.[0] || '999');
+      const numB = parseInt(b.nome.match(/\d+/)?.[0] || '999');
+      return numA - numB;
+    });
   }
 
   // Analytics: Get Turmas by TRT with statistics
@@ -1464,11 +1522,11 @@ export class MemStorage implements IStorage {
     percentualFavoravel: number;
   }>> {
     const turmasList = await this.getAllTurmas();
-    const normalizedTrtNome = trtNome.replace(/^TRT\s*-\s*(\d+)/i, 'TRT $1');
+    // Normalize the input TRT name to match
+    const inputKey = this.normalizeTRTKey(trtNome);
     const turmasDoTrt = turmasList.filter(t => {
-      const regiao = (t.regiao || 'Sem Região');
-      const normalizedRegiao = regiao.replace(/^TRT\s*-\s*(\d+)/i, 'TRT $1');
-      return normalizedRegiao === normalizedTrtNome || regiao === trtNome;
+      const turmaKey = this.normalizeTRTKey(t.regiao);
+      return turmaKey === inputKey;
     });
 
     const result = [];
@@ -1618,7 +1676,7 @@ export class MemStorage implements IStorage {
   }
 
   // Analytics: Timeline data by month
-  async getTimelineData(): Promise<Array<{
+  async getTimelineData(dataInicio?: Date, dataFim?: Date): Promise<Array<{
     mes: string;
     ano: number;
     totalDecisoes: number;
@@ -1634,6 +1692,10 @@ export class MemStorage implements IStorage {
       if (!data) continue;
 
       const date = new Date(data);
+      
+      if (dataInicio && date < dataInicio) continue;
+      if (dataFim && date > dataFim) continue;
+
       const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
 
       if (!monthlyData.has(key)) {

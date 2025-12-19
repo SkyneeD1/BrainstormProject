@@ -3,6 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Database, ChevronDown, ChevronRight, Plus, Edit2, Trash2, RefreshCw, Users, Building2, Gavel } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
@@ -12,6 +13,30 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { DecisaoRpac } from "@shared/schema";
+
+function FavorabilityAvatar({ percentual, size = 40 }: { percentual: number; size?: number }) {
+  const greenAngle = (percentual / 100) * 360;
+  return (
+    <div 
+      className="relative rounded-full overflow-hidden flex-shrink-0"
+      style={{ width: size, height: size }}
+    >
+      <svg viewBox="0 0 100 100" className="w-full h-full">
+        <circle cx="50" cy="50" r="50" fill="#ef4444" />
+        {percentual > 0 && (
+          <path
+            d={`M50,50 L50,0 A50,50 0 ${greenAngle > 180 ? 1 : 0},1 ${50 + 50 * Math.sin((greenAngle * Math.PI) / 180)},${50 - 50 * Math.cos((greenAngle * Math.PI) / 180)} Z`}
+            fill="#10b981"
+          />
+        )}
+        <circle cx="50" cy="50" r="30" fill="white" className="dark:fill-slate-800" />
+        <text x="50" y="55" textAnchor="middle" fontSize="20" fontWeight="bold" className="fill-slate-700 dark:fill-slate-200">
+          {percentual}
+        </text>
+      </svg>
+    </div>
+  );
+}
 
 interface DesembargadorComDecisoes {
   id: string;
@@ -148,29 +173,15 @@ function DesembargadorCard({ desembargador, onRefresh }: { desembargador: Desemb
     },
   });
 
-  const updateVotoMutation = useMutation({
-    mutationFn: async (voto: string) => apiRequest("PATCH", `/api/desembargadores/${desembargador.id}`, { voto }),
-    onSuccess: () => {
-      toast({ title: "Status atualizado" });
-      onRefresh();
-    },
-  });
-
-  const getVotoColor = (voto: string) => {
-    const v = voto?.toUpperCase() || "";
-    if (v.includes("FAVORÁVEL")) return "bg-emerald-500";
-    if (v.includes("DESFAVORÁVEL")) return "bg-red-500";
-    if (v === "SUSPEITO") return "bg-orange-500";
-    return "bg-slate-400";
-  };
-
-  const favoraveis = desembargador.decisoes.filter(d => d.resultado?.toUpperCase().includes('FAVORÁVEL')).length;
+  const favoraveis = desembargador.decisoes.filter(d => d.resultado?.toUpperCase().includes('FAVORÁVEL') && !d.resultado?.toUpperCase().includes('DESFAVORÁVEL')).length;
   const desfavoraveis = desembargador.decisoes.filter(d => d.resultado?.toUpperCase().includes('DESFAVORÁVEL')).length;
+  const total = favoraveis + desfavoraveis;
+  const percentualFavoravel = total > 0 ? Math.round((favoraveis / total) * 100) : 0;
 
   return (
     <div className="border rounded-lg p-3 bg-card">
       <div className="flex items-center gap-3">
-        <span className={`w-3 h-3 rounded-full ${getVotoColor(desembargador.voto)} flex-shrink-0`} />
+        <FavorabilityAvatar percentual={percentualFavoravel} size={32} />
         <div className="flex-1">
           <div className="flex items-center gap-2">
             <span className="font-medium text-sm">{desembargador.nome}</span>
@@ -179,19 +190,11 @@ function DesembargadorCard({ desembargador, onRefresh }: { desembargador: Desemb
           <div className="flex items-center gap-2 mt-1">
             <span className="text-xs text-emerald-600 dark:text-emerald-400">{favoraveis} fav</span>
             <span className="text-xs text-red-600 dark:text-red-400">{desfavoraveis} desf</span>
+            <Badge variant={percentualFavoravel >= 50 ? "default" : "secondary"} className="text-xs">
+              {percentualFavoravel}% favorável
+            </Badge>
           </div>
         </div>
-        <Select value={desembargador.voto} onValueChange={(v) => updateVotoMutation.mutate(v)}>
-          <SelectTrigger className="w-32 h-8 text-xs" data-testid={`select-voto-${desembargador.id}`}>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="FAVORÁVEL">Favorável</SelectItem>
-            <SelectItem value="DESFAVORÁVEL">Desfavorável</SelectItem>
-            <SelectItem value="EM ANÁLISE">Em Análise</SelectItem>
-            <SelectItem value="SUSPEITO">Suspeito</SelectItem>
-          </SelectContent>
-        </Select>
         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setExpanded(!expanded)} data-testid={`button-expand-${desembargador.id}`}>
           {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
         </Button>

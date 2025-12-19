@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
@@ -36,6 +37,30 @@ import {
   Legend,
 } from "recharts";
 import type { DecisaoRpac } from "@shared/schema";
+
+function FavorabilityAvatar({ percentual, size = 40 }: { percentual: number; size?: number }) {
+  const greenAngle = (percentual / 100) * 360;
+  return (
+    <div 
+      className="relative rounded-full overflow-hidden flex-shrink-0"
+      style={{ width: size, height: size }}
+    >
+      <svg viewBox="0 0 100 100" className="w-full h-full">
+        <circle cx="50" cy="50" r="50" fill="#ef4444" />
+        {percentual > 0 && (
+          <path
+            d={`M50,50 L50,0 A50,50 0 ${greenAngle > 180 ? 1 : 0},1 ${50 + 50 * Math.sin((greenAngle * Math.PI) / 180)},${50 - 50 * Math.cos((greenAngle * Math.PI) / 180)} Z`}
+            fill="#10b981"
+          />
+        )}
+        <circle cx="50" cy="50" r="25" fill="white" className="dark:fill-slate-800" />
+        <text x="50" y="56" textAnchor="middle" fontSize="18" fontWeight="bold" className="fill-slate-700 dark:fill-slate-200">
+          {percentual}
+        </text>
+      </svg>
+    </div>
+  );
+}
 
 interface TRTData {
   nome: string;
@@ -289,7 +314,7 @@ function DesembargadorView({ desembargadores, turmaNome, trtNome, onBack }: {
               data-testid={`card-desembargador-${d.id}`}
             >
               <div className="flex items-center gap-3">
-                <span className={`w-3 h-3 rounded-full ${getVotoColor(d.voto)} flex-shrink-0`} />
+                <FavorabilityAvatar percentual={d.percentualFavoravel} size={36} />
                 <div className="flex-1 min-w-0">
                   <p className="font-medium truncate">{d.nome}</p>
                   <div className="flex items-center gap-2 mt-1">
@@ -317,11 +342,11 @@ function DesembargadorView({ desembargadores, turmaNome, trtNome, onBack }: {
           {selectedDesembargador ? (
             <Card className="p-4">
               <div className="flex items-center gap-3 mb-4 pb-4 border-b">
-                <span className={`w-4 h-4 rounded-full ${getVotoColor(selectedDesembargador.voto)}`} />
+                <FavorabilityAvatar percentual={selectedDesembargador.percentualFavoravel} size={48} />
                 <div>
                   <p className="font-bold">{selectedDesembargador.nome}</p>
                   <p className="text-sm text-muted-foreground">
-                    Status: {selectedDesembargador.voto} | {selectedDesembargador.percentualFavoravel}% favorabilidade
+                    {selectedDesembargador.favoraveis} favoráveis | {selectedDesembargador.desfavoraveis} desfavoráveis | {selectedDesembargador.percentualFavoravel}% favorabilidade
                   </p>
                 </div>
               </div>
@@ -366,6 +391,15 @@ function DesembargadorView({ desembargadores, turmaNome, trtNome, onBack }: {
 }
 
 function AnalyticsPanel() {
+  const [dataInicio, setDataInicio] = useState<string>(() => {
+    const date = new Date();
+    date.setFullYear(date.getFullYear() - 1);
+    return date.toISOString().split('T')[0];
+  });
+  const [dataFim, setDataFim] = useState<string>(() => {
+    return new Date().toISOString().split('T')[0];
+  });
+
   const { data: estatisticas, isLoading: loadingEstat } = useQuery<Estatisticas>({
     queryKey: ["/api/mapa-decisoes/analytics/estatisticas"],
   });
@@ -375,7 +409,18 @@ function AnalyticsPanel() {
   });
 
   const { data: timeline, isLoading: loadingTimeline } = useQuery<TimelineData[]>({
-    queryKey: ["/api/mapa-decisoes/analytics/timeline"],
+    queryKey: ["/api/mapa-decisoes/analytics/timeline", { dataInicio, dataFim }],
+    queryFn: async () => {
+      const url = dataInicio && dataFim 
+        ? `/api/mapa-decisoes/analytics/timeline?dataInicio=${dataInicio}&dataFim=${dataFim}`
+        : "/api/mapa-decisoes/analytics/timeline";
+      const res = await fetch(url, { credentials: "include" });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`${res.status}: ${text}`);
+      }
+      return res.json();
+    },
   });
 
   if (loadingEstat || loadingTop || loadingTimeline) {
@@ -496,10 +541,30 @@ function AnalyticsPanel() {
       </div>
 
       <Card className="p-4">
-        <h3 className="font-semibold flex items-center gap-2 mb-4">
-          <Calendar className="h-5 w-5 text-primary" />
-          Linha do Tempo - Favorabilidade por Mês
-        </h3>
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+          <h3 className="font-semibold flex items-center gap-2">
+            <Calendar className="h-5 w-5 text-primary" />
+            Linha do Tempo - Favorabilidade por Mês
+          </h3>
+          <div className="flex items-center gap-2">
+            <label className="text-sm text-muted-foreground">De:</label>
+            <Input
+              type="date"
+              className="w-36 h-8"
+              value={dataInicio}
+              onChange={(e) => setDataInicio(e.target.value)}
+              data-testid="input-timeline-inicio"
+            />
+            <label className="text-sm text-muted-foreground">Até:</label>
+            <Input
+              type="date"
+              className="w-36 h-8"
+              value={dataFim}
+              onChange={(e) => setDataFim(e.target.value)}
+              data-testid="input-timeline-fim"
+            />
+          </div>
+        </div>
         {timeline && timeline.length > 0 ? (
           <>
             <ResponsiveContainer width="100%" height={300}>

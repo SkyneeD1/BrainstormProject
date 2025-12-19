@@ -945,7 +945,9 @@ export async function registerRoutes(
 
   app.get("/api/mapa-decisoes/analytics/timeline", isAuthenticated, async (req, res) => {
     try {
-      const timeline = await storage.getTimelineData();
+      const dataInicio = req.query.dataInicio ? new Date(req.query.dataInicio as string) : undefined;
+      const dataFim = req.query.dataFim ? new Date(req.query.dataFim as string) : undefined;
+      const timeline = await storage.getTimelineData(dataInicio, dataFim);
       res.json(timeline);
     } catch (error) {
       console.error("Error fetching timeline:", error);
