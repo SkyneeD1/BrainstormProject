@@ -44,7 +44,7 @@ import type {
   DecisaoRpac,
   InsertDecisaoRpac
 } from "@shared/schema";
-import { users, trts, varas, juizes, julgamentos, audiencias, distribuidos, encerrados, sentencasMerito, acordaosMerito, turmas, desembargadores, decisoesRpac } from "@shared/schema";
+import { users, trts, varas, juizes, julgamentos, audiencias, distribuidos, encerrados, sentencasMerito, acordaosMerito, turmas, desembargadores, decisoesRpac, passivoMensal } from "@shared/schema";
 import { and, gte, lte, inArray, sql } from "drizzle-orm";
 import { parseExcelFile } from "./excel-parser";
 import { db } from "./db";
@@ -177,6 +177,12 @@ export interface IStorage {
       }>;
     }>;
   }>;
+  
+  // Passivo Mensal
+  getPassivoMensal(mes: string, ano: string): Promise<PassivoData | null>;
+  savePassivoMensal(mes: string, ano: string, dados: PassivoData): Promise<void>;
+  getAllPassivoMensalPeriodos(): Promise<Array<{ mes: string; ano: string }>>;
+  deletePassivoMensal(mes: string, ano: string): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -1838,6 +1844,63 @@ export class MemStorage implements IStorage {
       if (a.ano !== b.ano) return a.ano - b.ano;
       return meses.indexOf(a.mes) - meses.indexOf(b.mes);
     });
+  }
+
+  async getPassivoMensal(mes: string, ano: string): Promise<PassivoData | null> {
+    const result = await db.select().from(passivoMensal).where(
+      and(
+        eq(passivoMensal.mes, mes),
+        eq(passivoMensal.ano, ano)
+      )
+    );
+    
+    if (result.length === 0) return null;
+    return result[0].dados as PassivoData;
+  }
+
+  async savePassivoMensal(mes: string, ano: string, dados: PassivoData): Promise<void> {
+    const existing = await db.select().from(passivoMensal).where(
+      and(
+        eq(passivoMensal.mes, mes),
+        eq(passivoMensal.ano, ano)
+      )
+    );
+
+    if (existing.length > 0) {
+      await db.update(passivoMensal)
+        .set({ dados, updatedAt: new Date() })
+        .where(
+          and(
+            eq(passivoMensal.mes, mes),
+            eq(passivoMensal.ano, ano)
+          )
+        );
+    } else {
+      await db.insert(passivoMensal).values({
+        mes,
+        ano,
+        dados
+      });
+    }
+  }
+
+  async getAllPassivoMensalPeriodos(): Promise<Array<{ mes: string; ano: string }>> {
+    const results = await db.select({
+      mes: passivoMensal.mes,
+      ano: passivoMensal.ano
+    }).from(passivoMensal).orderBy(passivoMensal.ano, passivoMensal.mes);
+    
+    return results;
+  }
+
+  async deletePassivoMensal(mes: string, ano: string): Promise<boolean> {
+    const result = await db.delete(passivoMensal).where(
+      and(
+        eq(passivoMensal.mes, mes),
+        eq(passivoMensal.ano, ano)
+      )
+    );
+    return true;
   }
 }
 

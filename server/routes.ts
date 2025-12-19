@@ -388,6 +388,202 @@ export async function registerRoutes(
     }
   });
 
+  // ========== Passivo Mensal Routes ==========
+  
+  // Get all available periods
+  app.get("/api/passivo/periodos", isAuthenticated, async (req, res) => {
+    try {
+      const periodos = await storage.getAllPassivoMensalPeriodos();
+      res.json(periodos);
+    } catch (error) {
+      console.error("Error fetching passivo periods:", error);
+      res.status(500).json({ error: "Erro ao buscar períodos" });
+    }
+  });
+
+  // Get passivo data for a specific month/year
+  app.get("/api/passivo/mensal/:ano/:mes", isAuthenticated, async (req, res) => {
+    try {
+      const { ano, mes } = req.params;
+      const data = await storage.getPassivoMensal(mes, ano);
+      
+      if (!data) {
+        return res.status(404).json({ error: "Dados não encontrados para este período" });
+      }
+      
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching monthly passivo:", error);
+      res.status(500).json({ error: "Erro ao buscar dados mensais" });
+    }
+  });
+
+  // Upload Excel with month/year selection (admin only)
+  app.post("/api/passivo/mensal/upload", isAuthenticated, isAdmin, upload.single("file"), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: "Nenhum arquivo enviado" });
+      }
+      
+      const mes = req.body.mes as string;
+      const ano = req.body.ano as string;
+      
+      if (!mes || !ano) {
+        return res.status(400).json({ error: "Mês e ano são obrigatórios" });
+      }
+      
+      // Validate month format (01-12)
+      if (!/^(0[1-9]|1[0-2])$/.test(mes)) {
+        return res.status(400).json({ error: "Mês inválido. Use formato 01-12" });
+      }
+      
+      // Validate year format
+      if (!/^\d{4}$/.test(ano)) {
+        return res.status(400).json({ error: "Ano inválido. Use formato AAAA" });
+      }
+
+      const workbook = XLSX.read(req.file.buffer, { type: "buffer" });
+      const sheetName = workbook.SheetNames[0];
+      const sheet = workbook.Sheets[sheetName];
+      
+      const jsonData = XLSX.utils.sheet_to_json<Record<string, any>>(sheet);
+      
+      if (jsonData.length === 0) {
+        return res.status(400).json({ error: "Planilha vazia ou sem dados" });
+      }
+
+      const processos: ProcessoRaw[] = [];
+      
+      const sampleRow = jsonData[0];
+      const headers = Object.keys(sampleRow);
+      
+      const findColumn = (patterns: string[]) => {
+        return headers.find(h => {
+          const headerLower = h.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+          return patterns.some(p => headerLower.includes(p.toLowerCase()));
+        });
+      };
+      
+      const colNumeroProcesso = findColumn(["numero do processo", "processo", "cnj", "numero"]);
+      const colTipoOrigem = findColumn(["proprio", "oi", "terceiro", "tipo"]);
+      const colEmpresa = findColumn(["empresa", "empregadora", "terceira"]);
+      const colStatus = findColumn(["status"]);
+      const colFase = findColumn(["fase"]);
+      const colValor = findColumn(["valor", "total"]);
+      const colPrognostico = findColumn(["prognostico", "perda", "risco"]);
+      
+      if (!colNumeroProcesso) {
+        return res.status(400).json({ 
+          error: "Não foi possível encontrar a coluna de número do processo.",
+          headers: headers.slice(0, 10)
+        });
+      }
+
+      for (const row of jsonData) {
+        const numeroProcesso = String(row[colNumeroProcesso] || "").trim();
+        if (!numeroProcesso || numeroProcesso === "") continue;
+        
+        const tipoOrigem = colTipoOrigem ? String(row[colTipoOrigem] || "").trim() : "";
+        const empresaOriginal = colEmpresa ? String(row[colEmpresa] || "").trim() : "";
+        const status = colStatus ? String(row[colStatus] || "").trim() : "ATIVO";
+        const fase = colFase ? String(row[colFase] || "").trim() : "CONHECIMENTO";
+        const valorRaw = colValor ? row[colValor] : 0;
+        const valorTotal = typeof valorRaw === "number" ? valorRaw : parseFloat(String(valorRaw).replace(/[^\d,.-]/g, "").replace(",", ".")) || 0;
+        const prognostico = colPrognostico ? String(row[colPrognostico] || "").trim() : "POSSÍVEL";
+
+        const processo: ProcessoRaw = {
+          id: randomUUID(),
+          numeroProcesso,
+          tipoOrigem,
+          empresaOriginal,
+          status,
+          fase,
+          valorTotal: Math.round(valorTotal * 100) / 100,
+          prognostico,
+          empresa: normalizeEmpresa(empresaOriginal, tipoOrigem),
+          faseProcessual: normalizeFase(fase),
+          classificacaoRisco: normalizeRisco(prognostico),
+        };
+
+        processos.push(processo);
+      }
+
+      // Save to in-memory for current view
+      await storage.setRawData(processos);
+      
+      // Get computed passivo data and save to database with month/year
+      const passivoData = await storage.getPassivoData();
+      await storage.savePassivoMensal(mes, ano, passivoData);
+      
+      console.log(`Upload mensal: ${processos.length} processos importados para ${mes}/${ano}`);
+      
+      res.json({ 
+        success: true, 
+        count: processos.length,
+        mes,
+        ano,
+        message: `${processos.length} processos importados para ${mes}/${ano}`
+      });
+    } catch (error) {
+      console.error("Error processing monthly Excel file:", error);
+      res.status(500).json({ error: "Falha ao processar arquivo Excel" });
+    }
+  });
+
+  // Delete passivo for a specific month/year (admin only)
+  app.delete("/api/passivo/mensal/:ano/:mes", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { ano, mes } = req.params;
+      await storage.deletePassivoMensal(mes, ano);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting monthly passivo:", error);
+      res.status(500).json({ error: "Erro ao apagar dados mensais" });
+    }
+  });
+
+  // Compare two months
+  app.get("/api/passivo/comparar", isAuthenticated, async (req, res) => {
+    try {
+      const { mes1, ano1, mes2, ano2 } = req.query;
+      
+      if (!mes1 || !ano1 || !mes2 || !ano2) {
+        return res.status(400).json({ error: "Parâmetros mes1, ano1, mes2 e ano2 são obrigatórios" });
+      }
+      
+      const dados1 = await storage.getPassivoMensal(mes1 as string, ano1 as string);
+      const dados2 = await storage.getPassivoMensal(mes2 as string, ano2 as string);
+      
+      if (!dados1 || !dados2) {
+        return res.status(404).json({ error: "Dados não encontrados para um ou ambos os períodos" });
+      }
+      
+      const diferencaProcessos = dados2.summary.totalProcessos - dados1.summary.totalProcessos;
+      const percentualProcessos = dados1.summary.totalProcessos > 0 
+        ? Math.round((diferencaProcessos / dados1.summary.totalProcessos) * 100)
+        : 0;
+      
+      const diferencaValor = dados2.summary.totalPassivo - dados1.summary.totalPassivo;
+      const percentualValor = dados1.summary.totalPassivo > 0
+        ? Math.round((diferencaValor / dados1.summary.totalPassivo) * 100)
+        : 0;
+      
+      res.json({
+        mes1: { mes: mes1, ano: ano1, dados: dados1 },
+        mes2: { mes: mes2, ano: ano2, dados: dados2 },
+        diferenca: {
+          processos: diferencaProcessos,
+          percentualProcessos,
+          valorTotal: diferencaValor,
+          percentualValor
+        }
+      });
+    } catch (error) {
+      console.error("Error comparing passivo data:", error);
+      res.status(500).json({ error: "Erro ao comparar dados" });
+    }
+  });
+
   // ========== TRT Routes ==========
   app.get("/api/trts", isAuthenticated, async (req, res) => {
     try {

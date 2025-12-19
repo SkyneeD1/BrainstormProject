@@ -625,3 +625,48 @@ export type MapaDecisoesGeral = z.infer<typeof mapaDecisoesGeralSchema>;
 // Backwards compatibility
 export const mapaDecisoesSchema = mapaDecisoesGeralSchema;
 export type MapaDecisoes = MapaDecisoesGeral;
+
+// Passivo Mensal - dados de passivo organizados por mês/ano
+export const passivoMensal = pgTable("passivo_mensal", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  mes: varchar("mes").notNull(), // "01" a "12"
+  ano: varchar("ano").notNull(), // "2024", "2025", etc
+  dados: jsonb("dados").notNull(), // PassivoData completo em JSON
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("IDX_passivo_mensal_periodo").on(table.mes, table.ano),
+]);
+
+export type PassivoMensal = typeof passivoMensal.$inferSelect;
+export type InsertPassivoMensal = typeof passivoMensal.$inferInsert;
+
+export const insertPassivoMensalSchema = z.object({
+  mes: z.string().regex(/^(0[1-9]|1[0-2])$/, "Mês deve ser de 01 a 12"),
+  ano: z.string().regex(/^\d{4}$/, "Ano deve ter 4 dígitos"),
+  dados: passivoDataSchema,
+});
+
+export type CreatePassivoMensalInput = z.infer<typeof insertPassivoMensalSchema>;
+
+// Schema para comparação de meses
+export const comparacaoMensalSchema = z.object({
+  mes1: z.object({
+    mes: z.string(),
+    ano: z.string(),
+    dados: passivoDataSchema,
+  }),
+  mes2: z.object({
+    mes: z.string(),
+    ano: z.string(),
+    dados: passivoDataSchema,
+  }),
+  diferenca: z.object({
+    processos: z.number(),
+    percentualProcessos: z.number(),
+    valorTotal: z.number(),
+    percentualValor: z.number(),
+  }),
+});
+
+export type ComparacaoMensal = z.infer<typeof comparacaoMensalSchema>;
