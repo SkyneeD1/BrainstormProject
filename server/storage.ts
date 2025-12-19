@@ -1788,6 +1788,7 @@ export class MemStorage implements IStorage {
     favoraveis: number;
     desfavoraveis: number;
     percentualFavoravel: number;
+    percentualDesfavoravel: number;
   }>> {
     const allDecisoes = await this.getAllDecisoesRpac();
     const monthlyData = new Map<string, { total: number; favoraveis: number; desfavoraveis: number }>();
@@ -1829,6 +1830,7 @@ export class MemStorage implements IStorage {
         favoraveis: stats.favoraveis,
         desfavoraveis: stats.desfavoraveis,
         percentualFavoravel: stats.total > 0 ? Math.round((stats.favoraveis / stats.total) * 100) : 0,
+        percentualDesfavoravel: stats.total > 0 ? Math.round((stats.desfavoraveis / stats.total) * 100) : 0,
       });
     }
 

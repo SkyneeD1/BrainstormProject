@@ -121,6 +121,7 @@ interface TimelineData {
   favoraveis: number;
   desfavoraveis: number;
   percentualFavoravel: number;
+  percentualDesfavoravel: number;
 }
 
 const COLORS = {
@@ -501,7 +502,7 @@ function AnalyticsPanel() {
         </div>
       </Card>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         <KPICard 
           title="Total TRTs" 
           value={estatisticas?.totalTRTs || 0} 
@@ -511,6 +512,11 @@ function AnalyticsPanel() {
           title="Total Turmas" 
           value={estatisticas?.totalTurmas || 0} 
           icon={Users} 
+        />
+        <KPICard 
+          title="Total Desembargadores" 
+          value={estatisticas?.totalDesembargadores || 0} 
+          icon={Gavel} 
         />
         <KPICard 
           title="Favorabilidade" 
@@ -691,7 +697,8 @@ function AnalyticsPanel() {
                 <Tooltip 
                   formatter={(value: number, name: string) => [
                     `${value}%`,
-                    name === "percentualFavoravel" ? "Favorabilidade" : name
+                    name === "percentualFavoravel" ? "Favorabilidade" : 
+                    name === "percentualDesfavoravel" ? "Desfavorabilidade" : name
                   ]}
                   labelFormatter={(label) => `Mês: ${label}`}
                 />
@@ -703,6 +710,14 @@ function AnalyticsPanel() {
                   stroke={COLORS.favoravel} 
                   strokeWidth={2}
                   dot={{ fill: COLORS.favoravel }}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="percentualDesfavoravel" 
+                  name="Desfavorabilidade %" 
+                  stroke={COLORS.desfavoravel} 
+                  strokeWidth={2}
+                  dot={{ fill: COLORS.desfavoravel }}
                 />
               </LineChart>
             </ResponsiveContainer>
