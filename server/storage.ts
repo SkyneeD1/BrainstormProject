@@ -1279,10 +1279,10 @@ export class MemStorage implements IStorage {
   // Mapa de Decisões - agregação para visualização
   private calculateTurmaEstatisticas(desembargadoresList: Desembargador[]) {
     const total = desembargadoresList.length;
-    const favoraveis = desembargadoresList.filter(d => d.voto?.toUpperCase().includes('FAVORÁVEL')).length;
-    const desfavoraveis = desembargadoresList.filter(d => d.voto?.toUpperCase().includes('DESFAVORÁVEL')).length;
-    const emAnalise = desembargadoresList.filter(d => d.voto?.toUpperCase() === 'EM ANÁLISE').length;
-    const suspeitos = desembargadoresList.filter(d => d.voto?.toUpperCase() === 'SUSPEITO').length;
+    const favoraveis = desembargadoresList.filter(d => this.isFavoravel(d.voto)).length;
+    const desfavoraveis = desembargadoresList.filter(d => this.isDesfavoravel(d.voto)).length;
+    const emAnalise = desembargadoresList.filter(d => this.isEmAnalise(d.voto)).length;
+    const suspeitos = desembargadoresList.filter(d => this.normalizeResultado(d.voto) === 'SUSPEITO').length;
 
     return {
       total,
@@ -1494,9 +1494,9 @@ export class MemStorage implements IStorage {
 
     const result = [];
     for (const [key, data] of Array.from(trtMap.entries())) {
-      const favoraveis = data.decisoes.filter(d => d.resultado?.toUpperCase().includes('FAVORÁVEL') && !d.resultado?.toUpperCase().includes('DESFAVORÁVEL')).length;
-      const desfavoraveis = data.decisoes.filter(d => d.resultado?.toUpperCase().includes('DESFAVORÁVEL')).length;
-      const emAnalise = data.decisoes.filter(d => d.resultado?.toUpperCase().includes('ANÁLISE')).length;
+      const favoraveis = data.decisoes.filter(d => this.isFavoravel(d.resultado)).length;
+      const desfavoraveis = data.decisoes.filter(d => this.isDesfavoravel(d.resultado)).length;
+      const emAnalise = data.decisoes.filter(d => this.isEmAnalise(d.resultado)).length;
       const total = data.decisoes.length;
 
       result.push({
@@ -1546,8 +1546,8 @@ export class MemStorage implements IStorage {
       for (const d of desembargadores) {
         const decisoes = await this.getDecisoesRpacByDesembargador(d.id);
         totalDecisoes += decisoes.length;
-        favoraveis += decisoes.filter(dec => dec.resultado?.toUpperCase().includes('FAVORÁVEL') && !dec.resultado?.toUpperCase().includes('DESFAVORÁVEL')).length;
-        desfavoraveis += decisoes.filter(dec => dec.resultado?.toUpperCase().includes('DESFAVORÁVEL')).length;
+        favoraveis += decisoes.filter(dec => this.isFavoravel(dec.resultado)).length;
+        desfavoraveis += decisoes.filter(dec => this.isDesfavoravel(dec.resultado)).length;
       }
 
       result.push({
@@ -1579,8 +1579,8 @@ export class MemStorage implements IStorage {
 
     for (const d of desembargadores) {
       const decisoes = await this.getDecisoesRpacByDesembargador(d.id);
-      const favoraveis = decisoes.filter(dec => dec.resultado?.toUpperCase().includes('FAVORÁVEL') && !dec.resultado?.toUpperCase().includes('DESFAVORÁVEL')).length;
-      const desfavoraveis = decisoes.filter(dec => dec.resultado?.toUpperCase().includes('DESFAVORÁVEL')).length;
+      const favoraveis = decisoes.filter(dec => this.isFavoravel(dec.resultado)).length;
+      const desfavoraveis = decisoes.filter(dec => this.isDesfavoravel(dec.resultado)).length;
 
       result.push({
         id: d.id,
@@ -1594,6 +1594,28 @@ export class MemStorage implements IStorage {
     }
 
     return result.sort((a, b) => a.nome.localeCompare(b.nome));
+  }
+
+  // Helper: Normalize resultado text by removing accents for comparison
+  private normalizeResultado(resultado: string | null | undefined): string {
+    if (!resultado) return '';
+    return resultado.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  }
+
+  // Helper: Check if resultado is favorable
+  private isFavoravel(resultado: string | null | undefined): boolean {
+    const normalized = this.normalizeResultado(resultado);
+    return normalized.includes('FAVORAVEL') && !normalized.includes('DESFAVORAVEL');
+  }
+
+  // Helper: Check if resultado is unfavorable
+  private isDesfavoravel(resultado: string | null | undefined): boolean {
+    return this.normalizeResultado(resultado).includes('DESFAVORAVEL');
+  }
+
+  // Helper: Check if resultado is under analysis
+  private isEmAnalise(resultado: string | null | undefined): boolean {
+    return this.normalizeResultado(resultado).includes('ANALISE');
   }
 
   // Helper: Filter decisoes by date range
@@ -1630,7 +1652,7 @@ export class MemStorage implements IStorage {
         const allDecisoes = await this.getDecisoesRpacByDesembargador(d.id);
         const decisoes = this.filterDecisoesByDate(allDecisoes, dataInicio, dataFim);
         totalDecisoes += decisoes.length;
-        favoraveis += decisoes.filter(dec => dec.resultado?.toUpperCase().includes('FAVORÁVEL') && !dec.resultado?.toUpperCase().includes('DESFAVORÁVEL')).length;
+        favoraveis += decisoes.filter(dec => this.isFavoravel(dec.resultado)).length;
       }
 
       if (totalDecisoes > 0) {
@@ -1673,8 +1695,8 @@ export class MemStorage implements IStorage {
         const decisoes = this.filterDecisoesByDate(allDecisoes, dataInicio, dataFim);
         const stats = trtMap.get(trtNome)!;
         stats.totalDecisoes += decisoes.length;
-        stats.favoraveis += decisoes.filter(dec => dec.resultado?.toUpperCase().includes('FAVORÁVEL') && !dec.resultado?.toUpperCase().includes('DESFAVORÁVEL')).length;
-        stats.desfavoraveis += decisoes.filter(dec => dec.resultado?.toUpperCase().includes('DESFAVORÁVEL')).length;
+        stats.favoraveis += decisoes.filter(dec => this.isFavoravel(dec.resultado)).length;
+        stats.desfavoraveis += decisoes.filter(dec => this.isDesfavoravel(dec.resultado)).length;
       }
     }
 
@@ -1716,8 +1738,8 @@ export class MemStorage implements IStorage {
       for (const d of desembargadores) {
         const allDecisoes = await this.getDecisoesRpacByDesembargador(d.id);
         const decisoes = this.filterDecisoesByDate(allDecisoes, dataInicio, dataFim);
-        const favoraveis = decisoes.filter(dec => dec.resultado?.toUpperCase().includes('FAVORÁVEL') && !dec.resultado?.toUpperCase().includes('DESFAVORÁVEL')).length;
-        const desfavoraveis = decisoes.filter(dec => dec.resultado?.toUpperCase().includes('DESFAVORÁVEL')).length;
+        const favoraveis = decisoes.filter(dec => this.isFavoravel(dec.resultado)).length;
+        const desfavoraveis = decisoes.filter(dec => this.isDesfavoravel(dec.resultado)).length;
 
         if (decisoes.length > 0) {
           desembargadoresStats.push({
@@ -1767,9 +1789,16 @@ export class MemStorage implements IStorage {
         const allDecisoes = await this.getDecisoesRpacByDesembargador(d.id);
         const decisoes = this.filterDecisoesByDate(allDecisoes, dataInicio, dataFim);
         totalDecisoes += decisoes.length;
-        favoraveis += decisoes.filter(dec => dec.resultado?.toUpperCase().includes('FAVORÁVEL') && !dec.resultado?.toUpperCase().includes('DESFAVORÁVEL')).length;
-        desfavoraveis += decisoes.filter(dec => dec.resultado?.toUpperCase().includes('DESFAVORÁVEL')).length;
-        emAnalise += decisoes.filter(dec => dec.resultado?.toUpperCase().includes('ANÁLISE')).length;
+        for (const dec of decisoes) {
+          const resultado = dec.resultado?.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '') || '';
+          if (resultado.includes('FAVORAVEL') && !resultado.includes('DESFAVORAVEL')) {
+            favoraveis++;
+          } else if (resultado.includes('DESFAVORAVEL')) {
+            desfavoraveis++;
+          } else if (resultado.includes('ANALISE')) {
+            emAnalise++;
+          }
+        }
       }
     }
 
@@ -1816,10 +1845,10 @@ export class MemStorage implements IStorage {
 
       const stats = monthlyData.get(key)!;
       stats.total++;
-      if (decisao.resultado?.toUpperCase().includes('FAVORÁVEL') && !decisao.resultado?.toUpperCase().includes('DESFAVORÁVEL')) {
+      if (this.isFavoravel(decisao.resultado)) {
         stats.favoraveis++;
       }
-      if (decisao.resultado?.toUpperCase().includes('DESFAVORÁVEL')) {
+      if (this.isDesfavoravel(decisao.resultado)) {
         stats.desfavoraveis++;
       }
     }
