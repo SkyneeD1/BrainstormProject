@@ -1225,12 +1225,7 @@ export class MemStorage implements IStorage {
   // Mapas Estratégicos - Turmas
   async getAllTurmas(): Promise<Turma[]> {
     const result = await db.select().from(turmas);
-    // Sort numerically by extracting number from turma name (e.g., "1ª Turma" -> 1)
-    return result.sort((a, b) => {
-      const numA = parseInt(a.nome.match(/\d+/)?.[0] || '0', 10);
-      const numB = parseInt(b.nome.match(/\d+/)?.[0] || '0', 10);
-      return numA - numB;
-    });
+    return this.sortTurmasNumerically(result);
   }
 
   async getTurma(id: string): Promise<Turma | undefined> {
@@ -1415,7 +1410,7 @@ export class MemStorage implements IStorage {
     for (const [trtNome, turmasDoTrt] of Array.from(trtMap.entries())) {
       const turmasComDados = [];
       
-      for (const turma of turmasDoTrt.sort((a: Turma, b: Turma) => a.nome.localeCompare(b.nome))) {
+      for (const turma of this.sortTurmasNumerically(turmasDoTrt)) {
         const desembargadoresTurma = await this.getDesembargadoresByTurma(turma.id);
         const desembargadoresComDecisoes = [];
         
@@ -1567,7 +1562,7 @@ export class MemStorage implements IStorage {
       });
     }
 
-    return result.sort((a, b) => a.nome.localeCompare(b.nome));
+    return this.sortTurmasNumerically(result);
   }
 
   // Analytics: Get Desembargadores by Turma with decisions
@@ -1606,6 +1601,15 @@ export class MemStorage implements IStorage {
   private normalizeResultado(resultado: string | null | undefined): string {
     if (!resultado) return '';
     return resultado.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  }
+
+  // Helper: Sort turmas numerically by extracting number from name (e.g., "10ª Turma" -> 10)
+  private sortTurmasNumerically<T extends { nome: string }>(items: T[]): T[] {
+    return items.sort((a, b) => {
+      const numA = parseInt(a.nome.match(/\d+/)?.[0] || '0', 10);
+      const numB = parseInt(b.nome.match(/\d+/)?.[0] || '0', 10);
+      return numA - numB;
+    });
   }
 
   // Helper: Check if resultado is favorable
