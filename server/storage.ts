@@ -1224,7 +1224,13 @@ export class MemStorage implements IStorage {
 
   // Mapas Estratégicos - Turmas
   async getAllTurmas(): Promise<Turma[]> {
-    return await db.select().from(turmas).orderBy(turmas.nome);
+    const result = await db.select().from(turmas);
+    // Sort numerically by extracting number from turma name (e.g., "1ª Turma" -> 1)
+    return result.sort((a, b) => {
+      const numA = parseInt(a.nome.match(/\d+/)?.[0] || '0', 10);
+      const numB = parseInt(b.nome.match(/\d+/)?.[0] || '0', 10);
+      return numA - numB;
+    });
   }
 
   async getTurma(id: string): Promise<Turma | undefined> {
