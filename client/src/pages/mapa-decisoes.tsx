@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Card } from "@/components/ui/card";
@@ -983,8 +983,14 @@ export default function MapaDecisoesPage() {
   const [empresaNavFilter, setEmpresaNavFilter] = useState<string>("todas");
   const [numeroProcessoFilter, setNumeroProcessoFilter] = useState<string>("");
 
+  // Reset navigation state when switching between instances
+  useEffect(() => {
+    setSelectedTRT(null);
+    setSelectedTurma(null);
+  }, [instancia]);
+
   const { data: trts, isLoading: loadingTRTs } = useQuery<TRTData[]>({
-    queryKey: ["/api/mapa-decisoes/trts", { instancia, responsabilidade: responsabilidadeFilter, empresa: empresaNavFilter, numeroProcesso: numeroProcessoFilter }],
+    queryKey: ["/api/mapa-decisoes/trts", instancia, responsabilidadeFilter, empresaNavFilter, numeroProcessoFilter],
     queryFn: async () => {
       const params = new URLSearchParams();
       params.append("instancia", instancia);
@@ -999,7 +1005,7 @@ export default function MapaDecisoesPage() {
   });
 
   const { data: turmas, isLoading: loadingTurmas } = useQuery<TurmaData[]>({
-    queryKey: ["/api/mapa-decisoes/turmas", selectedTRT, { instancia, responsabilidade: responsabilidadeFilter, empresa: empresaNavFilter, numeroProcesso: numeroProcessoFilter }],
+    queryKey: ["/api/mapa-decisoes/turmas", selectedTRT, instancia, responsabilidadeFilter, empresaNavFilter, numeroProcessoFilter],
     queryFn: async () => {
       const params = new URLSearchParams();
       params.append("instancia", instancia);

@@ -1013,7 +1013,8 @@ export async function registerRoutes(
 
   app.get("/api/mapa-decisoes/admin", isAuthenticated, isAdmin, async (req, res) => {
     try {
-      const data = await storage.getMapaDecisoesAdminData();
+      const instancia = (req.query.instancia as string) || 'segunda';
+      const data = await storage.getMapaDecisoesAdminData(instancia);
       res.json(data);
     } catch (error) {
       console.error("Error fetching mapa de decisões admin data:", error);

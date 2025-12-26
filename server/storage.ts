@@ -1371,7 +1371,7 @@ export class MemStorage implements IStorage {
   }
 
   // Dados completos para admin - hierarquia TRT → Turmas → Desembargadores → Decisões
-  async getMapaDecisoesAdminData(): Promise<{
+  async getMapaDecisoesAdminData(instancia?: string): Promise<{
     trts: Array<{
       nome: string;
       turmas: Array<{
@@ -1386,7 +1386,7 @@ export class MemStorage implements IStorage {
       }>;
     }>;
   }> {
-    const turmasList = await this.getAllTurmas();
+    const turmasList = await this.getAllTurmas(instancia || 'segunda');
     
     // Agrupar turmas por região (TRT)
     const trtMap = new Map<string, typeof turmasList>();

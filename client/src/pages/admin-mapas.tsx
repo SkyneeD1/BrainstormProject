@@ -822,8 +822,15 @@ function TRTSection({ trt, onRefresh }: { trt: TRTData; onRefresh: () => void })
 }
 
 export default function AdminMapasPage() {
+  const [instanciaTab, setInstanciaTab] = useState<string>("segunda");
   const { data, isLoading, refetch } = useQuery<AdminData>({
-    queryKey: ["/api/mapa-decisoes/admin"],
+    queryKey: ["/api/mapa-decisoes/admin", instanciaTab],
+    queryFn: async ({ queryKey }) => {
+      const inst = queryKey[1] as string;
+      const res = await fetch(`/api/mapa-decisoes/admin?instancia=${inst}`, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch admin data');
+      return res.json();
+    },
   });
 
   if (isLoading) {
@@ -842,20 +849,30 @@ export default function AdminMapasPage() {
   const totalDesembargadores = data?.trts.reduce((acc, t) => acc + t.turmas.reduce((a, tu) => a + tu.desembargadores.length, 0), 0) || 0;
   const totalDecisoes = data?.trts.reduce((acc, t) => acc + t.turmas.reduce((a, tu) => a + tu.desembargadores.reduce((d, de) => d + de.decisoes.length, 0), 0), 0) || 0;
 
+  const instanciaLabel = instanciaTab === "primeira" ? "1ª Instância" : "2ª Instância";
+  
   return (
     <div className="p-6 space-y-6 max-w-[1400px] mx-auto">
       <header className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-3">
             <Database className="h-7 w-7 text-primary" />
-            Dados - Mapa de Decisões
+            Dados - {instanciaLabel}
           </h1>
           <p className="text-muted-foreground mt-1">Gerencie TRTs, Turmas, Desembargadores e Decisões</p>
         </div>
-        <Button variant="outline" onClick={() => refetch()} data-testid="button-refresh">
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Atualizar
-        </Button>
+        <div className="flex items-center gap-2">
+          <Tabs value={instanciaTab} onValueChange={setInstanciaTab}>
+            <TabsList>
+              <TabsTrigger value="segunda" data-testid="tab-segunda-instancia">2ª Instância</TabsTrigger>
+              <TabsTrigger value="primeira" data-testid="tab-primeira-instancia">1ª Instância</TabsTrigger>
+            </TabsList>
+          </Tabs>
+          <Button variant="outline" onClick={() => refetch()} data-testid="button-refresh">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Atualizar
+          </Button>
+        </div>
       </header>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
