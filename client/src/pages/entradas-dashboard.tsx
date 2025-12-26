@@ -1,8 +1,14 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from "recharts";
-import { ArrowUpDown, TrendingUp, TrendingDown, Calendar, Building2, Briefcase, DollarSign, FileText } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
+import { ArrowUpDown, TrendingUp, TrendingDown, Calendar as CalendarIcon, Building2, Briefcase, DollarSign, FileText, Filter, X } from "lucide-react";
+import { format, startOfMonth, endOfMonth, subMonths } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 interface CasosNovosStats {
   total: number;
@@ -60,9 +66,56 @@ function getMonthName(mes: string): string {
 }
 
 export default function EntradasDashboard() {
+  const [dataInicio, setDataInicio] = useState<Date | undefined>(undefined);
+  const [dataFim, setDataFim] = useState<Date | undefined>(undefined);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+
+  const buildQueryString = () => {
+    const params = new URLSearchParams();
+    if (dataInicio) params.append('dataInicio', dataInicio.toISOString());
+    if (dataFim) params.append('dataFim', dataFim.toISOString());
+    const qs = params.toString();
+    return qs ? `?${qs}` : '';
+  };
+
   const { data: stats, isLoading } = useQuery<CasosNovosStats>({
-    queryKey: ['/api/casos-novos/stats'],
+    queryKey: ['/api/casos-novos/stats', dataInicio?.toISOString(), dataFim?.toISOString()],
+    queryFn: async () => {
+      const response = await fetch(`/api/casos-novos/stats${buildQueryString()}`, {
+        credentials: 'include'
+      });
+      if (!response.ok) throw new Error('Failed to fetch stats');
+      return response.json();
+    }
   });
+
+  const handleClearFilter = () => {
+    setDataInicio(undefined);
+    setDataFim(undefined);
+  };
+
+  const handlePresetThisMonth = () => {
+    const now = new Date();
+    setDataInicio(startOfMonth(now));
+    setDataFim(endOfMonth(now));
+    setIsFilterOpen(false);
+  };
+
+  const handlePresetLastMonth = () => {
+    const lastMonth = subMonths(new Date(), 1);
+    setDataInicio(startOfMonth(lastMonth));
+    setDataFim(endOfMonth(lastMonth));
+    setIsFilterOpen(false);
+  };
+
+  const handlePresetLast3Months = () => {
+    const now = new Date();
+    setDataInicio(startOfMonth(subMonths(now, 2)));
+    setDataFim(endOfMonth(now));
+    setIsFilterOpen(false);
+  };
+
+  const hasFilter = dataInicio || dataFim;
 
   if (isLoading) {
     return (
@@ -102,11 +155,85 @@ export default function EntradasDashboard() {
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex items-center gap-3 mb-6">
-        <ArrowUpDown className="h-8 w-8 text-primary" />
-        <div>
-          <h1 className="text-2xl font-bold">Entrada & Saídas</h1>
-          <p className="text-muted-foreground">Monitoramento de novos casos distribuídos</p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+        <div className="flex items-center gap-3">
+          <ArrowUpDown className="h-8 w-8 text-primary" />
+          <div>
+            <h1 className="text-2xl font-bold">Entradas</h1>
+            <p className="text-muted-foreground">Monitoramento de novos casos distribuídos</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {hasFilter && (
+            <div className="flex items-center gap-2 bg-primary/10 px-3 py-1.5 rounded-md text-sm">
+              <CalendarIcon className="h-4 w-4 text-primary" />
+              <span>
+                {dataInicio ? format(dataInicio, 'dd/MM/yy', { locale: ptBR }) : '...'} 
+                {' - '}
+                {dataFim ? format(dataFim, 'dd/MM/yy', { locale: ptBR }) : '...'}
+              </span>
+              <Button variant="ghost" size="icon" className="h-5 w-5" onClick={handleClearFilter}>
+                <X className="h-3 w-3" />
+              </Button>
+            </div>
+          )}
+          
+          <Popover open={isFilterOpen} onOpenChange={setIsFilterOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" data-testid="button-filter-entradas">
+                <Filter className="h-4 w-4 mr-2" />
+                Filtrar Período
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-4" align="end">
+              <div className="space-y-4">
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={handlePresetThisMonth}>
+                    Mês Atual
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={handlePresetLastMonth}>
+                    Mês Anterior
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={handlePresetLast3Months}>
+                    Últimos 3 Meses
+                  </Button>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm font-medium mb-2">Data Início</p>
+                    <Calendar
+                      mode="single"
+                      selected={dataInicio}
+                      onSelect={setDataInicio}
+                      locale={ptBR}
+                      className="rounded-md border"
+                    />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium mb-2">Data Fim</p>
+                    <Calendar
+                      mode="single"
+                      selected={dataFim}
+                      onSelect={setDataFim}
+                      locale={ptBR}
+                      className="rounded-md border"
+                    />
+                  </div>
+                </div>
+                
+                <div className="flex justify-end gap-2">
+                  <Button variant="ghost" size="sm" onClick={handleClearFilter}>
+                    Limpar
+                  </Button>
+                  <Button size="sm" onClick={() => setIsFilterOpen(false)}>
+                    Aplicar
+                  </Button>
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
       </div>
 
@@ -142,7 +269,7 @@ export default function EntradasDashboard() {
                 <span className="text-xs text-muted-foreground">vs mês anterior</span>
               </div>
             </div>
-            <Calendar className="h-10 w-10 text-primary/20" />
+            <CalendarIcon className="h-10 w-10 text-primary/20" />
           </div>
         </Card>
 
@@ -154,7 +281,7 @@ export default function EntradasDashboard() {
                 {formatNumber(stats?.mesAnterior || 0)}
               </p>
             </div>
-            <Calendar className="h-10 w-10 text-muted-foreground/20" />
+            <CalendarIcon className="h-10 w-10 text-muted-foreground/20" />
           </div>
         </Card>
 
@@ -174,7 +301,7 @@ export default function EntradasDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="p-4">
           <h3 className="font-semibold flex items-center gap-2 mb-4">
-            <Calendar className="h-5 w-5 text-primary" />
+            <CalendarIcon className="h-5 w-5 text-primary" />
             Evolução Mensal
           </h3>
           {timelineData.length > 0 ? (
@@ -260,9 +387,9 @@ export default function EntradasDashboard() {
                   ''
                 ]}
               />
-              <Bar dataKey="quantidade" name="Casos" fill="#3b82f6" radius={[0, 4, 4, 0]}>
+              <Bar dataKey="quantidade" name="Casos" fill="#f59e0b" radius={[0, 4, 4, 0]}>
                 {tribunalData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={`hsl(${210 + index * 10}, 70%, ${50 + index * 3}%)`} />
+                  <Cell key={`cell-${index}`} fill={`hsl(${40 + index * 3}, 90%, ${50 + index * 2}%)`} />
                 ))}
               </Bar>
             </BarChart>

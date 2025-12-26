@@ -196,7 +196,7 @@ export interface IStorage {
   deleteCasoNovo(id: string): Promise<boolean>;
   deleteCasosNovosBatch(ids: string[]): Promise<boolean>;
   deleteAllCasosNovos(): Promise<boolean>;
-  getCasosNovosStats(): Promise<{
+  getCasosNovosStats(dataInicio?: Date, dataFim?: Date): Promise<{
     total: number;
     mesAtual: number;
     mesAnterior: number;
@@ -215,7 +215,7 @@ export interface IStorage {
   deleteCasoEncerrado(id: string): Promise<boolean>;
   deleteCasosEncerradosBatch(ids: string[]): Promise<boolean>;
   deleteAllCasosEncerrados(): Promise<boolean>;
-  getCasosEncerradosStats(): Promise<{
+  getCasosEncerradosStats(dataInicio?: Date, dataFim?: Date): Promise<{
     total: number;
     mesAtual: number;
     mesAnterior: number;
@@ -2270,7 +2270,7 @@ export class MemStorage implements IStorage {
     return true;
   }
 
-  async getCasosNovosStats(): Promise<{
+  async getCasosNovosStats(dataInicio?: Date, dataFim?: Date): Promise<{
     total: number;
     mesAtual: number;
     mesAnterior: number;
@@ -2280,10 +2280,22 @@ export class MemStorage implements IStorage {
     porMes: Array<{ mes: string; ano: string; quantidade: number }>;
     valorTotalContingencia: number;
   }> {
-    const allCasos = await this.getAllCasosNovos();
+    let allCasos = await this.getAllCasosNovos();
+    
+    // Filter by date range if provided
+    if (dataInicio || dataFim) {
+      allCasos = allCasos.filter(caso => {
+        if (!caso.dataDistribuicao) return false;
+        const casoDate = new Date(caso.dataDistribuicao);
+        if (dataInicio && casoDate < dataInicio) return false;
+        if (dataFim && casoDate > dataFim) return false;
+        return true;
+      });
+    }
+    
     const total = allCasos.length;
 
-    // Calculate current and previous month
+    // Calculate current and previous month (for default KPIs)
     const now = new Date();
     const currentMonth = now.getMonth();
     const currentYear = now.getFullYear();
@@ -2299,7 +2311,6 @@ export class MemStorage implements IStorage {
     const mesMap = new Map<string, number>();
 
     for (const caso of allCasos) {
-      // Parse valor contingencia (format: " 10,000.00 ")
       if (caso.valorContingencia) {
         const valorStr = caso.valorContingencia.trim().replace(/,/g, '');
         const valor = parseFloat(valorStr);
@@ -2308,15 +2319,12 @@ export class MemStorage implements IStorage {
         }
       }
 
-      // Count by tribunal
       const tribunal = caso.tribunal || 'Não Informado';
       tribunalMap.set(tribunal, (tribunalMap.get(tribunal) || 0) + 1);
 
-      // Count by empresa
       const empresa = caso.empresa || 'Não Informado';
       empresaMap.set(empresa, (empresaMap.get(empresa) || 0) + 1);
 
-      // Count by month
       if (caso.dataDistribuicao) {
         const date = new Date(caso.dataDistribuicao);
         const mes = String(date.getMonth() + 1).padStart(2, '0');
@@ -2324,7 +2332,6 @@ export class MemStorage implements IStorage {
         const key = `${mes}-${ano}`;
         mesMap.set(key, (mesMap.get(key) || 0) + 1);
 
-        // Count current and previous month
         if (date.getMonth() === currentMonth && date.getFullYear() === currentYear) {
           mesAtual++;
         }
@@ -2426,7 +2433,7 @@ export class MemStorage implements IStorage {
     return true;
   }
 
-  async getCasosEncerradosStats(): Promise<{
+  async getCasosEncerradosStats(dataInicio?: Date, dataFim?: Date): Promise<{
     total: number;
     mesAtual: number;
     mesAnterior: number;
@@ -2436,7 +2443,19 @@ export class MemStorage implements IStorage {
     porMes: Array<{ mes: string; ano: string; quantidade: number }>;
     valorTotalContingencia: number;
   }> {
-    const allCasos = await this.getAllCasosEncerrados();
+    let allCasos = await this.getAllCasosEncerrados();
+    
+    // Filter by date range if provided
+    if (dataInicio || dataFim) {
+      allCasos = allCasos.filter(caso => {
+        if (!caso.dataEncerramento) return false;
+        const casoDate = new Date(caso.dataEncerramento);
+        if (dataInicio && casoDate < dataInicio) return false;
+        if (dataFim && casoDate > dataFim) return false;
+        return true;
+      });
+    }
+    
     const total = allCasos.length;
 
     const now = new Date();

@@ -17,8 +17,8 @@ import BrainstormGestao from "@/pages/brainstorm-gestao";
 import MapaDecisoes from "@/pages/mapa-decisoes";
 import AdminMapas from "@/pages/admin-mapas";
 import EntradasDashboard from "@/pages/entradas-dashboard";
-import EntradasImportar from "@/pages/entradas-importar";
 import EntradasEncerrados from "@/pages/entradas-encerrados";
+import AdminImportar from "@/pages/admin-importar";
 import Landing from "@/pages/landing";
 import NotFound from "@/pages/not-found";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -30,8 +30,8 @@ function AuthenticatedRouter() {
       <Route path="/passivo/comparacao" component={PassivoComparacao} />
       <Route path="/entradas/dashboard" component={EntradasDashboard} />
       <Route path="/entradas/encerrados" component={EntradasEncerrados} />
-      <Route path="/entradas/importar" component={EntradasImportar} />
       <Route path="/admin/dados" component={AdminDados} />
+      <Route path="/admin/importar" component={AdminImportar} />
       <Route path="/admin/usuarios" component={AdminUsers} />
       <Route path="/mapas/segunda-instancia" component={MapaDecisoes} />
       <Route path="/mapas/primeira-instancia" component={MapaDecisoes} />

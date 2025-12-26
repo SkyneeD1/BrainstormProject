@@ -1693,7 +1693,11 @@ export async function registerRoutes(
 
   app.get("/api/casos-novos/stats", isAuthenticated, async (req, res) => {
     try {
-      const stats = await storage.getCasosNovosStats();
+      const { dataInicio, dataFim } = req.query;
+      const stats = await storage.getCasosNovosStats(
+        dataInicio ? new Date(dataInicio as string) : undefined,
+        dataFim ? new Date(dataFim as string) : undefined
+      );
       res.json(stats);
     } catch (error) {
       console.error("Error fetching casos novos stats:", error);
@@ -1834,7 +1838,11 @@ export async function registerRoutes(
 
   app.get("/api/casos-encerrados/stats", isAuthenticated, async (req, res) => {
     try {
-      const stats = await storage.getCasosEncerradosStats();
+      const { dataInicio, dataFim } = req.query;
+      const stats = await storage.getCasosEncerradosStats(
+        dataInicio ? new Date(dataInicio as string) : undefined,
+        dataFim ? new Date(dataFim as string) : undefined
+      );
       res.json(stats);
     } catch (error) {
       console.error("Error fetching casos encerrados stats:", error);

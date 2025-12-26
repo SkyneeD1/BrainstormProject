@@ -56,11 +56,6 @@ const menuItems = [
         url: "/entradas/encerrados",
         icon: BarChart3,
       },
-      {
-        title: "Importar Dados",
-        url: "/entradas/importar",
-        icon: FileUp,
-      },
     ],
   },
   {
@@ -195,6 +190,22 @@ export function AppSidebar() {
                     <Link href="/admin/mapas" data-testid="link-admin-mapas">
                       <Map className="h-4 w-4" />
                       <span className="font-medium">Dados Mapas</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    asChild
+                    className={`${
+                      location === "/admin/importar"
+                        ? "bg-primary/10 text-primary"
+                        : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent"
+                    }`}
+                  >
+                    <Link href="/admin/importar" data-testid="link-admin-importar">
+                      <FileUp className="h-4 w-4" />
+                      <span className="font-medium">Importar Dados</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
