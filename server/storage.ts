@@ -1704,7 +1704,7 @@ export class MemStorage implements IStorage {
   }
 
   // Analytics: Top 5 Turmas by favorability
-  async getTopTurmasFavorabilidade(limit: number = 5, dataInicio?: Date, dataFim?: Date): Promise<Array<{
+  async getTopTurmasFavorabilidade(limit: number = 5, dataInicio?: Date, dataFim?: Date, responsabilidadeFilter?: string): Promise<Array<{
     id: string;
     nome: string;
     trt: string;
@@ -1722,7 +1722,10 @@ export class MemStorage implements IStorage {
 
       for (const d of desembargadores) {
         const allDecisoes = await this.getDecisoesRpacByDesembargador(d.id);
-        const decisoes = this.filterDecisoesByDate(allDecisoes, dataInicio, dataFim);
+        let decisoes = this.filterDecisoesByDate(allDecisoes, dataInicio, dataFim);
+        if (responsabilidadeFilter && responsabilidadeFilter !== 'todas') {
+          decisoes = decisoes.filter(dec => this.matchesResponsabilidade(dec.responsabilidade, responsabilidadeFilter));
+        }
         totalDecisoes += decisoes.length;
         favoraveis += decisoes.filter(dec => this.isFavoravel(dec.resultado)).length;
       }
@@ -1745,7 +1748,7 @@ export class MemStorage implements IStorage {
   }
 
   // Analytics: Top 5 Regiões (TRTs) by favorability
-  async getTopRegioes(limit: number = 5, dataInicio?: Date, dataFim?: Date): Promise<Array<{
+  async getTopRegioes(limit: number = 5, dataInicio?: Date, dataFim?: Date, responsabilidadeFilter?: string): Promise<Array<{
     nome: string;
     totalDecisoes: number;
     favoraveis: number;
@@ -1764,7 +1767,10 @@ export class MemStorage implements IStorage {
       const desembargadores = await this.getDesembargadoresByTurma(turma.id);
       for (const d of desembargadores) {
         const allDecisoes = await this.getDecisoesRpacByDesembargador(d.id);
-        const decisoes = this.filterDecisoesByDate(allDecisoes, dataInicio, dataFim);
+        let decisoes = this.filterDecisoesByDate(allDecisoes, dataInicio, dataFim);
+        if (responsabilidadeFilter && responsabilidadeFilter !== 'todas') {
+          decisoes = decisoes.filter(dec => this.matchesResponsabilidade(dec.responsabilidade, responsabilidadeFilter));
+        }
         const stats = trtMap.get(trtNome)!;
         stats.totalDecisoes += decisoes.length;
         stats.favoraveis += decisoes.filter(dec => this.isFavoravel(dec.resultado)).length;
@@ -1792,7 +1798,7 @@ export class MemStorage implements IStorage {
   }
 
   // Analytics: Top 5 Desembargadores by favorability
-  async getTopDesembargadores(limit: number = 5, dataInicio?: Date, dataFim?: Date): Promise<Array<{
+  async getTopDesembargadores(limit: number = 5, dataInicio?: Date, dataFim?: Date, responsabilidadeFilter?: string): Promise<Array<{
     id: string;
     nome: string;
     turma: string;
@@ -1809,7 +1815,10 @@ export class MemStorage implements IStorage {
       const desembargadores = await this.getDesembargadoresByTurma(turma.id);
       for (const d of desembargadores) {
         const allDecisoes = await this.getDecisoesRpacByDesembargador(d.id);
-        const decisoes = this.filterDecisoesByDate(allDecisoes, dataInicio, dataFim);
+        let decisoes = this.filterDecisoesByDate(allDecisoes, dataInicio, dataFim);
+        if (responsabilidadeFilter && responsabilidadeFilter !== 'todas') {
+          decisoes = decisoes.filter(dec => this.matchesResponsabilidade(dec.responsabilidade, responsabilidadeFilter));
+        }
         const favoraveis = decisoes.filter(dec => this.isFavoravel(dec.resultado)).length;
         const desfavoraveis = decisoes.filter(dec => this.isDesfavoravel(dec.resultado)).length;
 
@@ -1834,7 +1843,7 @@ export class MemStorage implements IStorage {
   }
 
   // Analytics: General favorability statistics
-  async getEstatisticasGerais(dataInicio?: Date, dataFim?: Date): Promise<{
+  async getEstatisticasGerais(dataInicio?: Date, dataFim?: Date, responsabilidadeFilter?: string): Promise<{
     totalTRTs: number;
     totalTurmas: number;
     totalDesembargadores: number;
@@ -1867,7 +1876,13 @@ export class MemStorage implements IStorage {
 
       for (const d of desembargadores) {
         const allDecisoes = await this.getDecisoesRpacByDesembargador(d.id);
-        const decisoes = this.filterDecisoesByDate(allDecisoes, dataInicio, dataFim);
+        let decisoes = this.filterDecisoesByDate(allDecisoes, dataInicio, dataFim);
+        
+        // Filter by responsabilidade if specified
+        if (responsabilidadeFilter && responsabilidadeFilter !== 'todas') {
+          decisoes = decisoes.filter(dec => this.matchesResponsabilidade(dec.responsabilidade, responsabilidadeFilter));
+        }
+        
         totalDecisoes += decisoes.length;
         for (const dec of decisoes) {
           const resultado = dec.resultado?.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '') || '';
@@ -1885,7 +1900,7 @@ export class MemStorage implements IStorage {
           } else {
             upiNao++;
           }
-          if (dec.responsabilidade === 'solidaria') {
+          if (this.matchesResponsabilidade(dec.responsabilidade, 'solidaria')) {
             solidarias++;
           } else {
             subsidiarias++;
@@ -1912,7 +1927,7 @@ export class MemStorage implements IStorage {
   }
 
   // Analytics: Timeline data by month
-  async getTimelineData(dataInicio?: Date, dataFim?: Date): Promise<Array<{
+  async getTimelineData(dataInicio?: Date, dataFim?: Date, responsabilidadeFilter?: string): Promise<Array<{
     mes: string;
     ano: number;
     totalDecisoes: number;
@@ -1925,6 +1940,13 @@ export class MemStorage implements IStorage {
     const monthlyData = new Map<string, { total: number; favoraveis: number; desfavoraveis: number }>();
 
     for (const decisao of allDecisoes) {
+      // Filter by responsabilidade if specified
+      if (responsabilidadeFilter && responsabilidadeFilter !== 'todas') {
+        if (!this.matchesResponsabilidade(decisao.responsabilidade, responsabilidadeFilter)) {
+          continue;
+        }
+      }
+      
       const data = decisao.dataDecisao || decisao.createdAt;
       if (!data) continue;
 

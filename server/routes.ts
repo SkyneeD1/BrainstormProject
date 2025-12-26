@@ -1125,7 +1125,8 @@ export async function registerRoutes(
       const limit = parseInt(req.query.limit as string) || 5;
       const dataInicio = req.query.dataInicio ? new Date(req.query.dataInicio as string) : undefined;
       const dataFim = req.query.dataFim ? new Date(req.query.dataFim as string) : undefined;
-      const topTurmas = await storage.getTopTurmasFavorabilidade(limit, dataInicio, dataFim);
+      const responsabilidade = req.query.responsabilidade as string | undefined;
+      const topTurmas = await storage.getTopTurmasFavorabilidade(limit, dataInicio, dataFim, responsabilidade);
       res.json(topTurmas);
     } catch (error) {
       console.error("Error fetching top turmas:", error);
@@ -1138,7 +1139,8 @@ export async function registerRoutes(
       const limit = parseInt(req.query.limit as string) || 5;
       const dataInicio = req.query.dataInicio ? new Date(req.query.dataInicio as string) : undefined;
       const dataFim = req.query.dataFim ? new Date(req.query.dataFim as string) : undefined;
-      const topRegioes = await storage.getTopRegioes(limit, dataInicio, dataFim);
+      const responsabilidade = req.query.responsabilidade as string | undefined;
+      const topRegioes = await storage.getTopRegioes(limit, dataInicio, dataFim, responsabilidade);
       res.json(topRegioes);
     } catch (error) {
       console.error("Error fetching top regioes:", error);
@@ -1151,7 +1153,8 @@ export async function registerRoutes(
       const limit = parseInt(req.query.limit as string) || 5;
       const dataInicio = req.query.dataInicio ? new Date(req.query.dataInicio as string) : undefined;
       const dataFim = req.query.dataFim ? new Date(req.query.dataFim as string) : undefined;
-      const topDesembargadores = await storage.getTopDesembargadores(limit, dataInicio, dataFim);
+      const responsabilidade = req.query.responsabilidade as string | undefined;
+      const topDesembargadores = await storage.getTopDesembargadores(limit, dataInicio, dataFim, responsabilidade);
       res.json(topDesembargadores);
     } catch (error) {
       console.error("Error fetching top desembargadores:", error);
@@ -1163,7 +1166,8 @@ export async function registerRoutes(
     try {
       const dataInicio = req.query.dataInicio ? new Date(req.query.dataInicio as string) : undefined;
       const dataFim = req.query.dataFim ? new Date(req.query.dataFim as string) : undefined;
-      const estatisticas = await storage.getEstatisticasGerais(dataInicio, dataFim);
+      const responsabilidade = req.query.responsabilidade as string | undefined;
+      const estatisticas = await storage.getEstatisticasGerais(dataInicio, dataFim, responsabilidade);
       res.json(estatisticas);
     } catch (error) {
       console.error("Error fetching estatisticas:", error);
@@ -1175,7 +1179,8 @@ export async function registerRoutes(
     try {
       const dataInicio = req.query.dataInicio ? new Date(req.query.dataInicio as string) : undefined;
       const dataFim = req.query.dataFim ? new Date(req.query.dataFim as string) : undefined;
-      const timeline = await storage.getTimelineData(dataInicio, dataFim);
+      const responsabilidade = req.query.responsabilidade as string | undefined;
+      const timeline = await storage.getTimelineData(dataInicio, dataFim, responsabilidade);
       res.json(timeline);
     } catch (error) {
       console.error("Error fetching timeline:", error);

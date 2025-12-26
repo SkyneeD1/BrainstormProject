@@ -406,12 +406,17 @@ function AnalyticsPanel() {
   const [dataFim, setDataFim] = useState<string>(() => {
     return new Date().toISOString().split('T')[0];
   });
+  const [responsabilidadeFilter, setResponsabilidadeFilter] = useState<string>("todas");
 
   const buildUrl = (base: string) => {
-    if (dataInicio && dataFim) {
-      return `${base}?dataInicio=${dataInicio}&dataFim=${dataFim}`;
+    const params = new URLSearchParams();
+    if (dataInicio) params.append("dataInicio", dataInicio);
+    if (dataFim) params.append("dataFim", dataFim);
+    if (responsabilidadeFilter && responsabilidadeFilter !== "todas") {
+      params.append("responsabilidade", responsabilidadeFilter);
     }
-    return base;
+    const queryString = params.toString();
+    return queryString ? `${base}?${queryString}` : base;
   };
 
   const fetchWithCredentials = async (url: string) => {
@@ -424,12 +429,12 @@ function AnalyticsPanel() {
   };
 
   const { data: estatisticas, isLoading: loadingEstat } = useQuery<Estatisticas>({
-    queryKey: ["/api/mapa-decisoes/analytics/estatisticas", { dataInicio, dataFim }],
+    queryKey: ["/api/mapa-decisoes/analytics/estatisticas", { dataInicio, dataFim, responsabilidadeFilter }],
     queryFn: () => fetchWithCredentials(buildUrl("/api/mapa-decisoes/analytics/estatisticas")),
   });
 
   const { data: topTurmas, isLoading: loadingTop } = useQuery<TopTurma[]>({
-    queryKey: ["/api/mapa-decisoes/analytics/top-turmas", { dataInicio, dataFim }],
+    queryKey: ["/api/mapa-decisoes/analytics/top-turmas", { dataInicio, dataFim, responsabilidadeFilter }],
     queryFn: () => fetchWithCredentials(buildUrl("/api/mapa-decisoes/analytics/top-turmas")),
   });
 
@@ -440,7 +445,7 @@ function AnalyticsPanel() {
     desfavoraveis: number;
     percentualFavoravel: number;
   }>>({
-    queryKey: ["/api/mapa-decisoes/analytics/top-regioes", { dataInicio, dataFim }],
+    queryKey: ["/api/mapa-decisoes/analytics/top-regioes", { dataInicio, dataFim, responsabilidadeFilter }],
     queryFn: () => fetchWithCredentials(buildUrl("/api/mapa-decisoes/analytics/top-regioes")),
   });
 
@@ -454,12 +459,12 @@ function AnalyticsPanel() {
     desfavoraveis: number;
     percentualFavoravel: number;
   }>>({
-    queryKey: ["/api/mapa-decisoes/analytics/top-desembargadores", { dataInicio, dataFim }],
+    queryKey: ["/api/mapa-decisoes/analytics/top-desembargadores", { dataInicio, dataFim, responsabilidadeFilter }],
     queryFn: () => fetchWithCredentials(buildUrl("/api/mapa-decisoes/analytics/top-desembargadores")),
   });
 
   const { data: timeline, isLoading: loadingTimeline } = useQuery<TimelineData[]>({
-    queryKey: ["/api/mapa-decisoes/analytics/timeline", { dataInicio, dataFim }],
+    queryKey: ["/api/mapa-decisoes/analytics/timeline", { dataInicio, dataFim, responsabilidadeFilter }],
     queryFn: () => fetchWithCredentials(buildUrl("/api/mapa-decisoes/analytics/timeline")),
   });
 
@@ -485,27 +490,50 @@ function AnalyticsPanel() {
         <div className="flex flex-wrap items-center justify-between gap-4">
           <h3 className="font-semibold flex items-center gap-2">
             <Calendar className="h-5 w-5 text-primary" />
-            Período de Análise
+            Filtros de Análise
           </h3>
-          <div className="flex items-center gap-2">
-            <label className="text-sm text-muted-foreground">De:</label>
-            <Input
-              type="date"
-              className="w-36 h-8"
-              value={dataInicio}
-              onChange={(e) => setDataInicio(e.target.value)}
-              data-testid="input-periodo-inicio"
-            />
-            <label className="text-sm text-muted-foreground">Até:</label>
-            <Input
-              type="date"
-              className="w-36 h-8"
-              value={dataFim}
-              onChange={(e) => setDataFim(e.target.value)}
-              data-testid="input-periodo-fim"
-            />
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-muted-foreground">De:</label>
+              <Input
+                type="date"
+                className="w-36 h-8"
+                value={dataInicio}
+                onChange={(e) => setDataInicio(e.target.value)}
+                data-testid="input-periodo-inicio"
+              />
+              <label className="text-sm text-muted-foreground">Até:</label>
+              <Input
+                type="date"
+                className="w-36 h-8"
+                value={dataFim}
+                onChange={(e) => setDataFim(e.target.value)}
+                data-testid="input-periodo-fim"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4 text-muted-foreground" />
+              <label className="text-sm text-muted-foreground">Responsabilidade:</label>
+              <Select value={responsabilidadeFilter} onValueChange={setResponsabilidadeFilter}>
+                <SelectTrigger className="w-36 h-8" data-testid="select-analytics-responsabilidade">
+                  <SelectValue placeholder="Selecione..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todas">Todas</SelectItem>
+                  <SelectItem value="solidaria">Solidária</SelectItem>
+                  <SelectItem value="subsidiaria">Subsidiária</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </div>
+        {responsabilidadeFilter !== "todas" && (
+          <div className="mt-2">
+            <Badge variant="secondary" className="text-xs">
+              Filtrando: {responsabilidadeFilter === "solidaria" ? "Solidária" : "Subsidiária"}
+            </Badge>
+          </div>
+        )}
       </Card>
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">

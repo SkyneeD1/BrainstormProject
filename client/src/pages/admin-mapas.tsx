@@ -90,8 +90,9 @@ function DecisaoItem({ decisao, onRefresh }: { decisao: DecisaoRpac; onRefresh: 
 
   const getResultadoColor = (resultado: string) => {
     const r = resultado?.toUpperCase() || "";
-    if (r.includes("FAVORÁVEL")) return "text-emerald-600 dark:text-emerald-400";
+    // Check DESFAVORÁVEL first since it contains "FAVORÁVEL"
     if (r.includes("DESFAVORÁVEL")) return "text-red-600 dark:text-red-400";
+    if (r.includes("FAVORÁVEL")) return "text-emerald-600 dark:text-emerald-400";
     return "text-slate-500";
   };
 
