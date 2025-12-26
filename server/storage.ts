@@ -1463,7 +1463,7 @@ export class MemStorage implements IStorage {
     return regiao;
   }
 
-  async getTRTsComEstatisticas(): Promise<Array<{
+  async getTRTsComEstatisticas(responsabilidadeFilter?: string): Promise<Array<{
     nome: string;
     totalTurmas: number;
     totalDesembargadores: number;
@@ -1474,36 +1474,71 @@ export class MemStorage implements IStorage {
     percentualFavoravel: number;
   }>> {
     const turmasList = await this.getAllTurmas();
-    const trtMap = new Map<string, { displayName: string, turmas: Turma[], desembargadores: Desembargador[], decisoes: DecisaoRpac[] }>();
+    const trtMap = new Map<string, { 
+      displayName: string, 
+      allTurmas: Set<string>, 
+      allDesembargadores: Set<string>,
+      turmasWithMatches: Set<string>, 
+      desembargadoresWithMatches: Set<string>, 
+      filteredDecisoes: DecisaoRpac[] 
+    }>();
 
     for (const turma of turmasList) {
       const trtKey = this.normalizeTRTKey(turma.regiao);
       const displayName = this.formatTRTDisplayName(turma.regiao);
       
       if (!trtMap.has(trtKey)) {
-        trtMap.set(trtKey, { displayName, turmas: [], desembargadores: [], decisoes: [] });
+        trtMap.set(trtKey, { 
+          displayName, 
+          allTurmas: new Set(), 
+          allDesembargadores: new Set(),
+          turmasWithMatches: new Set(), 
+          desembargadoresWithMatches: new Set(), 
+          filteredDecisoes: [] 
+        });
       }
-      trtMap.get(trtKey)!.turmas.push(turma);
+      
+      // Always track this turma for the TRT
+      trtMap.get(trtKey)!.allTurmas.add(turma.id);
       
       const desembargadores = await this.getDesembargadoresByTurma(turma.id);
       for (const d of desembargadores) {
-        trtMap.get(trtKey)!.desembargadores.push(d);
+        // Always track this desembargador for the TRT
+        trtMap.get(trtKey)!.allDesembargadores.add(d.id);
+        
         const decisoes = await this.getDecisoesRpacByDesembargador(d.id);
-        trtMap.get(trtKey)!.decisoes.push(...decisoes);
+        // Filter decisoes by responsabilidade if filter is active (using accent-insensitive comparison)
+        const filteredDecisoes = responsabilidadeFilter && responsabilidadeFilter !== 'todas'
+          ? decisoes.filter(dec => this.matchesResponsabilidade(dec.responsabilidade, responsabilidadeFilter))
+          : decisoes;
+        
+        // If this judge has matching decisions, track them for counts
+        if (filteredDecisoes.length > 0) {
+          trtMap.get(trtKey)!.turmasWithMatches.add(turma.id);
+          trtMap.get(trtKey)!.desembargadoresWithMatches.add(d.id);
+          trtMap.get(trtKey)!.filteredDecisoes.push(...filteredDecisoes);
+        }
       }
     }
 
     const result = [];
     for (const [key, data] of Array.from(trtMap.entries())) {
-      const favoraveis = data.decisoes.filter(d => this.isFavoravel(d.resultado)).length;
-      const desfavoraveis = data.decisoes.filter(d => this.isDesfavoravel(d.resultado)).length;
-      const emAnalise = data.decisoes.filter(d => this.isEmAnalise(d.resultado)).length;
-      const total = data.decisoes.length;
+      // Skip TRTs with no matching decisions when filter is active
+      if (responsabilidadeFilter && responsabilidadeFilter !== 'todas' && data.filteredDecisoes.length === 0) {
+        continue;
+      }
+      
+      const favoraveis = data.filteredDecisoes.filter(d => this.isFavoravel(d.resultado)).length;
+      const desfavoraveis = data.filteredDecisoes.filter(d => this.isDesfavoravel(d.resultado)).length;
+      const emAnalise = data.filteredDecisoes.filter(d => this.isEmAnalise(d.resultado)).length;
+      const total = data.filteredDecisoes.length;
 
+      // When filtering, show counts for items with matching decisions only
+      const isFiltering = responsabilidadeFilter && responsabilidadeFilter !== 'todas';
       result.push({
         nome: data.displayName,
-        totalTurmas: data.turmas.length,
-        totalDesembargadores: data.desembargadores.length,
+        totalTurmas: isFiltering ? data.turmasWithMatches.size : data.allTurmas.size,
+        totalDesembargadores: isFiltering ? data.desembargadoresWithMatches.size : data.allDesembargadores.size,
         totalDecisoes: total,
         favoraveis,
         desfavoraveis,
@@ -1520,7 +1555,7 @@ export class MemStorage implements IStorage {
   }
 
   // Analytics: Get Turmas by TRT with statistics
-  async getTurmasByTRT(trtNome: string): Promise<Array<{
+  async getTurmasByTRT(trtNome: string, responsabilidadeFilter?: string): Promise<Array<{
     id: string;
     nome: string;
     totalDesembargadores: number;
@@ -1543,18 +1578,32 @@ export class MemStorage implements IStorage {
       let totalDecisoes = 0;
       let favoraveis = 0;
       let desfavoraveis = 0;
+      let desembargadoresComDecisoes = 0;
 
       for (const d of desembargadores) {
-        const decisoes = await this.getDecisoesRpacByDesembargador(d.id);
+        const allDecisoes = await this.getDecisoesRpacByDesembargador(d.id);
+        // Filter decisoes by responsabilidade if filter is active (using accent-insensitive comparison)
+        const decisoes = responsabilidadeFilter && responsabilidadeFilter !== 'todas'
+          ? allDecisoes.filter(dec => this.matchesResponsabilidade(dec.responsabilidade, responsabilidadeFilter))
+          : allDecisoes;
+        
+        if (decisoes.length > 0) {
+          desembargadoresComDecisoes++;
+        }
         totalDecisoes += decisoes.length;
         favoraveis += decisoes.filter(dec => this.isFavoravel(dec.resultado)).length;
         desfavoraveis += decisoes.filter(dec => this.isDesfavoravel(dec.resultado)).length;
       }
 
+      // Skip turmas with no matching decisions when filter is active
+      if (responsabilidadeFilter && responsabilidadeFilter !== 'todas' && totalDecisoes === 0) {
+        continue;
+      }
+
       result.push({
         id: turma.id,
         nome: turma.nome,
-        totalDesembargadores: desembargadores.length,
+        totalDesembargadores: responsabilidadeFilter && responsabilidadeFilter !== 'todas' ? desembargadoresComDecisoes : desembargadores.length,
         totalDecisoes,
         favoraveis,
         desfavoraveis,
@@ -1626,6 +1675,19 @@ export class MemStorage implements IStorage {
   // Helper: Check if resultado is under analysis
   private isEmAnalise(resultado: string | null | undefined): boolean {
     return this.normalizeResultado(resultado).includes('ANALISE');
+  }
+
+  // Helper: Normalize responsabilidade by removing accents and lowercasing for comparison
+  private normalizeResponsabilidade(value: string | null | undefined): string {
+    if (!value) return '';
+    return value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  }
+
+  // Helper: Check if responsabilidade matches filter value (case-insensitive, accent-insensitive)
+  private matchesResponsabilidade(decisaoResp: string | null | undefined, filterValue: string): boolean {
+    const normalized = this.normalizeResponsabilidade(decisaoResp);
+    const normalizedFilter = this.normalizeResponsabilidade(filterValue);
+    return normalized === normalizedFilter;
   }
 
   // Helper: Filter decisoes by date range
@@ -1782,6 +1844,10 @@ export class MemStorage implements IStorage {
     emAnalise: number;
     percentualFavoravel: number;
     percentualDesfavoravel: number;
+    upiSim: number;
+    upiNao: number;
+    solidarias: number;
+    subsidiarias: number;
   }> {
     const turmasList = await this.getAllTurmas();
     const trtSet = new Set(turmasList.map(t => t.regiao || 'Sem Região'));
@@ -1790,6 +1856,10 @@ export class MemStorage implements IStorage {
     let favoraveis = 0;
     let desfavoraveis = 0;
     let emAnalise = 0;
+    let upiSim = 0;
+    let upiNao = 0;
+    let solidarias = 0;
+    let subsidiarias = 0;
 
     for (const turma of turmasList) {
       const desembargadores = await this.getDesembargadoresByTurma(turma.id);
@@ -1808,6 +1878,18 @@ export class MemStorage implements IStorage {
           } else if (resultado.includes('ANALISE')) {
             emAnalise++;
           }
+          
+          // Count UPI and Responsabilidade
+          if (dec.upi === 'sim') {
+            upiSim++;
+          } else {
+            upiNao++;
+          }
+          if (dec.responsabilidade === 'solidaria') {
+            solidarias++;
+          } else {
+            subsidiarias++;
+          }
         }
       }
     }
@@ -1822,6 +1904,10 @@ export class MemStorage implements IStorage {
       emAnalise,
       percentualFavoravel: totalDecisoes > 0 ? Math.round((favoraveis / totalDecisoes) * 100) : 0,
       percentualDesfavoravel: totalDecisoes > 0 ? Math.round((desfavoraveis / totalDecisoes) * 100) : 0,
+      upiSim,
+      upiNao,
+      solidarias,
+      subsidiarias,
     };
   }
 

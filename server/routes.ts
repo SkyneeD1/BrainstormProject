@@ -1090,7 +1090,8 @@ export async function registerRoutes(
   // ========== Mapa de Decisões Analytics Routes ==========
   app.get("/api/mapa-decisoes/trts", isAuthenticated, async (req, res) => {
     try {
-      const trts = await storage.getTRTsComEstatisticas();
+      const responsabilidade = req.query.responsabilidade as string | undefined;
+      const trts = await storage.getTRTsComEstatisticas(responsabilidade);
       res.json(trts);
     } catch (error) {
       console.error("Error fetching TRTs:", error);
@@ -1100,7 +1101,8 @@ export async function registerRoutes(
 
   app.get("/api/mapa-decisoes/turmas/:trtNome", isAuthenticated, async (req, res) => {
     try {
-      const turmas = await storage.getTurmasByTRT(decodeURIComponent(req.params.trtNome));
+      const responsabilidade = req.query.responsabilidade as string | undefined;
+      const turmas = await storage.getTurmasByTRT(decodeURIComponent(req.params.trtNome), responsabilidade);
       res.json(turmas);
     } catch (error) {
       console.error("Error fetching turmas:", error);

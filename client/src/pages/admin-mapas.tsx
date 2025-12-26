@@ -66,11 +66,13 @@ function DecisaoItem({ decisao, onRefresh }: { decisao: DecisaoRpac; onRefresh: 
   const [editData, setEditData] = useState({ 
     resultado: decisao.resultado, 
     observacoes: decisao.observacoes || "",
-    dataDecisao: decisao.dataDecisao ? new Date(decisao.dataDecisao).toISOString().split('T')[0] : ""
+    dataDecisao: decisao.dataDecisao ? new Date(decisao.dataDecisao).toISOString().split('T')[0] : "",
+    upi: decisao.upi || "nao",
+    responsabilidade: decisao.responsabilidade || "subsidiaria"
   });
 
   const updateMutation = useMutation({
-    mutationFn: async (data: { resultado: string; observacoes?: string; dataDecisao?: string }) => apiRequest("PATCH", `/api/decisoes/${decisao.id}`, data),
+    mutationFn: async (data: { resultado: string; observacoes?: string; dataDecisao?: string; upi?: string; responsabilidade?: string }) => apiRequest("PATCH", `/api/decisoes/${decisao.id}`, data),
     onSuccess: () => {
       toast({ title: "Decisão atualizada" });
       setEditing(false);
@@ -114,6 +116,24 @@ function DecisaoItem({ decisao, onRefresh }: { decisao: DecisaoRpac; onRefresh: 
             <SelectItem value="EM ANÁLISE">Em Análise</SelectItem>
           </SelectContent>
         </Select>
+        <Select value={editData.upi} onValueChange={(v) => setEditData(prev => ({ ...prev, upi: v }))}>
+          <SelectTrigger className="w-24 h-7 text-xs">
+            <SelectValue placeholder="UPI" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="sim">UPI: Sim</SelectItem>
+            <SelectItem value="nao">UPI: Não</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={editData.responsabilidade} onValueChange={(v) => setEditData(prev => ({ ...prev, responsabilidade: v }))}>
+          <SelectTrigger className="w-28 h-7 text-xs">
+            <SelectValue placeholder="Resp." />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="solidaria">Solidária</SelectItem>
+            <SelectItem value="subsidiaria">Subsidiária</SelectItem>
+          </SelectContent>
+        </Select>
         <Button size="sm" className="h-7" onClick={() => updateMutation.mutate(editData)} disabled={updateMutation.isPending}>
           Salvar
         </Button>
@@ -128,6 +148,12 @@ function DecisaoItem({ decisao, onRefresh }: { decisao: DecisaoRpac; onRefresh: 
     <div className="flex items-center gap-2 py-1 px-2 hover:bg-muted/50 rounded group">
       <span className="text-xs flex-1 font-mono">{decisao.numeroProcesso}</span>
       <span className={`text-xs font-semibold ${getResultadoColor(decisao.resultado)}`}>{decisao.resultado}</span>
+      {decisao.upi === "sim" && (
+        <Badge variant="outline" className="text-[10px] h-5 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300">UPI</Badge>
+      )}
+      <Badge variant="secondary" className="text-[10px] h-5">
+        {decisao.responsabilidade === "solidaria" ? "Solid." : "Subsid."}
+      </Badge>
       <div className="opacity-0 group-hover:opacity-100 flex gap-1">
         <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setEditing(true)} data-testid={`button-edit-decisao-${decisao.id}`}>
           <Edit2 className="h-3 w-3" />
@@ -158,13 +184,19 @@ function DesembargadorCard({ desembargador, onRefresh }: { desembargador: Desemb
   const { toast } = useToast();
   const [expanded, setExpanded] = useState(false);
   const [showAddDecisao, setShowAddDecisao] = useState(false);
-  const [newDecisao, setNewDecisao] = useState({ numeroProcesso: "", resultado: "EM ANÁLISE", dataDecisao: new Date().toISOString().split('T')[0] });
+  const [newDecisao, setNewDecisao] = useState({ 
+    numeroProcesso: "", 
+    resultado: "EM ANÁLISE", 
+    dataDecisao: new Date().toISOString().split('T')[0],
+    upi: "nao",
+    responsabilidade: "subsidiaria"
+  });
 
   const createDecisaoMutation = useMutation({
-    mutationFn: async (data: { desembargadorId: string; numeroProcesso: string; resultado: string; dataDecisao: string }) => apiRequest("POST", "/api/decisoes", data),
+    mutationFn: async (data: { desembargadorId: string; numeroProcesso: string; resultado: string; dataDecisao: string; upi: string; responsabilidade: string }) => apiRequest("POST", "/api/decisoes", data),
     onSuccess: () => {
       toast({ title: "Decisão adicionada" });
-      setNewDecisao({ numeroProcesso: "", resultado: "EM ANÁLISE", dataDecisao: new Date().toISOString().split('T')[0] });
+      setNewDecisao({ numeroProcesso: "", resultado: "EM ANÁLISE", dataDecisao: new Date().toISOString().split('T')[0], upi: "nao", responsabilidade: "subsidiaria" });
       setShowAddDecisao(false);
       onRefresh();
     },
@@ -234,6 +266,24 @@ function DesembargadorCard({ desembargador, onRefresh }: { desembargador: Desemb
                   <SelectItem value="FAVORÁVEL">Favorável</SelectItem>
                   <SelectItem value="DESFAVORÁVEL">Desfavorável</SelectItem>
                   <SelectItem value="EM ANÁLISE">Em Análise</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={newDecisao.upi} onValueChange={(v) => setNewDecisao(prev => ({ ...prev, upi: v }))}>
+                <SelectTrigger className="w-24 h-8 text-xs" data-testid="select-new-upi">
+                  <SelectValue placeholder="UPI" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="sim">UPI: Sim</SelectItem>
+                  <SelectItem value="nao">UPI: Não</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={newDecisao.responsabilidade} onValueChange={(v) => setNewDecisao(prev => ({ ...prev, responsabilidade: v }))}>
+                <SelectTrigger className="w-28 h-8 text-xs" data-testid="select-new-responsabilidade">
+                  <SelectValue placeholder="Resp." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="solidaria">Solidária</SelectItem>
+                  <SelectItem value="subsidiaria">Subsidiária</SelectItem>
                 </SelectContent>
               </Select>
               <Button

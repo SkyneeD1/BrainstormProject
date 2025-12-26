@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Filter } from "lucide-react";
 import {
   Building2,
   Users,
@@ -112,6 +114,10 @@ interface Estatisticas {
   emAnalise: number;
   percentualFavoravel: number;
   percentualDesfavoravel: number;
+  upiSim: number;
+  upiNao: number;
+  solidarias: number;
+  subsidiarias: number;
 }
 
 interface TimelineData {
@@ -606,6 +612,68 @@ function AnalyticsPanel() {
         </Card>
       </div>
 
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <Card className="p-4">
+          <h3 className="font-semibold flex items-center gap-2 mb-4">
+            <FileText className="h-5 w-5 text-primary" />
+            Teses UPI
+          </h3>
+          <div className="flex items-center justify-center gap-8 py-4">
+            <div className="text-center">
+              <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">
+                {estatisticas?.upiSim || 0}
+              </p>
+              <p className="text-sm text-muted-foreground">Com UPI</p>
+            </div>
+            <div className="text-center">
+              <p className="text-3xl font-bold text-slate-500">
+                {estatisticas?.upiNao || 0}
+              </p>
+              <p className="text-sm text-muted-foreground">Sem UPI</p>
+            </div>
+          </div>
+          <div className="text-center text-xs text-muted-foreground">
+            {estatisticas?.totalDecisoes ? Math.round((estatisticas.upiSim / estatisticas.totalDecisoes) * 100) : 0}% das decisões possuem tese UPI
+          </div>
+        </Card>
+
+        <Card className="p-4">
+          <h3 className="font-semibold flex items-center gap-2 mb-4">
+            <Scale className="h-5 w-5 text-primary" />
+            Responsabilidade Solidária
+          </h3>
+          <div className="flex items-center justify-center py-4">
+            <div className="text-center">
+              <p className="text-4xl font-bold text-amber-600 dark:text-amber-400">
+                {estatisticas?.solidarias || 0}
+              </p>
+              <p className="text-sm text-muted-foreground">Casos</p>
+            </div>
+          </div>
+          <div className="text-center text-xs text-muted-foreground">
+            {estatisticas?.totalDecisoes ? Math.round((estatisticas.solidarias / estatisticas.totalDecisoes) * 100) : 0}% do total de decisões
+          </div>
+        </Card>
+
+        <Card className="p-4">
+          <h3 className="font-semibold flex items-center gap-2 mb-4">
+            <Scale className="h-5 w-5 text-primary" />
+            Responsabilidade Subsidiária
+          </h3>
+          <div className="flex items-center justify-center py-4">
+            <div className="text-center">
+              <p className="text-4xl font-bold text-purple-600 dark:text-purple-400">
+                {estatisticas?.subsidiarias || 0}
+              </p>
+              <p className="text-sm text-muted-foreground">Casos</p>
+            </div>
+          </div>
+          <div className="text-center text-xs text-muted-foreground">
+            {estatisticas?.totalDecisoes ? Math.round((estatisticas.subsidiarias / estatisticas.totalDecisoes) * 100) : 0}% do total de decisões
+          </div>
+        </Card>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="p-4">
           <h3 className="font-semibold flex items-center gap-2 mb-4">
@@ -759,13 +827,26 @@ export default function MapaDecisoesPage() {
   const [selectedTRT, setSelectedTRT] = useState<string | null>(null);
   const [selectedTurma, setSelectedTurma] = useState<{ id: string; nome: string } | null>(null);
   const [activeTab, setActiveTab] = useState<"navegacao" | "analytics">("navegacao");
+  const [responsabilidadeFilter, setResponsabilidadeFilter] = useState<string>("todas");
 
   const { data: trts, isLoading: loadingTRTs } = useQuery<TRTData[]>({
-    queryKey: ["/api/mapa-decisoes/trts"],
+    queryKey: ["/api/mapa-decisoes/trts", { responsabilidade: responsabilidadeFilter }],
+    queryFn: async () => {
+      const params = responsabilidadeFilter !== "todas" ? `?responsabilidade=${responsabilidadeFilter}` : "";
+      const res = await fetch(`/api/mapa-decisoes/trts${params}`, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch TRTs');
+      return res.json();
+    },
   });
 
   const { data: turmas, isLoading: loadingTurmas } = useQuery<TurmaData[]>({
-    queryKey: ["/api/mapa-decisoes/turmas", selectedTRT],
+    queryKey: ["/api/mapa-decisoes/turmas", selectedTRT, { responsabilidade: responsabilidadeFilter }],
+    queryFn: async () => {
+      const params = responsabilidadeFilter !== "todas" ? `?responsabilidade=${responsabilidadeFilter}` : "";
+      const res = await fetch(`/api/mapa-decisoes/turmas/${encodeURIComponent(selectedTRT!)}${params}`, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch turmas');
+      return res.json();
+    },
     enabled: !!selectedTRT,
   });
 
@@ -817,6 +898,28 @@ export default function MapaDecisoesPage() {
         </TabsList>
 
         <TabsContent value="navegacao" className="space-y-6">
+          <div className="flex items-center gap-4 p-4 bg-muted/50 rounded-lg">
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium">Filtrar por Responsabilidade:</span>
+            </div>
+            <Select value={responsabilidadeFilter} onValueChange={setResponsabilidadeFilter}>
+              <SelectTrigger className="w-48" data-testid="select-responsabilidade-filter">
+                <SelectValue placeholder="Selecione..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todas">Todas</SelectItem>
+                <SelectItem value="solidaria">Solidária</SelectItem>
+                <SelectItem value="subsidiaria">Subsidiária</SelectItem>
+              </SelectContent>
+            </Select>
+            {responsabilidadeFilter !== "todas" && (
+              <Badge variant="secondary" className="text-xs">
+                Filtrando: {responsabilidadeFilter === "solidaria" ? "Solidária" : "Subsidiária"}
+              </Badge>
+            )}
+          </div>
+
           {loadingTRTs ? (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
               {Array.from({ length: 12 }).map((_, i) => (
