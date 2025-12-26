@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { BarChart3, Database, ChevronDown, Building2, Scale, Users, LogOut, Shield, Eye, Loader2, Map, Gavel, User, TrendingUp, Calendar, Lightbulb, FileSpreadsheet, Table2 } from "lucide-react";
+import { BarChart3, Database, ChevronDown, Building2, Scale, Users, LogOut, Shield, Eye, Loader2, Map, Gavel, User, TrendingUp, Calendar, Lightbulb, FileSpreadsheet, Table2, ArrowUpDown, FileUp } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -39,6 +39,22 @@ const menuItems = [
         title: "Comparação de Períodos",
         url: "/passivo/comparacao",
         icon: TrendingUp,
+      },
+    ],
+  },
+  {
+    title: "Entrada & Saídas",
+    icon: ArrowUpDown,
+    subItems: [
+      {
+        title: "Dashboard",
+        url: "/entradas/dashboard",
+        icon: BarChart3,
+      },
+      {
+        title: "Importar Dados",
+        url: "/entradas/importar",
+        icon: FileUp,
       },
     ],
   },

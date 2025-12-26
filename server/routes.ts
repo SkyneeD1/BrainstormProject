@@ -1748,31 +1748,31 @@ export async function registerRoutes(
         const getCell = (idx: number) => row[idx]?.toString().trim() || '';
         
         // Parse date (format: 10/31/25 -> 2025-10-31)
-        let dataStr = '';
+        let parsedDate: Date | undefined = undefined;
         const dateVal = getCell(1);
         if (dateVal) {
           const parts = dateVal.split('/');
           if (parts.length === 3) {
-            const month = parts[0].padStart(2, '0');
-            const day = parts[1].padStart(2, '0');
-            let year = parts[2];
-            if (year.length === 2) {
-              year = '20' + year;
+            const month = parseInt(parts[0]) - 1;
+            const day = parseInt(parts[1]);
+            let year = parseInt(parts[2]);
+            if (year < 100) {
+              year = 2000 + year;
             }
-            dataStr = `${year}-${month}-${day}`;
+            parsedDate = new Date(year, month, day);
           }
         }
 
         return {
           numeroProcesso: getCell(0),
-          dataDistribuicao: dataStr || undefined,
+          dataDistribuicao: parsedDate,
           tribunal: getCell(2),
           empresa: getCell(3).toUpperCase(),
           valorContingencia: getCell(4)
         };
       }).filter(c => c.numeroProcesso);
 
-      const created = await storage.createCasosNovosBatch(casos);
+      const created = await storage.createCasosNovosBatch(casos as any);
       res.status(201).json({ 
         success: true, 
         count: created.length,
