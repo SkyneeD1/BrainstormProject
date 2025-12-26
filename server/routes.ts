@@ -1677,5 +1677,146 @@ export async function registerRoutes(
     }
   });
 
+  // =====================================================
+  // CASOS NOVOS - Entrada & Saídas
+  // =====================================================
+
+  app.get("/api/casos-novos", isAuthenticated, async (req, res) => {
+    try {
+      const data = await storage.getAllCasosNovos();
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching casos novos:", error);
+      res.status(500).json({ error: "Erro ao buscar casos novos" });
+    }
+  });
+
+  app.get("/api/casos-novos/stats", isAuthenticated, async (req, res) => {
+    try {
+      const stats = await storage.getCasosNovosStats();
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching casos novos stats:", error);
+      res.status(500).json({ error: "Erro ao buscar estatísticas de casos novos" });
+    }
+  });
+
+  app.post("/api/casos-novos", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const created = await storage.createCasoNovo(req.body);
+      res.status(201).json(created);
+    } catch (error) {
+      console.error("Error creating caso novo:", error);
+      res.status(500).json({ error: "Erro ao criar caso novo" });
+    }
+  });
+
+  app.post("/api/casos-novos/batch", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const items = req.body as any[];
+      if (!Array.isArray(items)) {
+        return res.status(400).json({ error: "Esperado array de itens" });
+      }
+      const created = await storage.createCasosNovosBatch(items);
+      res.status(201).json({ count: created.length, items: created });
+    } catch (error) {
+      console.error("Error batch creating casos novos:", error);
+      res.status(500).json({ error: "Erro ao criar casos novos em lote" });
+    }
+  });
+
+  app.post("/api/casos-novos/upload", isAuthenticated, isAdmin, upload.single('file'), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: "Arquivo não enviado" });
+      }
+
+      const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
+      const sheetName = workbook.SheetNames[0];
+      const sheet = workbook.Sheets[sheetName];
+      const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false }) as string[][];
+
+      if (rows.length < 2) {
+        return res.status(400).json({ error: "Arquivo vazio ou sem dados" });
+      }
+
+      // Map headers - expected: número do processo, data da distribuição, tribunal, empresa, valor da contingência
+      const headers = rows[0].map(h => h?.toLowerCase().trim() || '');
+      const dataRows = rows.slice(1).filter(row => row.some(cell => cell));
+
+      const casos = dataRows.map(row => {
+        const getCell = (idx: number) => row[idx]?.toString().trim() || '';
+        
+        // Parse date (format: 10/31/25 -> 2025-10-31)
+        let dataStr = '';
+        const dateVal = getCell(1);
+        if (dateVal) {
+          const parts = dateVal.split('/');
+          if (parts.length === 3) {
+            const month = parts[0].padStart(2, '0');
+            const day = parts[1].padStart(2, '0');
+            let year = parts[2];
+            if (year.length === 2) {
+              year = '20' + year;
+            }
+            dataStr = `${year}-${month}-${day}`;
+          }
+        }
+
+        return {
+          numeroProcesso: getCell(0),
+          dataDistribuicao: dataStr || undefined,
+          tribunal: getCell(2),
+          empresa: getCell(3).toUpperCase(),
+          valorContingencia: getCell(4)
+        };
+      }).filter(c => c.numeroProcesso);
+
+      const created = await storage.createCasosNovosBatch(casos);
+      res.status(201).json({ 
+        success: true, 
+        count: created.length,
+        message: `${created.length} casos importados com sucesso`
+      });
+    } catch (error) {
+      console.error("Error uploading casos novos:", error);
+      res.status(500).json({ error: "Erro ao processar arquivo" });
+    }
+  });
+
+  app.delete("/api/casos-novos/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      await storage.deleteCasoNovo(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting caso novo:", error);
+      res.status(500).json({ error: "Erro ao excluir caso novo" });
+    }
+  });
+
+  app.post("/api/casos-novos/delete-batch", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { ids } = req.body;
+      if (!Array.isArray(ids)) {
+        return res.status(400).json({ error: "Esperado array de IDs" });
+      }
+      await storage.deleteCasosNovosBatch(ids);
+      res.json({ success: true, count: ids.length });
+    } catch (error) {
+      console.error("Error batch deleting casos novos:", error);
+      res.status(500).json({ error: "Erro ao excluir casos novos em lote" });
+    }
+  });
+
+  app.delete("/api/casos-novos", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      await storage.deleteAllCasosNovos();
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting all casos novos:", error);
+      res.status(500).json({ error: "Erro ao excluir todos os casos novos" });
+    }
+  });
+
   return httpServer;
 }
