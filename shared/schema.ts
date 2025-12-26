@@ -688,3 +688,27 @@ export const comparacaoMensalSchema = z.object({
 });
 
 export type ComparacaoMensal = z.infer<typeof comparacaoMensalSchema>;
+
+// Módulo Entrada & Saídas - Casos Novos
+export const casosNovos = pgTable("casos_novos", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  numeroProcesso: varchar("numero_processo").notNull(),
+  dataDistribuicao: timestamp("data_distribuicao"),
+  tribunal: varchar("tribunal").notNull(),
+  empresa: varchar("empresa").notNull(),
+  valorContingencia: varchar("valor_contingencia"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type CasoNovo = typeof casosNovos.$inferSelect;
+export type InsertCasoNovo = typeof casosNovos.$inferInsert;
+
+export const insertCasoNovoSchema = z.object({
+  numeroProcesso: z.string().min(1, "Número do processo é obrigatório"),
+  dataDistribuicao: z.string().optional(),
+  tribunal: z.string().min(1, "Tribunal é obrigatório"),
+  empresa: z.string().min(1, "Empresa é obrigatória"),
+  valorContingencia: z.string().optional(),
+});
+
+export type CreateCasoNovoInput = z.infer<typeof insertCasoNovoSchema>;

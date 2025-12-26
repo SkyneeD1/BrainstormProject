@@ -42,9 +42,11 @@ import type {
   TurmaComDesembargadores,
   MapaDecisoes,
   DecisaoRpac,
-  InsertDecisaoRpac
+  InsertDecisaoRpac,
+  CasoNovo,
+  InsertCasoNovo
 } from "@shared/schema";
-import { users, trts, varas, juizes, julgamentos, audiencias, distribuidos, encerrados, sentencasMerito, acordaosMerito, turmas, desembargadores, decisoesRpac, passivoMensal } from "@shared/schema";
+import { users, trts, varas, juizes, julgamentos, audiencias, distribuidos, encerrados, sentencasMerito, acordaosMerito, turmas, desembargadores, decisoesRpac, passivoMensal, casosNovos } from "@shared/schema";
 import { and, gte, lte, inArray, sql } from "drizzle-orm";
 import { parseExcelFile } from "./excel-parser";
 import { db } from "./db";
@@ -183,6 +185,25 @@ export interface IStorage {
   savePassivoMensal(mes: string, ano: string, dados: PassivoData): Promise<void>;
   getAllPassivoMensalPeriodos(): Promise<Array<{ mes: string; ano: string }>>;
   deletePassivoMensal(mes: string, ano: string): Promise<boolean>;
+  
+  // Casos Novos - Entrada & Saídas
+  getAllCasosNovos(): Promise<CasoNovo[]>;
+  getCasoNovo(id: string): Promise<CasoNovo | undefined>;
+  createCasoNovo(caso: InsertCasoNovo): Promise<CasoNovo>;
+  createCasosNovosBatch(casos: InsertCasoNovo[]): Promise<CasoNovo[]>;
+  deleteCasoNovo(id: string): Promise<boolean>;
+  deleteCasosNovosBatch(ids: string[]): Promise<boolean>;
+  deleteAllCasosNovos(): Promise<boolean>;
+  getCasosNovosStats(): Promise<{
+    total: number;
+    mesAtual: number;
+    mesAnterior: number;
+    variacaoPercentual: number;
+    porTribunal: Array<{ tribunal: string; quantidade: number; percentual: number }>;
+    porEmpresa: Array<{ empresa: string; quantidade: number; percentual: number }>;
+    porMes: Array<{ mes: string; ano: string; quantidade: number }>;
+    valorTotalContingencia: number;
+  }>;
 }
 
 export class MemStorage implements IStorage {
@@ -2179,6 +2200,162 @@ export class MemStorage implements IStorage {
       )
     );
     return true;
+  }
+
+  // Casos Novos - Entrada & Saídas
+  async getAllCasosNovos(): Promise<CasoNovo[]> {
+    return await db.select().from(casosNovos).orderBy(casosNovos.dataDistribuicao);
+  }
+
+  async getCasoNovo(id: string): Promise<CasoNovo | undefined> {
+    const [caso] = await db.select().from(casosNovos).where(eq(casosNovos.id, id));
+    return caso;
+  }
+
+  async createCasoNovo(caso: InsertCasoNovo): Promise<CasoNovo> {
+    const dataDistribuicao = caso.dataDistribuicao ? new Date(caso.dataDistribuicao) : undefined;
+    const [created] = await db.insert(casosNovos).values({
+      ...caso,
+      dataDistribuicao: dataDistribuicao
+    }).returning();
+    return created;
+  }
+
+  async createCasosNovosBatch(casos: InsertCasoNovo[]): Promise<CasoNovo[]> {
+    if (casos.length === 0) return [];
+    
+    const casosWithDates = casos.map(c => ({
+      ...c,
+      dataDistribuicao: c.dataDistribuicao ? new Date(c.dataDistribuicao) : undefined
+    }));
+    
+    const created = await db.insert(casosNovos).values(casosWithDates).returning();
+    return created;
+  }
+
+  async deleteCasoNovo(id: string): Promise<boolean> {
+    await db.delete(casosNovos).where(eq(casosNovos.id, id));
+    return true;
+  }
+
+  async deleteCasosNovosBatch(ids: string[]): Promise<boolean> {
+    if (ids.length === 0) return true;
+    await db.delete(casosNovos).where(inArray(casosNovos.id, ids));
+    return true;
+  }
+
+  async deleteAllCasosNovos(): Promise<boolean> {
+    await db.delete(casosNovos);
+    return true;
+  }
+
+  async getCasosNovosStats(): Promise<{
+    total: number;
+    mesAtual: number;
+    mesAnterior: number;
+    variacaoPercentual: number;
+    porTribunal: Array<{ tribunal: string; quantidade: number; percentual: number }>;
+    porEmpresa: Array<{ empresa: string; quantidade: number; percentual: number }>;
+    porMes: Array<{ mes: string; ano: string; quantidade: number }>;
+    valorTotalContingencia: number;
+  }> {
+    const allCasos = await this.getAllCasosNovos();
+    const total = allCasos.length;
+
+    // Calculate current and previous month
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+    const prevMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+    const prevYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+
+    let mesAtual = 0;
+    let mesAnterior = 0;
+    let valorTotal = 0;
+
+    const tribunalMap = new Map<string, number>();
+    const empresaMap = new Map<string, number>();
+    const mesMap = new Map<string, number>();
+
+    for (const caso of allCasos) {
+      // Parse valor contingencia (format: " 10,000.00 ")
+      if (caso.valorContingencia) {
+        const valorStr = caso.valorContingencia.trim().replace(/,/g, '');
+        const valor = parseFloat(valorStr);
+        if (!isNaN(valor)) {
+          valorTotal += valor;
+        }
+      }
+
+      // Count by tribunal
+      const tribunal = caso.tribunal || 'Não Informado';
+      tribunalMap.set(tribunal, (tribunalMap.get(tribunal) || 0) + 1);
+
+      // Count by empresa
+      const empresa = caso.empresa || 'Não Informado';
+      empresaMap.set(empresa, (empresaMap.get(empresa) || 0) + 1);
+
+      // Count by month
+      if (caso.dataDistribuicao) {
+        const date = new Date(caso.dataDistribuicao);
+        const mes = String(date.getMonth() + 1).padStart(2, '0');
+        const ano = String(date.getFullYear());
+        const key = `${mes}-${ano}`;
+        mesMap.set(key, (mesMap.get(key) || 0) + 1);
+
+        // Count current and previous month
+        if (date.getMonth() === currentMonth && date.getFullYear() === currentYear) {
+          mesAtual++;
+        }
+        if (date.getMonth() === prevMonth && date.getFullYear() === prevYear) {
+          mesAnterior++;
+        }
+      }
+    }
+
+    // Calculate percentage variation
+    const variacaoPercentual = mesAnterior > 0 
+      ? Math.round(((mesAtual - mesAnterior) / mesAnterior) * 100)
+      : mesAtual > 0 ? 100 : 0;
+
+    // Convert maps to arrays with percentages
+    const porTribunal = Array.from(tribunalMap.entries())
+      .map(([tribunal, quantidade]) => ({
+        tribunal,
+        quantidade,
+        percentual: total > 0 ? Math.round((quantidade / total) * 100) : 0
+      }))
+      .sort((a, b) => b.quantidade - a.quantidade);
+
+    const porEmpresa = Array.from(empresaMap.entries())
+      .map(([empresa, quantidade]) => ({
+        empresa,
+        quantidade,
+        percentual: total > 0 ? Math.round((quantidade / total) * 100) : 0
+      }))
+      .sort((a, b) => b.quantidade - a.quantidade);
+
+    const porMes = Array.from(mesMap.entries())
+      .map(([key, quantidade]) => {
+        const [mes, ano] = key.split('-');
+        return { mes, ano, quantidade };
+      })
+      .sort((a, b) => {
+        const dateA = new Date(parseInt(a.ano), parseInt(a.mes) - 1);
+        const dateB = new Date(parseInt(b.ano), parseInt(b.mes) - 1);
+        return dateA.getTime() - dateB.getTime();
+      });
+
+    return {
+      total,
+      mesAtual,
+      mesAnterior,
+      variacaoPercentual,
+      porTribunal,
+      porEmpresa,
+      porMes,
+      valorTotalContingencia: valorTotal
+    };
   }
 }
 
