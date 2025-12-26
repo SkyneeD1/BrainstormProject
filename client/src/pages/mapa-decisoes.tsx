@@ -41,6 +41,50 @@ import {
 } from "recharts";
 import type { DecisaoRpac } from "@shared/schema";
 
+// Label configuration for different instances
+function getLabels(instancia: "primeira" | "segunda") {
+  if (instancia === "primeira") {
+    return {
+      pageTitle: "1ª Instância",
+      level1: "Comarca",
+      level1Plural: "Comarcas",
+      level2: "Vara",
+      level2Plural: "Varas",
+      level3: "Juiz",
+      level3Plural: "Juízes",
+      level3Short: "juízes",
+      description: "Análise de favorabilidade por Comarca, Vara e Juiz",
+      navButton: "Navegação por Comarca",
+      totalLevel1: "Total Comarcas",
+      totalLevel2: "Total Varas",
+      totalLevel3: "Total Juízes",
+      top5Level2: "Top 5 Varas - Favorabilidade",
+      top5Level3: "Top 5 Juízes - Favorabilidade",
+      treeTitle: "Árvore Comarcas/Varas",
+      listTitle: "Lista de Juízes",
+    };
+  }
+  return {
+    pageTitle: "2ª Instância",
+    level1: "TRT",
+    level1Plural: "TRTs",
+    level2: "Turma",
+    level2Plural: "Turmas",
+    level3: "Desembargador",
+    level3Plural: "Desembargadores",
+    level3Short: "des.",
+    description: "Análise de favorabilidade por TRT, Turma e Desembargador",
+    navButton: "Navegação por TRT",
+    totalLevel1: "Total TRTs",
+    totalLevel2: "Total Turmas",
+    totalLevel3: "Total Desembargadores",
+    top5Level2: "Top 5 Turmas - Favorabilidade",
+    top5Level3: "Top 5 Desembargadores - Favorabilidade",
+    treeTitle: "Árvore TRT/Turmas",
+    listTitle: "Lista de Desembargadores",
+  };
+}
+
 function FavorabilityAvatar({ percentual, size = 40 }: { percentual: number; size?: number }) {
   const greenAngle = (percentual / 100) * 360;
   return (
@@ -167,7 +211,9 @@ function KPICard({ title, value, subtitle, icon: Icon, trend }: {
   );
 }
 
-function TRTGrid({ trts, onSelect }: { trts: TRTData[]; onSelect: (trt: string) => void }) {
+type Labels = ReturnType<typeof getLabels>;
+
+function TRTGrid({ trts, onSelect, labels }: { trts: TRTData[]; onSelect: (trt: string) => void; labels: Labels }) {
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
       {trts.map((trt) => (
@@ -183,8 +229,8 @@ function TRTGrid({ trts, onSelect }: { trts: TRTData[]; onSelect: (trt: string) 
           </div>
           <div className="space-y-2">
             <div className="flex items-center justify-between text-xs">
-              <span className="text-muted-foreground">{trt.totalTurmas} turmas</span>
-              <span className="text-muted-foreground">{trt.totalDesembargadores} des.</span>
+              <span className="text-muted-foreground">{trt.totalTurmas} {labels.level2Plural.toLowerCase()}</span>
+              <span className="text-muted-foreground">{trt.totalDesembargadores} {labels.level3Short}</span>
             </div>
             <Progress 
               value={trt.percentualFavoravel} 
@@ -205,11 +251,12 @@ function TRTGrid({ trts, onSelect }: { trts: TRTData[]; onSelect: (trt: string) 
   );
 }
 
-function TurmasList({ turmas, trtNome, onSelect, onBack }: { 
+function TurmasList({ turmas, trtNome, onSelect, onBack, labels }: { 
   turmas: TurmaData[]; 
   trtNome: string;
   onSelect: (turmaId: string, turmaNome: string) => void;
   onBack: () => void;
+  labels: Labels;
 }) {
   return (
     <div className="space-y-4">
@@ -222,7 +269,7 @@ function TurmasList({ turmas, trtNome, onSelect, onBack }: {
             <Building2 className="h-5 w-5 text-primary" />
             {trtNome}
           </h2>
-          <p className="text-sm text-muted-foreground">{turmas.length} turmas disponíveis</p>
+          <p className="text-sm text-muted-foreground">{turmas.length} {labels.level2Plural.toLowerCase()} disponíveis</p>
         </div>
       </div>
       
@@ -244,7 +291,7 @@ function TurmasList({ turmas, trtNome, onSelect, onBack }: {
             <div className="grid grid-cols-3 gap-2 text-center">
               <div>
                 <p className="text-lg font-bold">{turma.totalDesembargadores}</p>
-                <p className="text-xs text-muted-foreground">Desemb.</p>
+                <p className="text-xs text-muted-foreground">{labels.level3Plural}</p>
               </div>
               <div>
                 <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">{turma.favoraveis}</p>
@@ -266,11 +313,12 @@ function TurmasList({ turmas, trtNome, onSelect, onBack }: {
   );
 }
 
-function DesembargadorView({ desembargadores, turmaNome, trtNome, onBack }: {
+function DesembargadorView({ desembargadores, turmaNome, trtNome, onBack, labels }: {
   desembargadores: DesembargadorData[];
   turmaNome: string;
   trtNome: string;
   onBack: () => void;
+  labels: Labels;
 }) {
   const [selectedDesembargador, setSelectedDesembargador] = useState<DesembargadorData | null>(null);
   const [empresaFilter, setEmpresaFilter] = useState<string>("todas");
@@ -313,14 +361,14 @@ function DesembargadorView({ desembargadores, turmaNome, trtNome, onBack }: {
           </div>
           <h2 className="text-xl font-bold flex items-center gap-2">
             <Gavel className="h-5 w-5 text-primary" />
-            Desembargadores
+            {labels.level3Plural}
           </h2>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="space-y-3">
-          <h3 className="font-semibold text-sm text-muted-foreground">Lista de Desembargadores</h3>
+          <h3 className="font-semibold text-sm text-muted-foreground">{labels.listTitle}</h3>
           {desembargadores.map((d) => (
             <Card
               key={d.id}
@@ -441,7 +489,7 @@ function DesembargadorView({ desembargadores, turmaNome, trtNome, onBack }: {
   );
 }
 
-function AnalyticsPanel() {
+function AnalyticsPanel({ labels, instancia }: { labels: Labels; instancia: "primeira" | "segunda" }) {
   const [dataInicio, setDataInicio] = useState<string>(() => {
     const date = new Date();
     date.setFullYear(date.getFullYear() - 1);
@@ -454,6 +502,7 @@ function AnalyticsPanel() {
 
   const buildUrl = (base: string) => {
     const params = new URLSearchParams();
+    params.append("instancia", instancia);
     if (dataInicio) params.append("dataInicio", dataInicio);
     if (dataFim) params.append("dataFim", dataFim);
     if (responsabilidadeFilter && responsabilidadeFilter !== "todas") {
@@ -473,12 +522,12 @@ function AnalyticsPanel() {
   };
 
   const { data: estatisticas, isLoading: loadingEstat } = useQuery<Estatisticas>({
-    queryKey: ["/api/mapa-decisoes/analytics/estatisticas", { dataInicio, dataFim, responsabilidadeFilter }],
+    queryKey: ["/api/mapa-decisoes/analytics/estatisticas", instancia, dataInicio, dataFim, responsabilidadeFilter],
     queryFn: () => fetchWithCredentials(buildUrl("/api/mapa-decisoes/analytics/estatisticas")),
   });
 
   const { data: topTurmas, isLoading: loadingTop } = useQuery<TopTurma[]>({
-    queryKey: ["/api/mapa-decisoes/analytics/top-turmas", { dataInicio, dataFim, responsabilidadeFilter }],
+    queryKey: ["/api/mapa-decisoes/analytics/top-turmas", instancia, dataInicio, dataFim, responsabilidadeFilter],
     queryFn: () => fetchWithCredentials(buildUrl("/api/mapa-decisoes/analytics/top-turmas")),
   });
 
@@ -489,7 +538,7 @@ function AnalyticsPanel() {
     desfavoraveis: number;
     percentualFavoravel: number;
   }>>({
-    queryKey: ["/api/mapa-decisoes/analytics/top-regioes", { dataInicio, dataFim, responsabilidadeFilter }],
+    queryKey: ["/api/mapa-decisoes/analytics/top-regioes", instancia, dataInicio, dataFim, responsabilidadeFilter],
     queryFn: () => fetchWithCredentials(buildUrl("/api/mapa-decisoes/analytics/top-regioes")),
   });
 
@@ -503,12 +552,12 @@ function AnalyticsPanel() {
     desfavoraveis: number;
     percentualFavoravel: number;
   }>>({
-    queryKey: ["/api/mapa-decisoes/analytics/top-desembargadores", { dataInicio, dataFim, responsabilidadeFilter }],
+    queryKey: ["/api/mapa-decisoes/analytics/top-desembargadores", instancia, dataInicio, dataFim, responsabilidadeFilter],
     queryFn: () => fetchWithCredentials(buildUrl("/api/mapa-decisoes/analytics/top-desembargadores")),
   });
 
   const { data: timeline, isLoading: loadingTimeline } = useQuery<TimelineData[]>({
-    queryKey: ["/api/mapa-decisoes/analytics/timeline", { dataInicio, dataFim, responsabilidadeFilter }],
+    queryKey: ["/api/mapa-decisoes/analytics/timeline", instancia, dataInicio, dataFim, responsabilidadeFilter],
     queryFn: () => fetchWithCredentials(buildUrl("/api/mapa-decisoes/analytics/timeline")),
   });
 
@@ -521,7 +570,7 @@ function AnalyticsPanel() {
     percentualFavoravel: number;
     percentualDesfavoravel: number;
   }>>({
-    queryKey: ["/api/mapa-decisoes/analytics/por-empresa", { dataInicio, dataFim, responsabilidadeFilter }],
+    queryKey: ["/api/mapa-decisoes/analytics/por-empresa", instancia, dataInicio, dataFim, responsabilidadeFilter],
     queryFn: () => fetchWithCredentials(buildUrl("/api/mapa-decisoes/analytics/por-empresa")),
   });
 
@@ -594,17 +643,17 @@ function AnalyticsPanel() {
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         <KPICard 
-          title="Total TRTs" 
+          title={labels.totalLevel1} 
           value={estatisticas?.totalTRTs || 0} 
           icon={Building2} 
         />
         <KPICard 
-          title="Total Turmas" 
+          title={labels.totalLevel2} 
           value={estatisticas?.totalTurmas || 0} 
           icon={Users} 
         />
         <KPICard 
-          title="Total Desembargadores" 
+          title={labels.totalLevel3} 
           value={estatisticas?.totalDesembargadores || 0} 
           icon={Gavel} 
         />
@@ -628,7 +677,7 @@ function AnalyticsPanel() {
         <Card className="p-4">
           <h3 className="font-semibold flex items-center gap-2 mb-4">
             <Award className="h-5 w-5 text-primary" />
-            Top 5 Turmas - Favorabilidade
+            {labels.top5Level2}
           </h3>
           {topTurmas && topTurmas.length > 0 ? (
             <div className="space-y-3">
@@ -799,7 +848,7 @@ function AnalyticsPanel() {
         <Card className="p-4">
           <h3 className="font-semibold flex items-center gap-2 mb-4">
             <Gavel className="h-5 w-5 text-primary" />
-            Top 5 Desembargadores - Favorabilidade
+            {labels.top5Level3}
           </h3>
           {topDesembargadores && topDesembargadores.length > 0 ? (
             <div className="space-y-3">
@@ -828,7 +877,7 @@ function AnalyticsPanel() {
             </div>
           ) : (
             <p className="text-center text-muted-foreground py-8">
-              Nenhum desembargador com decisões registradas
+              Nenhum {labels.level3.toLowerCase()} com decisões registradas
             </p>
           )}
         </Card>
@@ -973,8 +1022,8 @@ function AnalyticsPanel() {
 
 export default function MapaDecisoesPage() {
   const [location] = useLocation();
-  const instancia = location.includes("primeira-instancia") ? "primeira" : "segunda";
-  const pageTitle = instancia === "primeira" ? "1ª Instância" : "2ª Instância";
+  const instancia = location.includes("primeira-instancia") ? "primeira" : "segunda" as const;
+  const labels = getLabels(instancia);
   
   const [selectedTRT, setSelectedTRT] = useState<string | null>(null);
   const [selectedTurma, setSelectedTurma] = useState<{ id: string; nome: string } | null>(null);
@@ -1048,10 +1097,10 @@ export default function MapaDecisoesPage() {
       <header className="mb-6">
         <h1 className="text-2xl font-bold flex items-center gap-3">
           <Gavel className="h-7 w-7 text-primary" />
-          {pageTitle}
+          {labels.pageTitle}
         </h1>
         <p className="text-muted-foreground mt-1">
-          Análise de favorabilidade por TRT, Turma e Desembargador
+          {labels.description}
         </p>
       </header>
 
@@ -1059,7 +1108,7 @@ export default function MapaDecisoesPage() {
         <TabsList>
           <TabsTrigger value="navegacao" className="flex items-center gap-2" data-testid="tab-navegacao">
             <Building2 className="h-4 w-4" />
-            Navegação por TRT
+            {labels.navButton}
           </TabsTrigger>
           <TabsTrigger value="analytics" className="flex items-center gap-2" data-testid="tab-analytics">
             <BarChart3 className="h-4 w-4" />
@@ -1144,6 +1193,7 @@ export default function MapaDecisoesPage() {
               turmaNome={selectedTurma.nome}
               trtNome={selectedTRT || ""}
               onBack={handleBackToTurmas}
+              labels={labels}
             />
           ) : selectedTRT && turmas ? (
             loadingTurmas ? (
@@ -1158,15 +1208,16 @@ export default function MapaDecisoesPage() {
                 trtNome={selectedTRT}
                 onSelect={handleSelectTurma}
                 onBack={handleBackToTRTs}
+                labels={labels}
               />
             )
           ) : trts ? (
-            <TRTGrid trts={trts} onSelect={handleSelectTRT} />
+            <TRTGrid trts={trts} onSelect={handleSelectTRT} labels={labels} />
           ) : null}
         </TabsContent>
 
         <TabsContent value="analytics">
-          <AnalyticsPanel />
+          <AnalyticsPanel labels={labels} instancia={instancia} />
         </TabsContent>
       </Tabs>
     </div>
