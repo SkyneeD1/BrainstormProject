@@ -16,6 +16,38 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { DecisaoRpac, Desembargador } from "@shared/schema";
 
+// Label configuration for different instances
+function getLabels(instancia: "primeira" | "segunda") {
+  if (instancia === "primeira") {
+    return {
+      pageTitle: "1ª Instância",
+      level1: "Comarca",
+      level1Plural: "Comarcas",
+      level2: "Vara",
+      level2Plural: "Varas",
+      level3: "Juiz",
+      level3Plural: "Juízes",
+      level3Short: "juiz",
+      description: "Gerencie Comarcas, Varas, Juízes e Decisões",
+      treeTab: "Árvore Comarca/Varas",
+      spreadsheetColumn: "Juiz",
+    };
+  }
+  return {
+    pageTitle: "2ª Instância",
+    level1: "TRT",
+    level1Plural: "TRTs",
+    level2: "Turma",
+    level2Plural: "Turmas",
+    level3: "Desembargador",
+    level3Plural: "Desembargadores",
+    level3Short: "desemb",
+    description: "Gerencie TRTs, Turmas, Desembargadores e Decisões",
+    treeTab: "Árvore TRT/Turmas",
+    spreadsheetColumn: "Desembargador",
+  };
+}
+
 function FavorabilityAvatar({ percentual, size = 40 }: { percentual: number; size?: number }) {
   const greenAngle = (percentual / 100) * 360;
   return (
@@ -348,7 +380,9 @@ function DesembargadorCard({ desembargador, onRefresh }: { desembargador: Desemb
   );
 }
 
-function TurmaSection({ turma, onRefresh }: { turma: TurmaComDesembargadores; onRefresh: () => void }) {
+type Labels = ReturnType<typeof getLabels>;
+
+function TurmaSection({ turma, onRefresh, labels }: { turma: TurmaComDesembargadores; onRefresh: () => void; labels: Labels }) {
   const [expanded, setExpanded] = useState(false);
 
   return (
@@ -361,7 +395,7 @@ function TurmaSection({ turma, onRefresh }: { turma: TurmaComDesembargadores; on
         {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
         <Users className="h-4 w-4 text-primary" />
         <span className="font-semibold">{turma.nome}</span>
-        <span className="text-sm text-muted-foreground">({turma.desembargadores.length} desembargadores)</span>
+        <span className="text-sm text-muted-foreground">({turma.desembargadores.length} {labels.level3Plural.toLowerCase()})</span>
       </div>
 
       {expanded && (
@@ -375,7 +409,7 @@ function TurmaSection({ turma, onRefresh }: { turma: TurmaComDesembargadores; on
   );
 }
 
-function SpreadsheetView({ data, onRefresh }: { data: AdminData | undefined; onRefresh: () => void }) {
+function SpreadsheetView({ data, onRefresh, labels }: { data: AdminData | undefined; onRefresh: () => void; labels: Labels }) {
   const { toast } = useToast();
   const [empresaFilter, setEmpresaFilter] = useState<string>("todas");
   const [responsabilidadeFilter, setResponsabilidadeFilter] = useState<string>("todas");
@@ -621,7 +655,7 @@ function SpreadsheetView({ data, onRefresh }: { data: AdminData | undefined; onR
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b">
-                <th className="text-left p-2 font-medium">Desembargador</th>
+                <th className="text-left p-2 font-medium">{labels.level3}</th>
                 <th className="text-left p-2 font-medium">Nº Processo</th>
                 <th className="text-left p-2 font-medium">Data</th>
                 <th className="text-left p-2 font-medium">Resultado</th>
@@ -754,9 +788,9 @@ function SpreadsheetView({ data, onRefresh }: { data: AdminData | undefined; onR
           <table className="w-full text-sm">
             <thead className="sticky top-0 bg-background">
               <tr className="border-b">
-                <th className="text-left p-2 font-medium">TRT</th>
-                <th className="text-left p-2 font-medium">Turma</th>
-                <th className="text-left p-2 font-medium">Desembargador</th>
+                <th className="text-left p-2 font-medium">{labels.level1}</th>
+                <th className="text-left p-2 font-medium">{labels.level2}</th>
+                <th className="text-left p-2 font-medium">{labels.level3}</th>
                 <th className="text-left p-2 font-medium">Nº Processo</th>
                 <th className="text-left p-2 font-medium">Data</th>
                 <th className="text-left p-2 font-medium">Resultado</th>
@@ -787,10 +821,10 @@ function SpreadsheetView({ data, onRefresh }: { data: AdminData | undefined; onR
   );
 }
 
-function TRTSection({ trt, onRefresh }: { trt: TRTData; onRefresh: () => void }) {
+function TRTSection({ trt, onRefresh, labels }: { trt: TRTData; onRefresh: () => void; labels: Labels }) {
   const [expanded, setExpanded] = useState(false);
 
-  const totalDesembargadores = trt.turmas.reduce((acc, t) => acc + t.desembargadores.length, 0);
+  const totalLevel3 = trt.turmas.reduce((acc, t) => acc + t.desembargadores.length, 0);
   const totalDecisoes = trt.turmas.reduce((acc, t) => acc + t.desembargadores.reduce((a, d) => a + d.decisoes.length, 0), 0);
 
   return (
@@ -805,7 +839,7 @@ function TRTSection({ trt, onRefresh }: { trt: TRTData; onRefresh: () => void })
         <div className="flex-1">
           <h3 className="font-bold text-lg">{trt.nome}</h3>
           <p className="text-sm text-muted-foreground">
-            {trt.turmas.length} turmas • {totalDesembargadores} desembargadores • {totalDecisoes} decisões
+            {trt.turmas.length} {labels.level2Plural.toLowerCase()} • {totalLevel3} {labels.level3Plural.toLowerCase()} • {totalDecisoes} decisões
           </p>
         </div>
       </div>
@@ -813,7 +847,7 @@ function TRTSection({ trt, onRefresh }: { trt: TRTData; onRefresh: () => void })
       {expanded && (
         <div className="p-4 pt-0 space-y-3">
           {trt.turmas.map(turma => (
-            <TurmaSection key={turma.id} turma={turma} onRefresh={onRefresh} />
+            <TurmaSection key={turma.id} turma={turma} onRefresh={onRefresh} labels={labels} />
           ))}
         </div>
       )}
@@ -844,28 +878,27 @@ export default function AdminMapasPage() {
     );
   }
 
-  const totalTRTs = data?.trts.length || 0;
-  const totalTurmas = data?.trts.reduce((acc, t) => acc + t.turmas.length, 0) || 0;
-  const totalDesembargadores = data?.trts.reduce((acc, t) => acc + t.turmas.reduce((a, tu) => a + tu.desembargadores.length, 0), 0) || 0;
+  const labels = getLabels(instanciaTab as "primeira" | "segunda");
+  const totalLevel1 = data?.trts.length || 0;
+  const totalLevel2 = data?.trts.reduce((acc, t) => acc + t.turmas.length, 0) || 0;
+  const totalLevel3 = data?.trts.reduce((acc, t) => acc + t.turmas.reduce((a, tu) => a + tu.desembargadores.length, 0), 0) || 0;
   const totalDecisoes = data?.trts.reduce((acc, t) => acc + t.turmas.reduce((a, tu) => a + tu.desembargadores.reduce((d, de) => d + de.decisoes.length, 0), 0), 0) || 0;
 
-  const instanciaLabel = instanciaTab === "primeira" ? "1ª Instância" : "2ª Instância";
-  
   return (
     <div className="p-6 space-y-6 max-w-[1400px] mx-auto">
       <header className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-3">
             <Database className="h-7 w-7 text-primary" />
-            Dados - {instanciaLabel}
+            Dados - {labels.pageTitle}
           </h1>
-          <p className="text-muted-foreground mt-1">Gerencie TRTs, Turmas, Desembargadores e Decisões</p>
+          <p className="text-muted-foreground mt-1">{labels.description}</p>
         </div>
         <div className="flex items-center gap-2">
           <Tabs value={instanciaTab} onValueChange={setInstanciaTab}>
             <TabsList>
-              <TabsTrigger value="segunda" data-testid="tab-segunda-instancia">2ª Instância</TabsTrigger>
               <TabsTrigger value="primeira" data-testid="tab-primeira-instancia">1ª Instância</TabsTrigger>
+              <TabsTrigger value="segunda" data-testid="tab-segunda-instancia">2ª Instância</TabsTrigger>
             </TabsList>
           </Tabs>
           <Button variant="outline" onClick={() => refetch()} data-testid="button-refresh">
@@ -877,16 +910,16 @@ export default function AdminMapasPage() {
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card className="p-4 text-center">
-          <p className="text-3xl font-bold text-primary">{totalTRTs}</p>
-          <p className="text-sm text-muted-foreground">TRTs</p>
+          <p className="text-3xl font-bold text-primary">{totalLevel1}</p>
+          <p className="text-sm text-muted-foreground">{labels.level1Plural}</p>
         </Card>
         <Card className="p-4 text-center">
-          <p className="text-3xl font-bold text-primary">{totalTurmas}</p>
-          <p className="text-sm text-muted-foreground">Turmas</p>
+          <p className="text-3xl font-bold text-primary">{totalLevel2}</p>
+          <p className="text-sm text-muted-foreground">{labels.level2Plural}</p>
         </Card>
         <Card className="p-4 text-center">
-          <p className="text-3xl font-bold text-primary">{totalDesembargadores}</p>
-          <p className="text-sm text-muted-foreground">Desembargadores</p>
+          <p className="text-3xl font-bold text-primary">{totalLevel3}</p>
+          <p className="text-sm text-muted-foreground">{labels.level3Plural}</p>
         </Card>
         <Card className="p-4 text-center">
           <p className="text-3xl font-bold text-primary">{totalDecisoes}</p>
@@ -898,7 +931,7 @@ export default function AdminMapasPage() {
         <TabsList className="mb-4">
           <TabsTrigger value="arvore" className="flex items-center gap-2" data-testid="tab-arvore">
             <FolderTree className="h-4 w-4" />
-            Árvore TRT/Turmas
+            {labels.treeTab}
           </TabsTrigger>
           <TabsTrigger value="planilha" className="flex items-center gap-2" data-testid="tab-planilha">
             <Table className="h-4 w-4" />
@@ -909,13 +942,13 @@ export default function AdminMapasPage() {
         <TabsContent value="arvore">
           <div className="space-y-4">
             {data?.trts.map(trt => (
-              <TRTSection key={trt.nome} trt={trt} onRefresh={() => refetch()} />
+              <TRTSection key={trt.nome} trt={trt} onRefresh={() => refetch()} labels={labels} />
             ))}
           </div>
         </TabsContent>
         
         <TabsContent value="planilha">
-          <SpreadsheetView data={data} onRefresh={() => refetch()} />
+          <SpreadsheetView data={data} onRefresh={() => refetch()} labels={labels} />
         </TabsContent>
       </Tabs>
     </div>
