@@ -1693,10 +1693,9 @@ export async function registerRoutes(
 
   app.get("/api/casos-novos/stats", isAuthenticated, async (req, res) => {
     try {
-      const { dataInicio, dataFim } = req.query;
+      const { mesReferencia } = req.query;
       const stats = await storage.getCasosNovosStats(
-        dataInicio ? new Date(dataInicio as string) : undefined,
-        dataFim ? new Date(dataFim as string) : undefined
+        mesReferencia ? mesReferencia as string : undefined
       );
       res.json(stats);
     } catch (error) {
@@ -1838,10 +1837,9 @@ export async function registerRoutes(
 
   app.get("/api/casos-encerrados/stats", isAuthenticated, async (req, res) => {
     try {
-      const { dataInicio, dataFim } = req.query;
+      const { mesReferencia } = req.query;
       const stats = await storage.getCasosEncerradosStats(
-        dataInicio ? new Date(dataInicio as string) : undefined,
-        dataFim ? new Date(dataFim as string) : undefined
+        mesReferencia ? mesReferencia as string : undefined
       );
       res.json(stats);
     } catch (error) {

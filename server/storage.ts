@@ -196,7 +196,7 @@ export interface IStorage {
   deleteCasoNovo(id: string): Promise<boolean>;
   deleteCasosNovosBatch(ids: string[]): Promise<boolean>;
   deleteAllCasosNovos(): Promise<boolean>;
-  getCasosNovosStats(dataInicio?: Date, dataFim?: Date): Promise<{
+  getCasosNovosStats(mesReferencia?: string): Promise<{
     total: number;
     mesAtual: number;
     mesAnterior: number;
@@ -215,7 +215,7 @@ export interface IStorage {
   deleteCasoEncerrado(id: string): Promise<boolean>;
   deleteCasosEncerradosBatch(ids: string[]): Promise<boolean>;
   deleteAllCasosEncerrados(): Promise<boolean>;
-  getCasosEncerradosStats(dataInicio?: Date, dataFim?: Date): Promise<{
+  getCasosEncerradosStats(mesReferencia?: string): Promise<{
     total: number;
     mesAtual: number;
     mesAnterior: number;
@@ -2270,7 +2270,7 @@ export class MemStorage implements IStorage {
     return true;
   }
 
-  async getCasosNovosStats(dataInicio?: Date, dataFim?: Date): Promise<{
+  async getCasosNovosStats(mesReferencia?: string): Promise<{
     total: number;
     mesAtual: number;
     mesAnterior: number;
@@ -2280,27 +2280,26 @@ export class MemStorage implements IStorage {
     porMes: Array<{ mes: string; ano: string; quantidade: number }>;
     valorTotalContingencia: number;
   }> {
-    let allCasos = await this.getAllCasosNovos();
-    
-    // Filter by date range if provided
-    if (dataInicio || dataFim) {
-      allCasos = allCasos.filter(caso => {
-        if (!caso.dataDistribuicao) return false;
-        const casoDate = new Date(caso.dataDistribuicao);
-        if (dataInicio && casoDate < dataInicio) return false;
-        if (dataFim && casoDate > dataFim) return false;
-        return true;
-      });
-    }
-    
+    const allCasos = await this.getAllCasosNovos();
     const total = allCasos.length;
 
-    // Calculate current and previous month (for default KPIs)
-    const now = new Date();
-    const currentMonth = now.getMonth();
-    const currentYear = now.getFullYear();
-    const prevMonth = currentMonth === 0 ? 11 : currentMonth - 1;
-    const prevYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+    // Parse mesReferencia (format: YYYY-MM) or default to current month
+    let refYear: number;
+    let refMonth: number;
+    
+    if (mesReferencia) {
+      const [year, month] = mesReferencia.split('-').map(Number);
+      refYear = year;
+      refMonth = month - 1; // JavaScript months are 0-indexed
+    } else {
+      const now = new Date();
+      refYear = now.getFullYear();
+      refMonth = now.getMonth();
+    }
+    
+    // Calculate previous month
+    const prevMonth = refMonth === 0 ? 11 : refMonth - 1;
+    const prevYear = refMonth === 0 ? refYear - 1 : refYear;
 
     let mesAtual = 0;
     let mesAnterior = 0;
@@ -2332,9 +2331,11 @@ export class MemStorage implements IStorage {
         const key = `${mes}-${ano}`;
         mesMap.set(key, (mesMap.get(key) || 0) + 1);
 
-        if (date.getMonth() === currentMonth && date.getFullYear() === currentYear) {
+        // Count for selected reference month ("Mês Atual")
+        if (date.getMonth() === refMonth && date.getFullYear() === refYear) {
           mesAtual++;
         }
+        // Count for previous month ("Mês Anterior")
         if (date.getMonth() === prevMonth && date.getFullYear() === prevYear) {
           mesAnterior++;
         }
@@ -2433,7 +2434,7 @@ export class MemStorage implements IStorage {
     return true;
   }
 
-  async getCasosEncerradosStats(dataInicio?: Date, dataFim?: Date): Promise<{
+  async getCasosEncerradosStats(mesReferencia?: string): Promise<{
     total: number;
     mesAtual: number;
     mesAnterior: number;
@@ -2443,26 +2444,26 @@ export class MemStorage implements IStorage {
     porMes: Array<{ mes: string; ano: string; quantidade: number }>;
     valorTotalContingencia: number;
   }> {
-    let allCasos = await this.getAllCasosEncerrados();
-    
-    // Filter by date range if provided
-    if (dataInicio || dataFim) {
-      allCasos = allCasos.filter(caso => {
-        if (!caso.dataEncerramento) return false;
-        const casoDate = new Date(caso.dataEncerramento);
-        if (dataInicio && casoDate < dataInicio) return false;
-        if (dataFim && casoDate > dataFim) return false;
-        return true;
-      });
-    }
-    
+    const allCasos = await this.getAllCasosEncerrados();
     const total = allCasos.length;
 
-    const now = new Date();
-    const currentMonth = now.getMonth();
-    const currentYear = now.getFullYear();
-    const prevMonth = currentMonth === 0 ? 11 : currentMonth - 1;
-    const prevYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+    // Parse mesReferencia (format: YYYY-MM) or default to current month
+    let refYear: number;
+    let refMonth: number;
+    
+    if (mesReferencia) {
+      const [year, month] = mesReferencia.split('-').map(Number);
+      refYear = year;
+      refMonth = month - 1; // JavaScript months are 0-indexed
+    } else {
+      const now = new Date();
+      refYear = now.getFullYear();
+      refMonth = now.getMonth();
+    }
+    
+    // Calculate previous month
+    const prevMonth = refMonth === 0 ? 11 : refMonth - 1;
+    const prevYear = refMonth === 0 ? refYear - 1 : refYear;
 
     let mesAtual = 0;
     let mesAnterior = 0;
@@ -2494,9 +2495,11 @@ export class MemStorage implements IStorage {
         const key = `${mes}-${ano}`;
         mesMap.set(key, (mesMap.get(key) || 0) + 1);
 
-        if (date.getMonth() === currentMonth && date.getFullYear() === currentYear) {
+        // Count for selected reference month ("Mês Atual")
+        if (date.getMonth() === refMonth && date.getFullYear() === refYear) {
           mesAtual++;
         }
+        // Count for previous month ("Mês Anterior")
         if (date.getMonth() === prevMonth && date.getFullYear() === prevYear) {
           mesAnterior++;
         }

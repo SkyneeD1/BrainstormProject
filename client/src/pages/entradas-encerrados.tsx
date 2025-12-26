@@ -6,8 +6,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
-import { CheckSquare, TrendingUp, TrendingDown, Calendar as CalendarIcon, Building2, Briefcase, DollarSign, FileText, Filter, X } from "lucide-react";
-import { format, startOfMonth, endOfMonth, subMonths } from "date-fns";
+import { CheckSquare, TrendingUp, TrendingDown, Calendar as CalendarIcon, Building2, Briefcase, DollarSign, FileText, ChevronLeft, ChevronRight } from "lucide-react";
+import { format, subMonths, addMonths, startOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 interface CasosEncerradosStats {
@@ -63,22 +63,16 @@ function getMonthName(mes: string): string {
 }
 
 export default function EntradasEncerrados() {
-  const [dataInicio, setDataInicio] = useState<Date | undefined>(undefined);
-  const [dataFim, setDataFim] = useState<Date | undefined>(undefined);
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [mesReferencia, setMesReferencia] = useState<Date>(startOfMonth(new Date()));
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
-  const buildQueryString = () => {
-    const params = new URLSearchParams();
-    if (dataInicio) params.append('dataInicio', dataInicio.toISOString());
-    if (dataFim) params.append('dataFim', dataFim.toISOString());
-    const qs = params.toString();
-    return qs ? `?${qs}` : '';
-  };
+  const mesReferenciaStr = format(mesReferencia, 'yyyy-MM');
+  const mesAnterior = subMonths(mesReferencia, 1);
 
   const { data: stats, isLoading } = useQuery<CasosEncerradosStats>({
-    queryKey: ['/api/casos-encerrados/stats', dataInicio?.toISOString(), dataFim?.toISOString()],
+    queryKey: ['/api/casos-encerrados/stats', mesReferenciaStr],
     queryFn: async () => {
-      const response = await fetch(`/api/casos-encerrados/stats${buildQueryString()}`, {
+      const response = await fetch(`/api/casos-encerrados/stats?mesReferencia=${mesReferenciaStr}`, {
         credentials: 'include'
       });
       if (!response.ok) throw new Error('Failed to fetch stats');
@@ -86,33 +80,20 @@ export default function EntradasEncerrados() {
     }
   });
 
-  const handleClearFilter = () => {
-    setDataInicio(undefined);
-    setDataFim(undefined);
+  const handlePrevMonth = () => {
+    setMesReferencia(subMonths(mesReferencia, 1));
   };
 
-  const handlePresetThisMonth = () => {
-    const now = new Date();
-    setDataInicio(startOfMonth(now));
-    setDataFim(endOfMonth(now));
-    setIsFilterOpen(false);
+  const handleNextMonth = () => {
+    setMesReferencia(addMonths(mesReferencia, 1));
   };
 
-  const handlePresetLastMonth = () => {
-    const lastMonth = subMonths(new Date(), 1);
-    setDataInicio(startOfMonth(lastMonth));
-    setDataFim(endOfMonth(lastMonth));
-    setIsFilterOpen(false);
+  const handleSelectMonth = (date: Date | undefined) => {
+    if (date) {
+      setMesReferencia(startOfMonth(date));
+      setIsCalendarOpen(false);
+    }
   };
-
-  const handlePresetLast3Months = () => {
-    const now = new Date();
-    setDataInicio(startOfMonth(subMonths(now, 2)));
-    setDataFim(endOfMonth(now));
-    setIsFilterOpen(false);
-  };
-
-  const hasFilter = dataInicio || dataFim;
 
   if (isLoading) {
     return (
@@ -156,80 +137,52 @@ export default function EntradasEncerrados() {
           <CheckSquare className="h-8 w-8 text-violet-500" />
           <div>
             <h1 className="text-2xl font-bold">Encerrados</h1>
-            <p className="text-muted-foreground">Monitoramento de casos finalizados</p>
+            <p className="text-muted-foreground">Monitoramento de casos encerrados</p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          {hasFilter && (
-            <div className="flex items-center gap-2 bg-violet-500/10 px-3 py-1.5 rounded-md text-sm">
-              <CalendarIcon className="h-4 w-4 text-violet-500" />
-              <span>
-                {dataInicio ? format(dataInicio, 'dd/MM/yy', { locale: ptBR }) : '...'} 
-                {' - '}
-                {dataFim ? format(dataFim, 'dd/MM/yy', { locale: ptBR }) : '...'}
-              </span>
-              <Button variant="ghost" size="icon" className="h-5 w-5" onClick={handleClearFilter}>
-                <X className="h-3 w-3" />
-              </Button>
-            </div>
-          )}
+          <Button 
+            variant="outline" 
+            size="icon"
+            onClick={handlePrevMonth}
+            data-testid="button-prev-month-encerrados"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
           
-          <Popover open={isFilterOpen} onOpenChange={setIsFilterOpen}>
+          <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
             <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" data-testid="button-filter-encerrados">
-                <Filter className="h-4 w-4 mr-2" />
-                Filtrar Período
+              <Button 
+                variant="outline" 
+                className="min-w-[200px] justify-center gap-2"
+                data-testid="button-select-month-encerrados"
+              >
+                <CalendarIcon className="h-4 w-4" />
+                <span className="capitalize font-medium">
+                  {format(mesReferencia, "MMMM yyyy", { locale: ptBR })}
+                </span>
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-4" align="end">
-              <div className="space-y-4">
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={handlePresetThisMonth}>
-                    Mês Atual
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={handlePresetLastMonth}>
-                    Mês Anterior
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={handlePresetLast3Months}>
-                    Últimos 3 Meses
-                  </Button>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm font-medium mb-2">Data Início</p>
-                    <Calendar
-                      mode="single"
-                      selected={dataInicio}
-                      onSelect={setDataInicio}
-                      locale={ptBR}
-                      className="rounded-md border"
-                    />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium mb-2">Data Fim</p>
-                    <Calendar
-                      mode="single"
-                      selected={dataFim}
-                      onSelect={setDataFim}
-                      locale={ptBR}
-                      className="rounded-md border"
-                    />
-                  </div>
-                </div>
-                
-                <div className="flex justify-end gap-2">
-                  <Button variant="ghost" size="sm" onClick={handleClearFilter}>
-                    Limpar
-                  </Button>
-                  <Button size="sm" onClick={() => setIsFilterOpen(false)}>
-                    Aplicar
-                  </Button>
-                </div>
-              </div>
+            <PopoverContent className="w-auto p-0" align="center">
+              <Calendar
+                mode="single"
+                selected={mesReferencia}
+                onSelect={handleSelectMonth}
+                locale={ptBR}
+                defaultMonth={mesReferencia}
+              />
             </PopoverContent>
           </Popover>
+          
+          <Button 
+            variant="outline" 
+            size="icon"
+            onClick={handleNextMonth}
+            data-testid="button-next-month-encerrados"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
         </div>
       </div>
 
@@ -249,8 +202,10 @@ export default function EntradasEncerrados() {
         <Card className="p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-muted-foreground">Encerrados Mês Atual</p>
-              <p className="text-3xl font-bold" data-testid="text-mes-atual">
+              <p className="text-sm text-muted-foreground">
+                {format(mesReferencia, "MMM/yy", { locale: ptBR }).toUpperCase()}
+              </p>
+              <p className="text-3xl font-bold" data-testid="text-mes-atual-encerrados">
                 {formatNumber(stats?.mesAtual || 0)}
               </p>
               <div className="flex items-center gap-1 mt-1">
@@ -262,7 +217,7 @@ export default function EntradasEncerrados() {
                 <span className={`text-sm font-medium ${isPositiveVariation ? 'text-emerald-500' : 'text-red-500'}`}>
                   {stats?.variacaoPercentual || 0}%
                 </span>
-                <span className="text-xs text-muted-foreground">vs mês anterior</span>
+                <span className="text-xs text-muted-foreground">vs anterior</span>
               </div>
             </div>
             <CalendarIcon className="h-10 w-10 text-violet-500/20" />
@@ -272,8 +227,10 @@ export default function EntradasEncerrados() {
         <Card className="p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-muted-foreground">Encerrados Mês Anterior</p>
-              <p className="text-3xl font-bold" data-testid="text-mes-anterior">
+              <p className="text-sm text-muted-foreground">
+                {format(mesAnterior, "MMM/yy", { locale: ptBR }).toUpperCase()}
+              </p>
+              <p className="text-3xl font-bold" data-testid="text-mes-anterior-encerrados">
                 {formatNumber(stats?.mesAnterior || 0)}
               </p>
             </div>
@@ -285,7 +242,7 @@ export default function EntradasEncerrados() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-muted-foreground">Valor Contingência</p>
-              <p className="text-2xl font-bold" data-testid="text-valor-contingencia">
+              <p className="text-2xl font-bold" data-testid="text-valor-contingencia-encerrados">
                 {formatCurrency(stats?.valorTotalContingencia || 0)}
               </p>
             </div>
@@ -298,7 +255,7 @@ export default function EntradasEncerrados() {
         <Card className="p-4">
           <h3 className="font-semibold flex items-center gap-2 mb-4">
             <CalendarIcon className="h-5 w-5 text-violet-500" />
-            Evolução Mensal
+            Evolução Mensal de Encerramentos
           </h3>
           {timelineData.length > 0 ? (
             <ResponsiveContainer width="100%" height={300}>
@@ -307,18 +264,22 @@ export default function EntradasEncerrados() {
                 <XAxis dataKey="mesLabel" className="text-xs" />
                 <YAxis className="text-xs" />
                 <Tooltip 
-                  formatter={(value: number) => [formatNumber(value), 'Encerrados']}
-                  labelFormatter={(label) => `Período: ${label}`}
+                  formatter={(value: number) => [formatNumber(value), 'Casos']}
+                  contentStyle={{ 
+                    backgroundColor: 'hsl(var(--card))', 
+                    border: '1px solid hsl(var(--border))',
+                    borderRadius: '8px'
+                  }}
                 />
-                <Bar dataKey="quantidade" name="Casos Encerrados" radius={[4, 4, 0, 0]}>
+                <Bar dataKey="quantidade" radius={[4, 4, 0, 0]}>
                   {timelineData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                    <Cell key={`cell-${index}`} fill={entry.fill} />
                   ))}
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
           ) : (
-            <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+            <div className="flex items-center justify-center h-[300px] text-muted-foreground">
               Nenhum dado disponível
             </div>
           )}
@@ -326,12 +287,12 @@ export default function EntradasEncerrados() {
 
         <Card className="p-4">
           <h3 className="font-semibold flex items-center gap-2 mb-4">
-            <Briefcase className="h-5 w-5 text-violet-500" />
-            Por Empresa
+            <Building2 className="h-5 w-5 text-violet-500" />
+            Distribuição por Empresa
           </h3>
           {empresaData.length > 0 ? (
-            <>
-              <ResponsiveContainer width="100%" height={220}>
+            <div className="flex items-center gap-4">
+              <ResponsiveContainer width="50%" height={250}>
                 <PieChart>
                   <Pie
                     data={empresaData}
@@ -339,31 +300,41 @@ export default function EntradasEncerrados() {
                     cy="50%"
                     innerRadius={50}
                     outerRadius={80}
-                    paddingAngle={2}
                     dataKey="value"
-                    label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
+                    label={({ percentual }) => `${percentual}%`}
                     labelLine={false}
                   >
                     {empresaData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(value: number) => [formatNumber(value), 'Casos']} />
+                  <Tooltip 
+                    formatter={(value: number) => [formatNumber(value), 'Casos']}
+                    contentStyle={{ 
+                      backgroundColor: 'hsl(var(--card))', 
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '8px'
+                    }}
+                  />
                 </PieChart>
               </ResponsiveContainer>
-              <div className="flex flex-wrap justify-center gap-4 mt-2">
+              <div className="flex-1 space-y-2">
                 {empresaData.map((item, index) => (
-                  <div key={index} className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
-                    <span className="text-sm">
-                      {item.name}: <strong>{formatNumber(item.value)}</strong> ({item.percentual}%)
-                    </span>
+                  <div key={index} className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2">
+                      <div 
+                        className="w-3 h-3 rounded-full" 
+                        style={{ backgroundColor: item.color }}
+                      />
+                      <span>{item.name}</span>
+                    </div>
+                    <span className="font-medium">{formatNumber(item.value)}</span>
                   </div>
                 ))}
               </div>
-            </>
+            </div>
           ) : (
-            <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+            <div className="flex items-center justify-center h-[250px] text-muted-foreground">
               Nenhum dado disponível
             </div>
           )}
@@ -372,30 +343,32 @@ export default function EntradasEncerrados() {
 
       <Card className="p-4">
         <h3 className="font-semibold flex items-center gap-2 mb-4">
-          <Building2 className="h-5 w-5 text-violet-500" />
-          Por TRT (Top 10)
+          <Briefcase className="h-5 w-5 text-violet-500" />
+          Top 10 Tribunais - Encerramentos
         </h3>
         {tribunalData.length > 0 ? (
-          <ResponsiveContainer width="100%" height={350}>
+          <ResponsiveContainer width="100%" height={300}>
             <BarChart data={tribunalData} layout="vertical">
               <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
               <XAxis type="number" className="text-xs" />
-              <YAxis type="category" dataKey="tribunal" className="text-xs" width={80} />
+              <YAxis type="category" dataKey="tribunal" width={80} className="text-xs" />
               <Tooltip 
-                formatter={(value: number, name: string, props: any) => [
-                  `${formatNumber(value)} casos (${props.payload.percentual}%)`,
-                  ''
-                ]}
+                formatter={(value: number) => [formatNumber(value), 'Casos']}
+                contentStyle={{ 
+                  backgroundColor: 'hsl(var(--card))', 
+                  border: '1px solid hsl(var(--border))',
+                  borderRadius: '8px'
+                }}
               />
-              <Bar dataKey="quantidade" name="Casos" radius={[0, 4, 4, 0]}>
+              <Bar dataKey="quantidade" radius={[0, 4, 4, 0]}>
                 {tribunalData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                  <Cell key={`cell-${index}`} fill={entry.fill} />
                 ))}
               </Bar>
             </BarChart>
           </ResponsiveContainer>
         ) : (
-          <div className="h-[350px] flex items-center justify-center text-muted-foreground">
+          <div className="flex items-center justify-center h-[300px] text-muted-foreground">
             Nenhum dado disponível
           </div>
         )}
