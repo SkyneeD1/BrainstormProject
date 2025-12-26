@@ -1087,6 +1087,47 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/decisoes/batch", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { decisoes } = req.body;
+      if (!Array.isArray(decisoes) || decisoes.length === 0) {
+        return res.status(400).json({ error: "Lista de decisões vazia ou inválida" });
+      }
+      
+      const results = [];
+      const errors = [];
+      
+      for (let i = 0; i < decisoes.length; i++) {
+        const decisaoData = decisoes[i];
+        try {
+          const parsed = insertDecisaoRpacSchema.safeParse(decisaoData);
+          if (!parsed.success) {
+            errors.push({ index: i, error: parsed.error.errors[0]?.message || "Dados inválidos" });
+            continue;
+          }
+          const data = {
+            ...parsed.data,
+            dataDecisao: parsed.data.dataDecisao ? new Date(parsed.data.dataDecisao) : undefined,
+          };
+          const decisao = await storage.createDecisaoRpac(data);
+          results.push(decisao);
+        } catch (err) {
+          errors.push({ index: i, error: "Erro ao criar decisão" });
+        }
+      }
+      
+      res.status(201).json({ 
+        success: results.length, 
+        errors: errors.length,
+        errorDetails: errors,
+        results 
+      });
+    } catch (error) {
+      console.error("Error batch creating decisoes:", error);
+      res.status(500).json({ error: "Erro ao criar decisões em lote" });
+    }
+  });
+
   // ========== Mapa de Decisões Analytics Routes ==========
   app.get("/api/mapa-decisoes/trts", isAuthenticated, async (req, res) => {
     try {

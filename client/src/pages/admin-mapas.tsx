@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Database, ChevronDown, ChevronRight, Plus, Edit2, Trash2, RefreshCw, Users, Building2, Gavel } from "lucide-react";
+import { Database, ChevronDown, ChevronRight, Plus, Edit2, Trash2, RefreshCw, Users, Building2, Gavel, Table, FolderTree, Upload } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,9 +10,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { DecisaoRpac } from "@shared/schema";
+import type { DecisaoRpac, Desembargador } from "@shared/schema";
 
 function FavorabilityAvatar({ percentual, size = 40 }: { percentual: number; size?: number }) {
   const greenAngle = (percentual / 100) * 360;
@@ -68,11 +69,12 @@ function DecisaoItem({ decisao, onRefresh }: { decisao: DecisaoRpac; onRefresh: 
     observacoes: decisao.observacoes || "",
     dataDecisao: decisao.dataDecisao ? new Date(decisao.dataDecisao).toISOString().split('T')[0] : "",
     upi: decisao.upi || "nao",
-    responsabilidade: decisao.responsabilidade || "subsidiaria"
+    responsabilidade: decisao.responsabilidade || "subsidiaria",
+    empresa: decisao.empresa || "V.tal"
   });
 
   const updateMutation = useMutation({
-    mutationFn: async (data: { resultado: string; observacoes?: string; dataDecisao?: string; upi?: string; responsabilidade?: string }) => apiRequest("PATCH", `/api/decisoes/${decisao.id}`, data),
+    mutationFn: async (data: { resultado: string; observacoes?: string; dataDecisao?: string; upi?: string; responsabilidade?: string; empresa?: string }) => apiRequest("PATCH", `/api/decisoes/${decisao.id}`, data),
     onSuccess: () => {
       toast({ title: "Decisão atualizada" });
       setEditing(false);
@@ -135,6 +137,18 @@ function DecisaoItem({ decisao, onRefresh }: { decisao: DecisaoRpac; onRefresh: 
             <SelectItem value="subsidiaria">Subsidiária</SelectItem>
           </SelectContent>
         </Select>
+        <Select value={editData.empresa} onValueChange={(v) => setEditData(prev => ({ ...prev, empresa: v }))}>
+          <SelectTrigger className="w-32 h-7 text-xs">
+            <SelectValue placeholder="Empresa" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="V.tal">V.tal</SelectItem>
+            <SelectItem value="OI">OI</SelectItem>
+            <SelectItem value="Serede">Serede</SelectItem>
+            <SelectItem value="Sprink">Sprink</SelectItem>
+            <SelectItem value="Outros Terceiros">Outros</SelectItem>
+          </SelectContent>
+        </Select>
         <Button size="sm" className="h-7" onClick={() => updateMutation.mutate(editData)} disabled={updateMutation.isPending}>
           Salvar
         </Button>
@@ -155,6 +169,9 @@ function DecisaoItem({ decisao, onRefresh }: { decisao: DecisaoRpac; onRefresh: 
       <Badge variant="secondary" className="text-[10px] h-5">
         {decisao.responsabilidade === "solidaria" ? "Solid." : "Subsid."}
       </Badge>
+      {decisao.empresa && (
+        <Badge variant="outline" className="text-[10px] h-5 bg-slate-100 dark:bg-slate-800">{decisao.empresa}</Badge>
+      )}
       <div className="opacity-0 group-hover:opacity-100 flex gap-1">
         <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setEditing(true)} data-testid={`button-edit-decisao-${decisao.id}`}>
           <Edit2 className="h-3 w-3" />
@@ -190,14 +207,15 @@ function DesembargadorCard({ desembargador, onRefresh }: { desembargador: Desemb
     resultado: "EM ANÁLISE", 
     dataDecisao: new Date().toISOString().split('T')[0],
     upi: "nao",
-    responsabilidade: "subsidiaria"
+    responsabilidade: "subsidiaria",
+    empresa: "V.tal"
   });
 
   const createDecisaoMutation = useMutation({
-    mutationFn: async (data: { desembargadorId: string; numeroProcesso: string; resultado: string; dataDecisao: string; upi: string; responsabilidade: string }) => apiRequest("POST", "/api/decisoes", data),
+    mutationFn: async (data: { desembargadorId: string; numeroProcesso: string; resultado: string; dataDecisao: string; upi: string; responsabilidade: string; empresa: string }) => apiRequest("POST", "/api/decisoes", data),
     onSuccess: () => {
       toast({ title: "Decisão adicionada" });
-      setNewDecisao({ numeroProcesso: "", resultado: "EM ANÁLISE", dataDecisao: new Date().toISOString().split('T')[0], upi: "nao", responsabilidade: "subsidiaria" });
+      setNewDecisao({ numeroProcesso: "", resultado: "EM ANÁLISE", dataDecisao: new Date().toISOString().split('T')[0], upi: "nao", responsabilidade: "subsidiaria", empresa: "V.tal" });
       setShowAddDecisao(false);
       onRefresh();
     },
@@ -287,6 +305,18 @@ function DesembargadorCard({ desembargador, onRefresh }: { desembargador: Desemb
                   <SelectItem value="subsidiaria">Subsidiária</SelectItem>
                 </SelectContent>
               </Select>
+              <Select value={newDecisao.empresa} onValueChange={(v) => setNewDecisao(prev => ({ ...prev, empresa: v }))}>
+                <SelectTrigger className="w-28 h-8 text-xs" data-testid="select-new-empresa">
+                  <SelectValue placeholder="Empresa" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="V.tal">V.tal</SelectItem>
+                  <SelectItem value="OI">OI</SelectItem>
+                  <SelectItem value="Serede">Serede</SelectItem>
+                  <SelectItem value="Sprink">Sprink</SelectItem>
+                  <SelectItem value="Outros Terceiros">Outros</SelectItem>
+                </SelectContent>
+              </Select>
               <Button
                 size="sm"
                 className="h-8"
@@ -340,6 +370,271 @@ function TurmaSection({ turma, onRefresh }: { turma: TurmaComDesembargadores; on
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function SpreadsheetView({ data, onRefresh }: { data: AdminData | undefined; onRefresh: () => void }) {
+  const { toast } = useToast();
+  const [empresaFilter, setEmpresaFilter] = useState<string>("todas");
+  const [responsabilidadeFilter, setResponsabilidadeFilter] = useState<string>("todas");
+  const [resultadoFilter, setResultadoFilter] = useState<string>("todos");
+  
+  const allDesembargadores: { id: string; nome: string; turma: string; trt: string }[] = [];
+  data?.trts.forEach(trt => {
+    trt.turmas.forEach(turma => {
+      turma.desembargadores.forEach(d => {
+        allDesembargadores.push({ id: d.id, nome: d.nome, turma: turma.nome, trt: trt.nome });
+      });
+    });
+  });
+
+  const allDecisoes: (DecisaoRpac & { desembargadorNome: string; turmaNome: string; trtNome: string })[] = [];
+  data?.trts.forEach(trt => {
+    trt.turmas.forEach(turma => {
+      turma.desembargadores.forEach(d => {
+        d.decisoes.forEach(dec => {
+          allDecisoes.push({ 
+            ...dec, 
+            desembargadorNome: d.nome, 
+            turmaNome: turma.nome, 
+            trtNome: trt.nome 
+          });
+        });
+      });
+    });
+  });
+
+  const filteredDecisoes = allDecisoes.filter(dec => {
+    if (empresaFilter !== "todas" && dec.empresa !== empresaFilter) return false;
+    if (responsabilidadeFilter !== "todas" && dec.responsabilidade !== responsabilidadeFilter) return false;
+    if (resultadoFilter !== "todos") {
+      const r = dec.resultado?.toUpperCase() || "";
+      if (resultadoFilter === "favoravel" && !r.includes("FAVORÁVEL")) return false;
+      if (resultadoFilter === "desfavoravel" && !r.includes("DESFAVORÁVEL")) return false;
+    }
+    return true;
+  });
+
+  const [batchRows, setBatchRows] = useState<Array<{
+    desembargadorId: string;
+    numeroProcesso: string;
+    dataDecisao: string;
+    resultado: string;
+    upi: string;
+    responsabilidade: string;
+    empresa: string;
+  }>>([{ desembargadorId: "", numeroProcesso: "", dataDecisao: new Date().toISOString().split('T')[0], resultado: "EM ANÁLISE", upi: "nao", responsabilidade: "subsidiaria", empresa: "V.tal" }]);
+
+  const batchMutation = useMutation({
+    mutationFn: async (decisoes: typeof batchRows) => {
+      const response = await apiRequest("POST", "/api/decisoes/batch", { decisoes });
+      return response.json() as Promise<{ success: number; errors: number }>;
+    },
+    onSuccess: (data: { success: number; errors: number }) => {
+      toast({ title: `${data.success} decisões adicionadas` + (data.errors > 0 ? `, ${data.errors} erros` : "") });
+      setBatchRows([{ desembargadorId: "", numeroProcesso: "", dataDecisao: new Date().toISOString().split('T')[0], resultado: "EM ANÁLISE", upi: "nao", responsabilidade: "subsidiaria", empresa: "V.tal" }]);
+      onRefresh();
+    },
+    onError: (error: Error) => {
+      toast({ title: "Erro ao adicionar decisões", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const addRow = () => {
+    setBatchRows(prev => [...prev, { desembargadorId: "", numeroProcesso: "", dataDecisao: new Date().toISOString().split('T')[0], resultado: "EM ANÁLISE", upi: "nao", responsabilidade: "subsidiaria", empresa: "V.tal" }]);
+  };
+
+  const removeRow = (index: number) => {
+    setBatchRows(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const updateRow = (index: number, field: string, value: string) => {
+    setBatchRows(prev => prev.map((row, i) => i === index ? { ...row, [field]: value } : row));
+  };
+
+  const getResultadoColor = (resultado: string) => {
+    const r = resultado?.toUpperCase() || "";
+    if (r.includes("DESFAVORÁVEL")) return "text-red-600 dark:text-red-400";
+    if (r.includes("FAVORÁVEL")) return "text-emerald-600 dark:text-emerald-400";
+    return "text-slate-500";
+  };
+
+  const validRows = batchRows.filter(r => r.desembargadorId && r.numeroProcesso.trim());
+
+  return (
+    <div className="space-y-6">
+      <Card className="p-4">
+        <h3 className="font-semibold mb-4 flex items-center gap-2">
+          <Upload className="h-5 w-5" />
+          Adicionar Decisões em Lote
+        </h3>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b">
+                <th className="text-left p-2 font-medium">Desembargador</th>
+                <th className="text-left p-2 font-medium">Nº Processo</th>
+                <th className="text-left p-2 font-medium">Data</th>
+                <th className="text-left p-2 font-medium">Resultado</th>
+                <th className="text-left p-2 font-medium">UPI</th>
+                <th className="text-left p-2 font-medium">Resp.</th>
+                <th className="text-left p-2 font-medium">Empresa</th>
+                <th className="text-left p-2 font-medium w-10"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {batchRows.map((row, index) => (
+                <tr key={index} className="border-b">
+                  <td className="p-1">
+                    <Select value={row.desembargadorId} onValueChange={(v) => updateRow(index, "desembargadorId", v)}>
+                      <SelectTrigger className="h-8 text-xs w-48">
+                        <SelectValue placeholder="Selecione..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {allDesembargadores.map(d => (
+                          <SelectItem key={d.id} value={d.id}>
+                            {d.nome} ({d.turma})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </td>
+                  <td className="p-1">
+                    <Input className="h-8 text-xs w-40" value={row.numeroProcesso} onChange={(e) => updateRow(index, "numeroProcesso", e.target.value)} placeholder="0000000-00.0000.0.00.0000" />
+                  </td>
+                  <td className="p-1">
+                    <Input type="date" className="h-8 text-xs w-32" value={row.dataDecisao} onChange={(e) => updateRow(index, "dataDecisao", e.target.value)} />
+                  </td>
+                  <td className="p-1">
+                    <Select value={row.resultado} onValueChange={(v) => updateRow(index, "resultado", v)}>
+                      <SelectTrigger className="h-8 text-xs w-28"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="FAVORÁVEL">Favorável</SelectItem>
+                        <SelectItem value="DESFAVORÁVEL">Desfavorável</SelectItem>
+                        <SelectItem value="EM ANÁLISE">Em Análise</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </td>
+                  <td className="p-1">
+                    <Select value={row.upi} onValueChange={(v) => updateRow(index, "upi", v)}>
+                      <SelectTrigger className="h-8 text-xs w-20"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="sim">Sim</SelectItem>
+                        <SelectItem value="nao">Não</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </td>
+                  <td className="p-1">
+                    <Select value={row.responsabilidade} onValueChange={(v) => updateRow(index, "responsabilidade", v)}>
+                      <SelectTrigger className="h-8 text-xs w-24"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="solidaria">Solidária</SelectItem>
+                        <SelectItem value="subsidiaria">Subsidiária</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </td>
+                  <td className="p-1">
+                    <Select value={row.empresa} onValueChange={(v) => updateRow(index, "empresa", v)}>
+                      <SelectTrigger className="h-8 text-xs w-28"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="V.tal">V.tal</SelectItem>
+                        <SelectItem value="OI">OI</SelectItem>
+                        <SelectItem value="Serede">Serede</SelectItem>
+                        <SelectItem value="Sprink">Sprink</SelectItem>
+                        <SelectItem value="Outros Terceiros">Outros</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </td>
+                  <td className="p-1">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => removeRow(index)} disabled={batchRows.length === 1}>
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="flex items-center justify-between mt-4">
+          <Button variant="outline" size="sm" onClick={addRow}>
+            <Plus className="h-4 w-4 mr-1" /> Adicionar Linha
+          </Button>
+          <Button size="sm" onClick={() => batchMutation.mutate(validRows)} disabled={validRows.length === 0 || batchMutation.isPending}>
+            Salvar {validRows.length} decisão(ões)
+          </Button>
+        </div>
+      </Card>
+
+      <Card className="p-4">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold flex items-center gap-2">
+            <Table className="h-5 w-5" />
+            Todas as Decisões ({filteredDecisoes.length})
+          </h3>
+          <div className="flex items-center gap-2">
+            <Select value={empresaFilter} onValueChange={setEmpresaFilter}>
+              <SelectTrigger className="h-8 text-xs w-28"><SelectValue placeholder="Empresa" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todas">Todas</SelectItem>
+                <SelectItem value="V.tal">V.tal</SelectItem>
+                <SelectItem value="OI">OI</SelectItem>
+                <SelectItem value="Serede">Serede</SelectItem>
+                <SelectItem value="Sprink">Sprink</SelectItem>
+                <SelectItem value="Outros Terceiros">Outros</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={responsabilidadeFilter} onValueChange={setResponsabilidadeFilter}>
+              <SelectTrigger className="h-8 text-xs w-28"><SelectValue placeholder="Resp." /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todas">Todas</SelectItem>
+                <SelectItem value="solidaria">Solidária</SelectItem>
+                <SelectItem value="subsidiaria">Subsidiária</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={resultadoFilter} onValueChange={setResultadoFilter}>
+              <SelectTrigger className="h-8 text-xs w-28"><SelectValue placeholder="Resultado" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos</SelectItem>
+                <SelectItem value="favoravel">Favorável</SelectItem>
+                <SelectItem value="desfavoravel">Desfavorável</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
+          <table className="w-full text-sm">
+            <thead className="sticky top-0 bg-background">
+              <tr className="border-b">
+                <th className="text-left p-2 font-medium">TRT</th>
+                <th className="text-left p-2 font-medium">Turma</th>
+                <th className="text-left p-2 font-medium">Desembargador</th>
+                <th className="text-left p-2 font-medium">Nº Processo</th>
+                <th className="text-left p-2 font-medium">Data</th>
+                <th className="text-left p-2 font-medium">Resultado</th>
+                <th className="text-left p-2 font-medium">UPI</th>
+                <th className="text-left p-2 font-medium">Resp.</th>
+                <th className="text-left p-2 font-medium">Empresa</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredDecisoes.map((dec) => (
+                <tr key={dec.id} className="border-b hover:bg-muted/50">
+                  <td className="p-2">{dec.trtNome}</td>
+                  <td className="p-2">{dec.turmaNome}</td>
+                  <td className="p-2">{dec.desembargadorNome}</td>
+                  <td className="p-2 font-mono text-xs">{dec.numeroProcesso}</td>
+                  <td className="p-2">{dec.dataDecisao ? new Date(dec.dataDecisao).toLocaleDateString("pt-BR") : "-"}</td>
+                  <td className={`p-2 font-semibold ${getResultadoColor(dec.resultado)}`}>{dec.resultado}</td>
+                  <td className="p-2">{dec.upi === "sim" ? "Sim" : "Não"}</td>
+                  <td className="p-2">{dec.responsabilidade === "solidaria" ? "Solid." : "Subsid."}</td>
+                  <td className="p-2">{dec.empresa || "-"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
     </div>
   );
 }
@@ -434,11 +729,30 @@ export default function AdminMapasPage() {
         </Card>
       </div>
 
-      <div className="space-y-4">
-        {data?.trts.map(trt => (
-          <TRTSection key={trt.nome} trt={trt} onRefresh={() => refetch()} />
-        ))}
-      </div>
+      <Tabs defaultValue="arvore" className="w-full">
+        <TabsList className="mb-4">
+          <TabsTrigger value="arvore" className="flex items-center gap-2" data-testid="tab-arvore">
+            <FolderTree className="h-4 w-4" />
+            Árvore TRT/Turmas
+          </TabsTrigger>
+          <TabsTrigger value="planilha" className="flex items-center gap-2" data-testid="tab-planilha">
+            <Table className="h-4 w-4" />
+            Planilha de Decisões
+          </TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="arvore">
+          <div className="space-y-4">
+            {data?.trts.map(trt => (
+              <TRTSection key={trt.nome} trt={trt} onRefresh={() => refetch()} />
+            ))}
+          </div>
+        </TabsContent>
+        
+        <TabsContent value="planilha">
+          <SpreadsheetView data={data} onRefresh={() => refetch()} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

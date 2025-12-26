@@ -272,6 +272,12 @@ function DesembargadorView({ desembargadores, turmaNome, trtNome, onBack }: {
   onBack: () => void;
 }) {
   const [selectedDesembargador, setSelectedDesembargador] = useState<DesembargadorData | null>(null);
+  const [empresaFilter, setEmpresaFilter] = useState<string>("todas");
+
+  const filteredDecisoes = selectedDesembargador?.decisoes.filter(d => {
+    if (empresaFilter === "todas") return true;
+    return d.empresa === empresaFilter;
+  }) || [];
 
   const getVotoColor = (voto: string) => {
     const v = voto?.toUpperCase() || "";
@@ -346,7 +352,24 @@ function DesembargadorView({ desembargadores, turmaNome, trtNome, onBack }: {
         </div>
 
         <div>
-          <h3 className="font-semibold text-sm text-muted-foreground mb-3">Decisões</h3>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold text-sm text-muted-foreground">Decisões</h3>
+            {selectedDesembargador && (
+              <Select value={empresaFilter} onValueChange={setEmpresaFilter}>
+                <SelectTrigger className="h-8 text-xs w-32" data-testid="select-empresa-filter">
+                  <SelectValue placeholder="Empresa" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todas">Todas</SelectItem>
+                  <SelectItem value="V.tal">V.tal</SelectItem>
+                  <SelectItem value="OI">OI</SelectItem>
+                  <SelectItem value="Serede">Serede</SelectItem>
+                  <SelectItem value="Sprink">Sprink</SelectItem>
+                  <SelectItem value="Outros Terceiros">Outros</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
+          </div>
           {selectedDesembargador ? (
             <Card className="p-4">
               <div className="flex items-center gap-3 mb-4 pb-4 border-b">
@@ -359,26 +382,45 @@ function DesembargadorView({ desembargadores, turmaNome, trtNome, onBack }: {
                 </div>
               </div>
               
-              {selectedDesembargador.decisoes.length === 0 ? (
+              {filteredDecisoes.length === 0 ? (
                 <p className="text-center text-muted-foreground py-8">
-                  Nenhuma decisão registrada
+                  {empresaFilter !== "todas" ? "Nenhuma decisão para esta empresa" : "Nenhuma decisão registrada"}
                 </p>
               ) : (
                 <div className="space-y-2 max-h-96 overflow-y-auto">
-                  {selectedDesembargador.decisoes.map((decisao) => (
-                    <div key={decisao.id} className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                      <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <p className="font-mono text-sm truncate">{decisao.numeroProcesso}</p>
-                        {decisao.dataDecisao && (
-                          <p className="text-xs text-muted-foreground">
-                            {new Date(decisao.dataDecisao).toLocaleDateString("pt-BR")}
-                          </p>
+                  {filteredDecisoes.map((decisao) => (
+                    <div key={decisao.id} className="p-3 bg-muted/50 rounded-lg space-y-2">
+                      <div className="flex items-center gap-3">
+                        <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="font-mono text-sm truncate">{decisao.numeroProcesso}</p>
+                          {decisao.dataDecisao && (
+                            <p className="text-xs text-muted-foreground">
+                              {new Date(decisao.dataDecisao).toLocaleDateString("pt-BR")}
+                            </p>
+                          )}
+                        </div>
+                        <Badge className={getResultadoStyle(decisao.resultado)}>
+                          {decisao.resultado}
+                        </Badge>
+                      </div>
+                      <div className="flex flex-wrap gap-2 pl-7">
+                        {decisao.upi && (
+                          <Badge variant="outline" className="text-xs">
+                            UPI: {decisao.upi === "sim" ? "Sim" : "Não"}
+                          </Badge>
+                        )}
+                        {decisao.responsabilidade && (
+                          <Badge variant="outline" className="text-xs">
+                            Resp: {decisao.responsabilidade === "solidaria" ? "Solidária" : "Subsidiária"}
+                          </Badge>
+                        )}
+                        {decisao.empresa && (
+                          <Badge variant="secondary" className="text-xs">
+                            {decisao.empresa}
+                          </Badge>
                         )}
                       </div>
-                      <Badge className={getResultadoStyle(decisao.resultado)}>
-                        {decisao.resultado}
-                      </Badge>
                     </div>
                   ))}
                 </div>

@@ -524,6 +524,7 @@ export const decisoesRpac = pgTable("decisoes_rpac", {
   resultado: varchar("resultado").notNull(),
   upi: varchar("upi").default("nao"),
   responsabilidade: varchar("responsabilidade").default("subsidiaria"),
+  empresa: varchar("empresa").default("V.tal"),
   observacoes: varchar("observacoes"),
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -541,6 +542,7 @@ export const insertDecisaoRpacSchema = z.object({
   resultado: votoStatusEnum,
   upi: upiEnum.default("nao"),
   responsabilidade: responsabilidadeEnum.default("subsidiaria"),
+  empresa: empresaEnum.default("V.tal"),
   observacoes: z.string().optional(),
 });
 
