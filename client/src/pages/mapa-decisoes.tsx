@@ -187,7 +187,8 @@ function TRTGrid({ trts, onSelect }: { trts: TRTData[]; onSelect: (trt: string) 
             </div>
             <Progress 
               value={trt.percentualFavoravel} 
-              className="h-2"
+              className="h-2 bg-red-500"
+              indicatorClassName="bg-emerald-500"
             />
             <div className="flex items-center justify-between text-xs">
               <span className="text-emerald-600 dark:text-emerald-400 font-medium">
@@ -253,7 +254,7 @@ function TurmasList({ turmas, trtNome, onSelect, onBack }: {
                 <p className="text-xs text-muted-foreground">Desfavoráveis</p>
               </div>
             </div>
-            <Progress value={turma.percentualFavoravel} className="h-2 mt-3" />
+            <Progress value={turma.percentualFavoravel} className="h-2 mt-3 bg-red-500" indicatorClassName="bg-emerald-500" />
             <p className="text-xs text-center mt-2 text-muted-foreground">
               {turma.percentualFavoravel}% favorabilidade ({turma.totalDecisoes} decisões)
             </p>
