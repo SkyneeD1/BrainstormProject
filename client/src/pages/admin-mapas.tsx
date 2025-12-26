@@ -231,7 +231,7 @@ function DecisaoItem({ decisao, onRefresh }: { decisao: DecisaoRpac; onRefresh: 
   );
 }
 
-function DesembargadorCard({ desembargador, onRefresh }: { desembargador: DesembargadorComDecisoes; onRefresh: () => void }) {
+function DesembargadorCard({ desembargador, onRefresh, labels }: { desembargador: DesembargadorComDecisoes; onRefresh: () => void; labels: Labels }) {
   const { toast } = useToast();
   const [expanded, setExpanded] = useState(false);
   const [showAddDecisao, setShowAddDecisao] = useState(false);
@@ -257,6 +257,17 @@ function DesembargadorCard({ desembargador, onRefresh }: { desembargador: Desemb
     },
   });
 
+  const deleteDesembMutation = useMutation({
+    mutationFn: async () => apiRequest("DELETE", `/api/desembargadores/${desembargador.id}`),
+    onSuccess: () => {
+      toast({ title: `${labels.level3} excluído` });
+      onRefresh();
+    },
+    onError: () => {
+      toast({ title: `Erro ao excluir ${labels.level3.toLowerCase()}`, variant: "destructive" });
+    },
+  });
+
   const favoraveis = desembargador.decisoes.filter(d => d.resultado?.toUpperCase().includes('FAVORÁVEL') && !d.resultado?.toUpperCase().includes('DESFAVORÁVEL')).length;
   const desfavoraveis = desembargador.decisoes.filter(d => d.resultado?.toUpperCase().includes('DESFAVORÁVEL')).length;
   const total = favoraveis + desfavoraveis;
@@ -279,6 +290,25 @@ function DesembargadorCard({ desembargador, onRefresh }: { desembargador: Desemb
             </Badge>
           </div>
         </div>
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" data-testid={`button-delete-desemb-${desembargador.id}`}>
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Excluir {labels.level3}?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Esta ação excluirá "{desembargador.nome}" e todas as decisões associadas. Esta ação não pode ser desfeita.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={() => deleteDesembMutation.mutate()}>Excluir</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setExpanded(!expanded)} data-testid={`button-expand-${desembargador.id}`}>
           {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
         </Button>
@@ -383,7 +413,36 @@ function DesembargadorCard({ desembargador, onRefresh }: { desembargador: Desemb
 type Labels = ReturnType<typeof getLabels>;
 
 function TurmaSection({ turma, onRefresh, labels }: { turma: TurmaComDesembargadores; onRefresh: () => void; labels: Labels }) {
+  const { toast } = useToast();
   const [expanded, setExpanded] = useState(false);
+  const [showAddDesemb, setShowAddDesemb] = useState(false);
+  const [newDesembNome, setNewDesembNome] = useState("");
+
+  const createDesembMutation = useMutation({
+    mutationFn: async (data: { nome: string; turmaId: string }) => apiRequest("POST", "/api/desembargadores", data),
+    onSuccess: () => {
+      toast({ title: `${labels.level3} criado com sucesso` });
+      setShowAddDesemb(false);
+      setNewDesembNome("");
+      onRefresh();
+    },
+    onError: () => {
+      toast({ title: `Erro ao criar ${labels.level3.toLowerCase()}`, variant: "destructive" });
+    },
+  });
+
+  const deleteTurmaMutation = useMutation({
+    mutationFn: async () => apiRequest("DELETE", `/api/turmas/${turma.id}`),
+    onSuccess: () => {
+      toast({ title: `${labels.level2} excluída` });
+      onRefresh();
+    },
+    onError: () => {
+      toast({ title: `Erro ao excluir ${labels.level2.toLowerCase()}`, variant: "destructive" });
+    },
+  });
+
+  const sortedDesembargadores = [...turma.desembargadores].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
 
   return (
     <div className="border rounded-lg bg-card">
@@ -394,14 +453,70 @@ function TurmaSection({ turma, onRefresh, labels }: { turma: TurmaComDesembargad
       >
         {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
         <Users className="h-4 w-4 text-primary" />
-        <span className="font-semibold">{turma.nome}</span>
+        <span className="font-semibold flex-1">{turma.nome}</span>
         <span className="text-sm text-muted-foreground">({turma.desembargadores.length} {labels.level3Plural.toLowerCase()})</span>
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={(e) => { e.stopPropagation(); setShowAddDesemb(true); setExpanded(true); }}
+          data-testid={`button-add-desemb-${turma.id}`}
+        >
+          <Plus className="h-3 w-3" />
+        </Button>
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-destructive hover:text-destructive"
+              onClick={(e) => e.stopPropagation()}
+              data-testid={`button-delete-turma-${turma.id}`}
+            >
+              <Trash2 className="h-3 w-3" />
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Excluir {labels.level2}?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Esta ação excluirá "{turma.nome}" e todos os {labels.level3Plural.toLowerCase()} associados. Esta ação não pode ser desfeita.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={() => deleteTurmaMutation.mutate()}>Excluir</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
 
       {expanded && (
         <div className="p-3 pt-0 space-y-2">
-          {turma.desembargadores.map(desembargador => (
-            <DesembargadorCard key={desembargador.id} desembargador={desembargador} onRefresh={onRefresh} />
+          {showAddDesemb && (
+            <div className="flex items-center gap-2 p-2 bg-muted rounded">
+              <Input
+                placeholder={`Nome do ${labels.level3.toLowerCase()}...`}
+                value={newDesembNome}
+                onChange={(e) => setNewDesembNome(e.target.value)}
+                className="flex-1 h-8"
+                data-testid="input-new-desemb-nome"
+              />
+              <Button
+                size="sm"
+                className="h-8"
+                onClick={() => createDesembMutation.mutate({ nome: newDesembNome, turmaId: turma.id })}
+                disabled={!newDesembNome.trim() || createDesembMutation.isPending}
+                data-testid="button-save-desemb"
+              >
+                Salvar
+              </Button>
+              <Button size="sm" variant="ghost" className="h-8" onClick={() => { setShowAddDesemb(false); setNewDesembNome(""); }}>
+                Cancelar
+              </Button>
+            </div>
+          )}
+          {sortedDesembargadores.map(desembargador => (
+            <DesembargadorCard key={desembargador.id} desembargador={desembargador} onRefresh={onRefresh} labels={labels} />
           ))}
         </div>
       )}
@@ -821,11 +936,29 @@ function SpreadsheetView({ data, onRefresh, labels }: { data: AdminData | undefi
   );
 }
 
-function TRTSection({ trt, onRefresh, labels }: { trt: TRTData; onRefresh: () => void; labels: Labels }) {
+function TRTSection({ trt, onRefresh, labels, instancia }: { trt: TRTData; onRefresh: () => void; labels: Labels; instancia: string }) {
+  const { toast } = useToast();
   const [expanded, setExpanded] = useState(false);
+  const [showAddTurma, setShowAddTurma] = useState(false);
+  const [newTurmaNome, setNewTurmaNome] = useState("");
 
   const totalLevel3 = trt.turmas.reduce((acc, t) => acc + t.desembargadores.length, 0);
   const totalDecisoes = trt.turmas.reduce((acc, t) => acc + t.desembargadores.reduce((a, d) => a + d.decisoes.length, 0), 0);
+
+  const createTurmaMutation = useMutation({
+    mutationFn: async (data: { nome: string; regiao: string; instancia: string }) => apiRequest("POST", "/api/turmas", data),
+    onSuccess: () => {
+      toast({ title: `${labels.level2} criada com sucesso` });
+      setShowAddTurma(false);
+      setNewTurmaNome("");
+      onRefresh();
+    },
+    onError: () => {
+      toast({ title: `Erro ao criar ${labels.level2.toLowerCase()}`, variant: "destructive" });
+    },
+  });
+
+  const sortedTurmas = [...trt.turmas].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR', { numeric: true }));
 
   return (
     <Card className="overflow-hidden">
@@ -842,11 +975,42 @@ function TRTSection({ trt, onRefresh, labels }: { trt: TRTData; onRefresh: () =>
             {trt.turmas.length} {labels.level2Plural.toLowerCase()} • {totalLevel3} {labels.level3Plural.toLowerCase()} • {totalDecisoes} decisões
           </p>
         </div>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={(e) => { e.stopPropagation(); setShowAddTurma(true); setExpanded(true); }}
+          data-testid={`button-add-turma-${trt.nome}`}
+        >
+          <Plus className="h-4 w-4 mr-1" />
+          {labels.level2}
+        </Button>
       </div>
 
       {expanded && (
         <div className="p-4 pt-0 space-y-3">
-          {trt.turmas.map(turma => (
+          {showAddTurma && (
+            <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
+              <Input
+                placeholder={`Nome da ${labels.level2.toLowerCase()}...`}
+                value={newTurmaNome}
+                onChange={(e) => setNewTurmaNome(e.target.value)}
+                className="flex-1"
+                data-testid="input-new-turma-nome"
+              />
+              <Button
+                size="sm"
+                onClick={() => createTurmaMutation.mutate({ nome: newTurmaNome, regiao: trt.nome, instancia })}
+                disabled={!newTurmaNome.trim() || createTurmaMutation.isPending}
+                data-testid="button-save-turma"
+              >
+                Salvar
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => { setShowAddTurma(false); setNewTurmaNome(""); }}>
+                Cancelar
+              </Button>
+            </div>
+          )}
+          {sortedTurmas.map(turma => (
             <TurmaSection key={turma.id} turma={turma} onRefresh={onRefresh} labels={labels} />
           ))}
         </div>
@@ -856,7 +1020,12 @@ function TRTSection({ trt, onRefresh, labels }: { trt: TRTData; onRefresh: () =>
 }
 
 export default function AdminMapasPage() {
+  const { toast } = useToast();
   const [instanciaTab, setInstanciaTab] = useState<string>("segunda");
+  const [showAddTRT, setShowAddTRT] = useState(false);
+  const [newTRTNome, setNewTRTNome] = useState("");
+  const [newTurmaNome, setNewTurmaNome] = useState("");
+
   const { data, isLoading, refetch } = useQuery<AdminData>({
     queryKey: ["/api/mapa-decisoes/admin", instanciaTab],
     queryFn: async ({ queryKey }) => {
@@ -864,6 +1033,22 @@ export default function AdminMapasPage() {
       const res = await fetch(`/api/mapa-decisoes/admin?instancia=${inst}`, { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to fetch admin data');
       return res.json();
+    },
+  });
+
+  const createTRTMutation = useMutation({
+    mutationFn: async (data: { nome: string; regiao: string; instancia: string }) => apiRequest("POST", "/api/turmas", data),
+    onSuccess: () => {
+      const labels = getLabels(instanciaTab as "primeira" | "segunda");
+      toast({ title: `${labels.level1} criado com sucesso` });
+      setShowAddTRT(false);
+      setNewTRTNome("");
+      setNewTurmaNome("");
+      refetch();
+    },
+    onError: () => {
+      const labels = getLabels(instanciaTab as "primeira" | "segunda");
+      toast({ title: `Erro ao criar ${labels.level1.toLowerCase()}`, variant: "destructive" });
     },
   });
 
@@ -941,8 +1126,58 @@ export default function AdminMapasPage() {
         
         <TabsContent value="arvore">
           <div className="space-y-4">
-            {data?.trts.map(trt => (
-              <TRTSection key={trt.nome} trt={trt} onRefresh={() => refetch()} labels={labels} />
+            <div className="flex justify-end">
+              <Dialog open={showAddTRT} onOpenChange={setShowAddTRT}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" data-testid="button-add-trt">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Novo {labels.level1}
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Criar Novo {labels.level1}</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Nome do {labels.level1}</label>
+                      <Input
+                        placeholder={`Ex: ${instanciaTab === 'segunda' ? 'TRT - 1' : 'Comarca de São Paulo'}`}
+                        value={newTRTNome}
+                        onChange={(e) => setNewTRTNome(e.target.value)}
+                        data-testid="input-new-trt-nome"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Primeira {labels.level2} (opcional)</label>
+                      <Input
+                        placeholder={`Ex: ${instanciaTab === 'segunda' ? '1ª Turma' : '1ª Vara do Trabalho'}`}
+                        value={newTurmaNome}
+                        onChange={(e) => setNewTurmaNome(e.target.value)}
+                        data-testid="input-new-trt-turma"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Para criar um {labels.level1}, é necessário criar pelo menos uma {labels.level2}.
+                      </p>
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button variant="ghost" onClick={() => { setShowAddTRT(false); setNewTRTNome(""); setNewTurmaNome(""); }}>
+                      Cancelar
+                    </Button>
+                    <Button
+                      onClick={() => createTRTMutation.mutate({ nome: newTurmaNome || `${labels.level2} 1`, regiao: newTRTNome, instancia: instanciaTab })}
+                      disabled={!newTRTNome.trim() || createTRTMutation.isPending}
+                      data-testid="button-save-trt"
+                    >
+                      Criar {labels.level1}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </div>
+            {[...(data?.trts || [])].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR', { numeric: true })).map(trt => (
+              <TRTSection key={trt.nome} trt={trt} onRefresh={() => refetch()} labels={labels} instancia={instanciaTab} />
             ))}
           </div>
         </TabsContent>
