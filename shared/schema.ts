@@ -511,6 +511,10 @@ export const insertDesembargadorSchema = z.object({
 
 export type CreateDesembargadorInput = z.infer<typeof insertDesembargadorSchema>;
 
+// Enum para responsabilidade
+export const responsabilidadeEnum = z.enum(["solidaria", "subsidiaria"]);
+export type Responsabilidade = z.infer<typeof responsabilidadeEnum>;
+
 // Decisões RPAC - para rastrear decisões específicas
 export const decisoesRpac = pgTable("decisoes_rpac", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -518,6 +522,8 @@ export const decisoesRpac = pgTable("decisoes_rpac", {
   numeroProcesso: varchar("numero_processo").notNull(),
   dataDecisao: timestamp("data_decisao"),
   resultado: varchar("resultado").notNull(),
+  upi: varchar("upi").default("nao"),
+  responsabilidade: varchar("responsabilidade").default("subsidiaria"),
   observacoes: varchar("observacoes"),
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -525,11 +531,16 @@ export const decisoesRpac = pgTable("decisoes_rpac", {
 export type DecisaoRpac = typeof decisoesRpac.$inferSelect;
 export type InsertDecisaoRpac = typeof decisoesRpac.$inferInsert;
 
+export const upiEnum = z.enum(["sim", "nao"]);
+export type UPI = z.infer<typeof upiEnum>;
+
 export const insertDecisaoRpacSchema = z.object({
   desembargadorId: z.string().min(1, "Desembargador é obrigatório"),
   numeroProcesso: z.string().min(1, "Número do processo é obrigatório"),
   dataDecisao: z.string().optional(),
   resultado: votoStatusEnum,
+  upi: upiEnum.default("nao"),
+  responsabilidade: responsabilidadeEnum.default("subsidiaria"),
   observacoes: z.string().optional(),
 });
 
