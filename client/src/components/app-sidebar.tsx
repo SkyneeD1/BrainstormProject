@@ -47,8 +47,13 @@ const menuItems = [
     icon: Map,
     subItems: [
       {
-        title: "Mapa de Decisões",
-        url: "/mapas/decisoes",
+        title: "2ª Instância",
+        url: "/mapas/segunda-instancia",
+        icon: Gavel,
+      },
+      {
+        title: "1ª Instância",
+        url: "/mapas/primeira-instancia",
         icon: Gavel,
       },
     ],

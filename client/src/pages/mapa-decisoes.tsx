@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -971,19 +972,26 @@ function AnalyticsPanel() {
 }
 
 export default function MapaDecisoesPage() {
+  const [location] = useLocation();
+  const instancia = location.includes("primeira-instancia") ? "primeira" : "segunda";
+  const pageTitle = instancia === "primeira" ? "1ª Instância" : "2ª Instância";
+  
   const [selectedTRT, setSelectedTRT] = useState<string | null>(null);
   const [selectedTurma, setSelectedTurma] = useState<{ id: string; nome: string } | null>(null);
   const [activeTab, setActiveTab] = useState<"navegacao" | "analytics">("navegacao");
   const [responsabilidadeFilter, setResponsabilidadeFilter] = useState<string>("todas");
   const [empresaNavFilter, setEmpresaNavFilter] = useState<string>("todas");
+  const [numeroProcessoFilter, setNumeroProcessoFilter] = useState<string>("");
 
   const { data: trts, isLoading: loadingTRTs } = useQuery<TRTData[]>({
-    queryKey: ["/api/mapa-decisoes/trts", { responsabilidade: responsabilidadeFilter, empresa: empresaNavFilter }],
+    queryKey: ["/api/mapa-decisoes/trts", { instancia, responsabilidade: responsabilidadeFilter, empresa: empresaNavFilter, numeroProcesso: numeroProcessoFilter }],
     queryFn: async () => {
       const params = new URLSearchParams();
+      params.append("instancia", instancia);
       if (responsabilidadeFilter !== "todas") params.append("responsabilidade", responsabilidadeFilter);
       if (empresaNavFilter !== "todas") params.append("empresa", empresaNavFilter);
-      const queryString = params.toString() ? `?${params.toString()}` : "";
+      if (numeroProcessoFilter.trim()) params.append("numeroProcesso", numeroProcessoFilter.trim());
+      const queryString = `?${params.toString()}`;
       const res = await fetch(`/api/mapa-decisoes/trts${queryString}`, { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to fetch TRTs');
       return res.json();
@@ -991,12 +999,14 @@ export default function MapaDecisoesPage() {
   });
 
   const { data: turmas, isLoading: loadingTurmas } = useQuery<TurmaData[]>({
-    queryKey: ["/api/mapa-decisoes/turmas", selectedTRT, { responsabilidade: responsabilidadeFilter, empresa: empresaNavFilter }],
+    queryKey: ["/api/mapa-decisoes/turmas", selectedTRT, { instancia, responsabilidade: responsabilidadeFilter, empresa: empresaNavFilter, numeroProcesso: numeroProcessoFilter }],
     queryFn: async () => {
       const params = new URLSearchParams();
+      params.append("instancia", instancia);
       if (responsabilidadeFilter !== "todas") params.append("responsabilidade", responsabilidadeFilter);
       if (empresaNavFilter !== "todas") params.append("empresa", empresaNavFilter);
-      const queryString = params.toString() ? `?${params.toString()}` : "";
+      if (numeroProcessoFilter.trim()) params.append("numeroProcesso", numeroProcessoFilter.trim());
+      const queryString = `?${params.toString()}`;
       const res = await fetch(`/api/mapa-decisoes/turmas/${encodeURIComponent(selectedTRT!)}${queryString}`, { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to fetch turmas');
       return res.json();
@@ -1032,7 +1042,7 @@ export default function MapaDecisoesPage() {
       <header className="mb-6">
         <h1 className="text-2xl font-bold flex items-center gap-3">
           <Gavel className="h-7 w-7 text-primary" />
-          Mapa de Decisões
+          {pageTitle}
         </h1>
         <p className="text-muted-foreground mt-1">
           Análise de favorabilidade por TRT, Turma e Desembargador
@@ -1087,6 +1097,17 @@ export default function MapaDecisoesPage() {
               </Select>
             </div>
             <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Nº Processo:</span>
+              <Input
+                type="text"
+                placeholder="Buscar por número..."
+                value={numeroProcessoFilter}
+                onChange={(e) => setNumeroProcessoFilter(e.target.value)}
+                className="w-44"
+                data-testid="input-numero-processo-filter"
+              />
+            </div>
+            <div className="flex items-center gap-2">
               {responsabilidadeFilter !== "todas" && (
                 <Badge variant="secondary" className="text-xs">
                   {responsabilidadeFilter === "solidaria" ? "Solidária" : "Subsidiária"}
@@ -1095,6 +1116,11 @@ export default function MapaDecisoesPage() {
               {empresaNavFilter !== "todas" && (
                 <Badge variant="secondary" className="text-xs">
                   {empresaNavFilter}
+                </Badge>
+              )}
+              {numeroProcessoFilter.trim() && (
+                <Badge variant="secondary" className="text-xs">
+                  Processo: {numeroProcessoFilter.trim()}
                 </Badge>
               )}
             </div>

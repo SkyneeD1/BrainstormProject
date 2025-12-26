@@ -27,7 +27,8 @@ function AuthenticatedRouter() {
       <Route path="/passivo/comparacao" component={PassivoComparacao} />
       <Route path="/admin/dados" component={AdminDados} />
       <Route path="/admin/usuarios" component={AdminUsers} />
-      <Route path="/mapas/decisoes" component={MapaDecisoes} />
+      <Route path="/mapas/segunda-instancia" component={MapaDecisoes} />
+      <Route path="/mapas/primeira-instancia" component={MapaDecisoes} />
       <Route path="/admin/mapas" component={AdminMapas} />
       <Route path="/brainstorm/relatorio" component={BrainstormRelatorio} />
       <Route path="/brainstorm/gestao" component={BrainstormGestao} />
