@@ -473,10 +473,14 @@ export type BrainstormStats = z.infer<typeof brainstormStatsSchema>;
 export const votoStatusEnum = z.enum(["FAVORÁVEL", "DESFAVORÁVEL", "EM ANÁLISE", "SUSPEITO"]);
 export type VotoStatus = z.infer<typeof votoStatusEnum>;
 
+export const instanciaEnum = z.enum(["primeira", "segunda"]);
+export type Instancia = z.infer<typeof instanciaEnum>;
+
 export const turmas = pgTable("turmas", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   nome: varchar("nome").notNull(),
   regiao: varchar("regiao"),
+  instancia: varchar("instancia").default("segunda").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -486,6 +490,7 @@ export type InsertTurma = typeof turmas.$inferInsert;
 export const insertTurmaSchema = z.object({
   nome: z.string().min(1, "Nome da turma é obrigatório"),
   regiao: z.string().optional(),
+  instancia: instanciaEnum.default("segunda"),
 });
 
 export type CreateTurmaInput = z.infer<typeof insertTurmaSchema>;

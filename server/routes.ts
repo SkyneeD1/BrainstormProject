@@ -1133,7 +1133,9 @@ export async function registerRoutes(
     try {
       const responsabilidade = req.query.responsabilidade as string | undefined;
       const empresa = req.query.empresa as string | undefined;
-      const trts = await storage.getTRTsComEstatisticas(responsabilidade, empresa);
+      const instancia = (req.query.instancia as string) || 'segunda';
+      const numeroProcesso = req.query.numeroProcesso as string | undefined;
+      const trts = await storage.getTRTsComEstatisticas(responsabilidade, empresa, instancia, numeroProcesso);
       res.json(trts);
     } catch (error) {
       console.error("Error fetching TRTs:", error);
@@ -1145,7 +1147,9 @@ export async function registerRoutes(
     try {
       const responsabilidade = req.query.responsabilidade as string | undefined;
       const empresa = req.query.empresa as string | undefined;
-      const turmas = await storage.getTurmasByTRT(decodeURIComponent(req.params.trtNome), responsabilidade, empresa);
+      const instancia = (req.query.instancia as string) || 'segunda';
+      const numeroProcesso = req.query.numeroProcesso as string | undefined;
+      const turmas = await storage.getTurmasByTRT(decodeURIComponent(req.params.trtNome), responsabilidade, empresa, instancia, numeroProcesso);
       res.json(turmas);
     } catch (error) {
       console.error("Error fetching turmas:", error);

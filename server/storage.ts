@@ -1223,8 +1223,13 @@ export class MemStorage implements IStorage {
   }
 
   // Mapas Estratégicos - Turmas
-  async getAllTurmas(): Promise<Turma[]> {
-    const result = await db.select().from(turmas);
+  async getAllTurmas(instancia?: string): Promise<Turma[]> {
+    let result;
+    if (instancia && instancia !== 'todas') {
+      result = await db.select().from(turmas).where(eq(turmas.instancia, instancia));
+    } else {
+      result = await db.select().from(turmas);
+    }
     return this.sortTurmasNumerically(result);
   }
 
@@ -1463,7 +1468,7 @@ export class MemStorage implements IStorage {
     return regiao;
   }
 
-  async getTRTsComEstatisticas(responsabilidadeFilter?: string, empresaFilter?: string): Promise<Array<{
+  async getTRTsComEstatisticas(responsabilidadeFilter?: string, empresaFilter?: string, instancia?: string, numeroProcesso?: string): Promise<Array<{
     nome: string;
     totalTurmas: number;
     totalDesembargadores: number;
@@ -1473,7 +1478,7 @@ export class MemStorage implements IStorage {
     emAnalise: number;
     percentualFavoravel: number;
   }>> {
-    const turmasList = await this.getAllTurmas();
+    const turmasList = await this.getAllTurmas(instancia || 'segunda');
     const trtMap = new Map<string, { 
       displayName: string, 
       allTurmas: Set<string>, 
@@ -1518,6 +1523,11 @@ export class MemStorage implements IStorage {
         if (empresaFilter && empresaFilter !== 'todas') {
           filteredDecisoes = filteredDecisoes.filter(dec => dec.empresa === empresaFilter);
         }
+        if (numeroProcesso && numeroProcesso.trim()) {
+          filteredDecisoes = filteredDecisoes.filter(dec => 
+            dec.numeroProcesso.toLowerCase().includes(numeroProcesso.toLowerCase())
+          );
+        }
         
         // If this judge has matching decisions, track them for counts
         if (filteredDecisoes.length > 0) {
@@ -1560,7 +1570,7 @@ export class MemStorage implements IStorage {
   }
 
   // Analytics: Get Turmas by TRT with statistics
-  async getTurmasByTRT(trtNome: string, responsabilidadeFilter?: string, empresaFilter?: string): Promise<Array<{
+  async getTurmasByTRT(trtNome: string, responsabilidadeFilter?: string, empresaFilter?: string, instancia?: string, numeroProcesso?: string): Promise<Array<{
     id: string;
     nome: string;
     totalDesembargadores: number;
@@ -1569,7 +1579,7 @@ export class MemStorage implements IStorage {
     desfavoraveis: number;
     percentualFavoravel: number;
   }>> {
-    const turmasList = await this.getAllTurmas();
+    const turmasList = await this.getAllTurmas(instancia || 'segunda');
     // Normalize the input TRT name to match
     const inputKey = this.normalizeTRTKey(trtNome);
     const turmasDoTrt = turmasList.filter(t => {
@@ -1578,7 +1588,8 @@ export class MemStorage implements IStorage {
     });
 
     const isFiltering = (responsabilidadeFilter && responsabilidadeFilter !== 'todas') || 
-                        (empresaFilter && empresaFilter !== 'todas');
+                        (empresaFilter && empresaFilter !== 'todas') ||
+                        (numeroProcesso && numeroProcesso.trim());
 
     const result = [];
     for (const turma of turmasDoTrt) {
@@ -1590,13 +1601,16 @@ export class MemStorage implements IStorage {
 
       for (const d of desembargadores) {
         const allDecisoes = await this.getDecisoesRpacByDesembargador(d.id);
-        // Filter decisoes by responsabilidade and empresa if filters are active
+        // Filter decisoes by responsabilidade, empresa, and numeroProcesso if filters are active
         let decisoes = allDecisoes;
         if (responsabilidadeFilter && responsabilidadeFilter !== 'todas') {
           decisoes = decisoes.filter(dec => this.matchesResponsabilidade(dec.responsabilidade, responsabilidadeFilter));
         }
         if (empresaFilter && empresaFilter !== 'todas') {
           decisoes = decisoes.filter(dec => dec.empresa === empresaFilter);
+        }
+        if (numeroProcesso && numeroProcesso.trim()) {
+          decisoes = decisoes.filter(dec => dec.numeroProcesso.toLowerCase().includes(numeroProcesso.toLowerCase()));
         }
         
         if (decisoes.length > 0) {
