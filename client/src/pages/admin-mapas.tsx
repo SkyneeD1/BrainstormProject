@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Database, ChevronDown, ChevronRight, Plus, Edit2, Trash2, RefreshCw, Users, Building2, Gavel, Table, FolderTree, Upload } from "lucide-react";
+import { Database, ChevronDown, ChevronRight, Plus, Edit2, Trash2, RefreshCw, Users, Building2, Gavel, Table, FolderTree, Upload, FileSpreadsheet, Download } from "lucide-react";
+import * as XLSX from "xlsx";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -462,13 +463,160 @@ function SpreadsheetView({ data, onRefresh }: { data: AdminData | undefined; onR
 
   const validRows = batchRows.filter(r => r.desembargadorId && r.numeroProcesso.trim());
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleExcelImport = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = new Uint8Array(e.target?.result as ArrayBuffer);
+        const workbook = XLSX.read(data, { type: "array" });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as string[][];
+
+        // Skip header row, parse remaining rows
+        const newRows: Array<{ desembargadorId: string; numeroProcesso: string; dataDecisao: string; resultado: string; upi: string; responsabilidade: string; empresa: string }> = [];
+        for (let i = 1; i < jsonData.length; i++) {
+          const row = jsonData[i];
+          if (!row || row.length < 2) continue;
+
+          // Expected columns: Desembargador, NumeroProcesso, Data, Resultado, UPI, Responsabilidade, Empresa
+          const desembargadorNome = String(row[0] || "").trim();
+          const numeroProcesso = String(row[1] || "").trim();
+          const dataDecisao = row[2] ? formatExcelDate(row[2]) : new Date().toISOString().split('T')[0];
+          const resultado = normalizeResultado(String(row[3] || "EM ANÁLISE"));
+          const upi = String(row[4] || "").toLowerCase().includes("sim") ? "sim" : "nao";
+          const responsabilidade = String(row[5] || "").toLowerCase().includes("solidária") || String(row[5] || "").toLowerCase().includes("solidaria") ? "solidaria" : "subsidiaria";
+          const empresa = normalizeEmpresa(String(row[6] || "V.tal"));
+
+          // Find matching desembargador by name
+          const matchingDesemb = allDesembargadores.find(d => 
+            d.nome.toLowerCase().includes(desembargadorNome.toLowerCase()) ||
+            desembargadorNome.toLowerCase().includes(d.nome.toLowerCase())
+          );
+
+          if (matchingDesemb && numeroProcesso) {
+            newRows.push({
+              desembargadorId: matchingDesemb.id,
+              numeroProcesso,
+              dataDecisao,
+              resultado,
+              upi,
+              responsabilidade,
+              empresa
+            });
+          }
+        }
+
+        const unmatchedDesemb = jsonData.slice(1)
+          .filter(row => row && row.length >= 2 && row[1])
+          .filter(row => {
+            const nome = String(row[0] || "").trim();
+            return !allDesembargadores.find(d => 
+              d.nome.toLowerCase().includes(nome.toLowerCase()) ||
+              nome.toLowerCase().includes(d.nome.toLowerCase())
+            );
+          })
+          .map(row => String(row[0] || "").trim());
+
+        if (newRows.length > 0) {
+          setBatchRows(prev => [...prev.filter(r => r.desembargadorId && r.numeroProcesso), ...newRows]);
+          if (unmatchedDesemb.length > 0) {
+            toast({ 
+              title: `${newRows.length} linhas importadas`, 
+              description: `${unmatchedDesemb.length} não encontrados: ${unmatchedDesemb.slice(0, 3).join(", ")}${unmatchedDesemb.length > 3 ? "..." : ""}` 
+            });
+          } else {
+            toast({ title: `${newRows.length} linhas importadas do Excel` });
+          }
+        } else {
+          toast({ 
+            title: "Nenhuma linha válida encontrada", 
+            description: unmatchedDesemb.length > 0 ? `Desembargadores não encontrados: ${unmatchedDesemb.slice(0, 3).join(", ")}` : undefined,
+            variant: "destructive" 
+          });
+        }
+      } catch (error) {
+        toast({ title: "Erro ao ler arquivo Excel", variant: "destructive" });
+      }
+    };
+    reader.readAsArrayBuffer(file);
+    event.target.value = "";
+  };
+
+  const formatExcelDate = (value: unknown): string => {
+    if (typeof value === "number") {
+      // Excel serial date number
+      const date = XLSX.SSF.parse_date_code(value);
+      return `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')}`;
+    }
+    if (typeof value === "string") {
+      const parsed = new Date(value);
+      if (!isNaN(parsed.getTime())) {
+        return parsed.toISOString().split('T')[0];
+      }
+    }
+    return new Date().toISOString().split('T')[0];
+  };
+
+  const normalizeResultado = (value: string): string => {
+    const upper = value.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    if (upper.includes("DESFAVORAVEL")) return "DESFAVORÁVEL";
+    if (upper.includes("FAVORAVEL")) return "FAVORÁVEL";
+    return "EM ANÁLISE";
+  };
+
+  const normalizeEmpresa = (value: string): string => {
+    const lower = value.toLowerCase();
+    if (lower.includes("v.tal") || lower.includes("vtal")) return "V.tal";
+    if (lower.includes("oi")) return "OI";
+    if (lower.includes("serede")) return "Serede";
+    if (lower.includes("sprink")) return "Sprink";
+    if (lower.includes("terceiros") || lower.includes("outros")) return "Outros Terceiros";
+    return "V.tal";
+  };
+
+  const downloadTemplate = () => {
+    const templateData = [
+      ["Desembargador", "Numero Processo", "Data (YYYY-MM-DD)", "Resultado", "UPI", "Responsabilidade", "Empresa"],
+      ["Nome do Desembargador", "0000000-00.0000.0.00.0000", "2024-01-15", "FAVORÁVEL", "sim", "solidaria", "V.tal"],
+    ];
+    const ws = XLSX.utils.aoa_to_sheet(templateData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Template");
+    XLSX.writeFile(wb, "template_decisoes.xlsx");
+  };
+
   return (
     <div className="space-y-6">
       <Card className="p-4">
-        <h3 className="font-semibold mb-4 flex items-center gap-2">
-          <Upload className="h-5 w-5" />
-          Adicionar Decisões em Lote
-        </h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold flex items-center gap-2">
+            <Upload className="h-5 w-5" />
+            Adicionar Decisões em Lote
+          </h3>
+          <div className="flex items-center gap-2">
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleExcelImport}
+              accept=".xlsx,.xls"
+              className="hidden"
+            />
+            <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
+              <FileSpreadsheet className="h-4 w-4 mr-1" />
+              Importar Excel
+            </Button>
+            <Button variant="ghost" size="sm" onClick={downloadTemplate}>
+              <Download className="h-4 w-4 mr-1" />
+              Baixar Template
+            </Button>
+          </div>
+        </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>

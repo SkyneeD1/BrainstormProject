@@ -511,7 +511,20 @@ function AnalyticsPanel() {
     queryFn: () => fetchWithCredentials(buildUrl("/api/mapa-decisoes/analytics/timeline")),
   });
 
-  if (loadingEstat || loadingTop || loadingTimeline || loadingRegioes || loadingDesemb) {
+  const { data: empresaStats, isLoading: loadingEmpresa } = useQuery<Array<{
+    empresa: string;
+    totalDecisoes: number;
+    favoraveis: number;
+    desfavoraveis: number;
+    emAnalise: number;
+    percentualFavoravel: number;
+    percentualDesfavoravel: number;
+  }>>({
+    queryKey: ["/api/mapa-decisoes/analytics/por-empresa", { dataInicio, dataFim, responsabilidadeFilter }],
+    queryFn: () => fetchWithCredentials(buildUrl("/api/mapa-decisoes/analytics/por-empresa")),
+  });
+
+  if (loadingEstat || loadingTop || loadingTimeline || loadingRegioes || loadingDesemb || loadingEmpresa) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-24" />
@@ -890,6 +903,71 @@ function AnalyticsPanel() {
           </div>
         )}
       </Card>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card className="p-4">
+          <h3 className="font-semibold flex items-center gap-2 mb-4">
+            <Building2 className="h-5 w-5 text-primary" />
+            Decisões por Empresa
+          </h3>
+          {empresaStats && empresaStats.length > 0 ? (
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={empresaStats} layout="vertical" margin={{ left: 60 }}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis type="number" />
+                <YAxis dataKey="empresa" type="category" width={80} tick={{ fontSize: 12 }} />
+                <Tooltip />
+                <Legend />
+                <Bar dataKey="favoraveis" name="Favoráveis" fill={COLORS.favoravel} stackId="a" />
+                <Bar dataKey="desfavoraveis" name="Desfavoráveis" fill={COLORS.desfavoravel} stackId="a" />
+                <Bar dataKey="emAnalise" name="Em Análise" fill={COLORS.emAnalise} stackId="a" />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-[250px] flex items-center justify-center text-muted-foreground">
+              Nenhuma decisão por empresa
+            </div>
+          )}
+        </Card>
+
+        <Card className="p-4">
+          <h3 className="font-semibold flex items-center gap-2 mb-4">
+            <TrendingUp className="h-5 w-5 text-primary" />
+            Favorabilidade por Empresa
+          </h3>
+          {empresaStats && empresaStats.length > 0 ? (
+            <div className="space-y-4">
+              {empresaStats.map((emp) => (
+                <div key={emp.empresa} className="space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="font-medium">{emp.empresa}</span>
+                    <span className="text-muted-foreground">{emp.totalDecisoes} decisões</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Progress 
+                      value={emp.percentualFavoravel} 
+                      className="h-3 flex-1"
+                      indicatorClassName="bg-emerald-500"
+                    />
+                    <span className="text-sm font-medium w-12 text-right text-emerald-600 dark:text-emerald-400">
+                      {emp.percentualFavoravel}%
+                    </span>
+                  </div>
+                  <div className="flex gap-4 text-xs text-muted-foreground">
+                    <span className="text-emerald-600 dark:text-emerald-400">{emp.favoraveis} fav</span>
+                    <span className="text-red-600 dark:text-red-400">{emp.desfavoraveis} desf</span>
+                    <span>{emp.emAnalise} análise</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="h-[250px] flex items-center justify-center text-muted-foreground">
+              Nenhuma decisão por empresa
+            </div>
+          )}
+        </Card>
+      </div>
     </div>
   );
 }
@@ -899,22 +977,29 @@ export default function MapaDecisoesPage() {
   const [selectedTurma, setSelectedTurma] = useState<{ id: string; nome: string } | null>(null);
   const [activeTab, setActiveTab] = useState<"navegacao" | "analytics">("navegacao");
   const [responsabilidadeFilter, setResponsabilidadeFilter] = useState<string>("todas");
+  const [empresaNavFilter, setEmpresaNavFilter] = useState<string>("todas");
 
   const { data: trts, isLoading: loadingTRTs } = useQuery<TRTData[]>({
-    queryKey: ["/api/mapa-decisoes/trts", { responsabilidade: responsabilidadeFilter }],
+    queryKey: ["/api/mapa-decisoes/trts", { responsabilidade: responsabilidadeFilter, empresa: empresaNavFilter }],
     queryFn: async () => {
-      const params = responsabilidadeFilter !== "todas" ? `?responsabilidade=${responsabilidadeFilter}` : "";
-      const res = await fetch(`/api/mapa-decisoes/trts${params}`, { credentials: 'include' });
+      const params = new URLSearchParams();
+      if (responsabilidadeFilter !== "todas") params.append("responsabilidade", responsabilidadeFilter);
+      if (empresaNavFilter !== "todas") params.append("empresa", empresaNavFilter);
+      const queryString = params.toString() ? `?${params.toString()}` : "";
+      const res = await fetch(`/api/mapa-decisoes/trts${queryString}`, { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to fetch TRTs');
       return res.json();
     },
   });
 
   const { data: turmas, isLoading: loadingTurmas } = useQuery<TurmaData[]>({
-    queryKey: ["/api/mapa-decisoes/turmas", selectedTRT, { responsabilidade: responsabilidadeFilter }],
+    queryKey: ["/api/mapa-decisoes/turmas", selectedTRT, { responsabilidade: responsabilidadeFilter, empresa: empresaNavFilter }],
     queryFn: async () => {
-      const params = responsabilidadeFilter !== "todas" ? `?responsabilidade=${responsabilidadeFilter}` : "";
-      const res = await fetch(`/api/mapa-decisoes/turmas/${encodeURIComponent(selectedTRT!)}${params}`, { credentials: 'include' });
+      const params = new URLSearchParams();
+      if (responsabilidadeFilter !== "todas") params.append("responsabilidade", responsabilidadeFilter);
+      if (empresaNavFilter !== "todas") params.append("empresa", empresaNavFilter);
+      const queryString = params.toString() ? `?${params.toString()}` : "";
+      const res = await fetch(`/api/mapa-decisoes/turmas/${encodeURIComponent(selectedTRT!)}${queryString}`, { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to fetch turmas');
       return res.json();
     },
@@ -969,26 +1054,52 @@ export default function MapaDecisoesPage() {
         </TabsList>
 
         <TabsContent value="navegacao" className="space-y-6">
-          <div className="flex items-center gap-4 p-4 bg-muted/50 rounded-lg">
+          <div className="flex flex-wrap items-center gap-4 p-4 bg-muted/50 rounded-lg">
             <div className="flex items-center gap-2">
               <Filter className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-medium">Filtrar por Responsabilidade:</span>
+              <span className="text-sm font-medium">Filtros:</span>
             </div>
-            <Select value={responsabilidadeFilter} onValueChange={setResponsabilidadeFilter}>
-              <SelectTrigger className="w-48" data-testid="select-responsabilidade-filter">
-                <SelectValue placeholder="Selecione..." />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todas">Todas</SelectItem>
-                <SelectItem value="solidaria">Solidária</SelectItem>
-                <SelectItem value="subsidiaria">Subsidiária</SelectItem>
-              </SelectContent>
-            </Select>
-            {responsabilidadeFilter !== "todas" && (
-              <Badge variant="secondary" className="text-xs">
-                Filtrando: {responsabilidadeFilter === "solidaria" ? "Solidária" : "Subsidiária"}
-              </Badge>
-            )}
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Responsabilidade:</span>
+              <Select value={responsabilidadeFilter} onValueChange={setResponsabilidadeFilter}>
+                <SelectTrigger className="w-36" data-testid="select-responsabilidade-filter">
+                  <SelectValue placeholder="Selecione..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todas">Todas</SelectItem>
+                  <SelectItem value="solidaria">Solidária</SelectItem>
+                  <SelectItem value="subsidiaria">Subsidiária</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Empresa:</span>
+              <Select value={empresaNavFilter} onValueChange={setEmpresaNavFilter}>
+                <SelectTrigger className="w-36" data-testid="select-empresa-filter">
+                  <SelectValue placeholder="Selecione..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todas">Todas</SelectItem>
+                  <SelectItem value="V.tal">V.tal</SelectItem>
+                  <SelectItem value="OI">OI</SelectItem>
+                  <SelectItem value="Serede">Serede</SelectItem>
+                  <SelectItem value="Sprink">Sprink</SelectItem>
+                  <SelectItem value="Outros Terceiros">Outros</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center gap-2">
+              {responsabilidadeFilter !== "todas" && (
+                <Badge variant="secondary" className="text-xs">
+                  {responsabilidadeFilter === "solidaria" ? "Solidária" : "Subsidiária"}
+                </Badge>
+              )}
+              {empresaNavFilter !== "todas" && (
+                <Badge variant="secondary" className="text-xs">
+                  {empresaNavFilter}
+                </Badge>
+              )}
+            </div>
           </div>
 
           {loadingTRTs ? (

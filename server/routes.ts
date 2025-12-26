@@ -1132,7 +1132,8 @@ export async function registerRoutes(
   app.get("/api/mapa-decisoes/trts", isAuthenticated, async (req, res) => {
     try {
       const responsabilidade = req.query.responsabilidade as string | undefined;
-      const trts = await storage.getTRTsComEstatisticas(responsabilidade);
+      const empresa = req.query.empresa as string | undefined;
+      const trts = await storage.getTRTsComEstatisticas(responsabilidade, empresa);
       res.json(trts);
     } catch (error) {
       console.error("Error fetching TRTs:", error);
@@ -1143,7 +1144,8 @@ export async function registerRoutes(
   app.get("/api/mapa-decisoes/turmas/:trtNome", isAuthenticated, async (req, res) => {
     try {
       const responsabilidade = req.query.responsabilidade as string | undefined;
-      const turmas = await storage.getTurmasByTRT(decodeURIComponent(req.params.trtNome), responsabilidade);
+      const empresa = req.query.empresa as string | undefined;
+      const turmas = await storage.getTurmasByTRT(decodeURIComponent(req.params.trtNome), responsabilidade, empresa);
       res.json(turmas);
     } catch (error) {
       console.error("Error fetching turmas:", error);
@@ -1226,6 +1228,19 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error fetching timeline:", error);
       res.status(500).json({ error: "Erro ao buscar timeline" });
+    }
+  });
+
+  app.get("/api/mapa-decisoes/analytics/por-empresa", isAuthenticated, async (req, res) => {
+    try {
+      const dataInicio = req.query.dataInicio ? new Date(req.query.dataInicio as string) : undefined;
+      const dataFim = req.query.dataFim ? new Date(req.query.dataFim as string) : undefined;
+      const responsabilidade = req.query.responsabilidade as string | undefined;
+      const estatsPorEmpresa = await storage.getEstatisticasPorEmpresa(dataInicio, dataFim, responsabilidade);
+      res.json(estatsPorEmpresa);
+    } catch (error) {
+      console.error("Error fetching empresa stats:", error);
+      res.status(500).json({ error: "Erro ao buscar estatísticas por empresa" });
     }
   });
 

@@ -1463,7 +1463,7 @@ export class MemStorage implements IStorage {
     return regiao;
   }
 
-  async getTRTsComEstatisticas(responsabilidadeFilter?: string): Promise<Array<{
+  async getTRTsComEstatisticas(responsabilidadeFilter?: string, empresaFilter?: string): Promise<Array<{
     nome: string;
     totalTurmas: number;
     totalDesembargadores: number;
@@ -1482,6 +1482,9 @@ export class MemStorage implements IStorage {
       desembargadoresWithMatches: Set<string>, 
       filteredDecisoes: DecisaoRpac[] 
     }>();
+
+    const isFiltering = (responsabilidadeFilter && responsabilidadeFilter !== 'todas') || 
+                        (empresaFilter && empresaFilter !== 'todas');
 
     for (const turma of turmasList) {
       const trtKey = this.normalizeTRTKey(turma.regiao);
@@ -1507,10 +1510,14 @@ export class MemStorage implements IStorage {
         trtMap.get(trtKey)!.allDesembargadores.add(d.id);
         
         const decisoes = await this.getDecisoesRpacByDesembargador(d.id);
-        // Filter decisoes by responsabilidade if filter is active (using accent-insensitive comparison)
-        const filteredDecisoes = responsabilidadeFilter && responsabilidadeFilter !== 'todas'
-          ? decisoes.filter(dec => this.matchesResponsabilidade(dec.responsabilidade, responsabilidadeFilter))
-          : decisoes;
+        // Filter decisoes by responsabilidade and empresa if filters are active
+        let filteredDecisoes = decisoes;
+        if (responsabilidadeFilter && responsabilidadeFilter !== 'todas') {
+          filteredDecisoes = filteredDecisoes.filter(dec => this.matchesResponsabilidade(dec.responsabilidade, responsabilidadeFilter));
+        }
+        if (empresaFilter && empresaFilter !== 'todas') {
+          filteredDecisoes = filteredDecisoes.filter(dec => dec.empresa === empresaFilter);
+        }
         
         // If this judge has matching decisions, track them for counts
         if (filteredDecisoes.length > 0) {
@@ -1524,7 +1531,7 @@ export class MemStorage implements IStorage {
     const result = [];
     for (const [key, data] of Array.from(trtMap.entries())) {
       // Skip TRTs with no matching decisions when filter is active
-      if (responsabilidadeFilter && responsabilidadeFilter !== 'todas' && data.filteredDecisoes.length === 0) {
+      if (isFiltering && data.filteredDecisoes.length === 0) {
         continue;
       }
       
@@ -1533,8 +1540,6 @@ export class MemStorage implements IStorage {
       const emAnalise = data.filteredDecisoes.filter(d => this.isEmAnalise(d.resultado)).length;
       const total = data.filteredDecisoes.length;
 
-      // When filtering, show counts for items with matching decisions only
-      const isFiltering = responsabilidadeFilter && responsabilidadeFilter !== 'todas';
       result.push({
         nome: data.displayName,
         totalTurmas: isFiltering ? data.turmasWithMatches.size : data.allTurmas.size,
@@ -1555,7 +1560,7 @@ export class MemStorage implements IStorage {
   }
 
   // Analytics: Get Turmas by TRT with statistics
-  async getTurmasByTRT(trtNome: string, responsabilidadeFilter?: string): Promise<Array<{
+  async getTurmasByTRT(trtNome: string, responsabilidadeFilter?: string, empresaFilter?: string): Promise<Array<{
     id: string;
     nome: string;
     totalDesembargadores: number;
@@ -1572,6 +1577,9 @@ export class MemStorage implements IStorage {
       return turmaKey === inputKey;
     });
 
+    const isFiltering = (responsabilidadeFilter && responsabilidadeFilter !== 'todas') || 
+                        (empresaFilter && empresaFilter !== 'todas');
+
     const result = [];
     for (const turma of turmasDoTrt) {
       const desembargadores = await this.getDesembargadoresByTurma(turma.id);
@@ -1582,10 +1590,14 @@ export class MemStorage implements IStorage {
 
       for (const d of desembargadores) {
         const allDecisoes = await this.getDecisoesRpacByDesembargador(d.id);
-        // Filter decisoes by responsabilidade if filter is active (using accent-insensitive comparison)
-        const decisoes = responsabilidadeFilter && responsabilidadeFilter !== 'todas'
-          ? allDecisoes.filter(dec => this.matchesResponsabilidade(dec.responsabilidade, responsabilidadeFilter))
-          : allDecisoes;
+        // Filter decisoes by responsabilidade and empresa if filters are active
+        let decisoes = allDecisoes;
+        if (responsabilidadeFilter && responsabilidadeFilter !== 'todas') {
+          decisoes = decisoes.filter(dec => this.matchesResponsabilidade(dec.responsabilidade, responsabilidadeFilter));
+        }
+        if (empresaFilter && empresaFilter !== 'todas') {
+          decisoes = decisoes.filter(dec => dec.empresa === empresaFilter);
+        }
         
         if (decisoes.length > 0) {
           desembargadoresComDecisoes++;
@@ -1596,14 +1608,14 @@ export class MemStorage implements IStorage {
       }
 
       // Skip turmas with no matching decisions when filter is active
-      if (responsabilidadeFilter && responsabilidadeFilter !== 'todas' && totalDecisoes === 0) {
+      if (isFiltering && totalDecisoes === 0) {
         continue;
       }
 
       result.push({
         id: turma.id,
         nome: turma.nome,
-        totalDesembargadores: responsabilidadeFilter && responsabilidadeFilter !== 'todas' ? desembargadoresComDecisoes : desembargadores.length,
+        totalDesembargadores: isFiltering ? desembargadoresComDecisoes : desembargadores.length,
         totalDecisoes,
         favoraveis,
         desfavoraveis,
@@ -1991,6 +2003,70 @@ export class MemStorage implements IStorage {
       if (a.ano !== b.ano) return a.ano - b.ano;
       return meses.indexOf(a.mes) - meses.indexOf(b.mes);
     });
+  }
+
+  // Analytics: Statistics by empresa
+  async getEstatisticasPorEmpresa(dataInicio?: Date, dataFim?: Date, responsabilidadeFilter?: string): Promise<Array<{
+    empresa: string;
+    totalDecisoes: number;
+    favoraveis: number;
+    desfavoraveis: number;
+    emAnalise: number;
+    percentualFavoravel: number;
+    percentualDesfavoravel: number;
+  }>> {
+    const allDecisoes = await this.getAllDecisoesRpac();
+    const empresaMap = new Map<string, { total: number; favoraveis: number; desfavoraveis: number; emAnalise: number }>();
+
+    for (const decisao of allDecisoes) {
+      // Filter by responsabilidade if specified
+      if (responsabilidadeFilter && responsabilidadeFilter !== 'todas') {
+        if (!this.matchesResponsabilidade(decisao.responsabilidade, responsabilidadeFilter)) {
+          continue;
+        }
+      }
+
+      // Filter by date if specified
+      const data = decisao.dataDecisao || decisao.createdAt;
+      if (data) {
+        const date = new Date(data);
+        if (dataInicio && date < dataInicio) continue;
+        if (dataFim && date > dataFim) continue;
+      }
+
+      const empresa = decisao.empresa || 'Não Informado';
+      
+      if (!empresaMap.has(empresa)) {
+        empresaMap.set(empresa, { total: 0, favoraveis: 0, desfavoraveis: 0, emAnalise: 0 });
+      }
+
+      const stats = empresaMap.get(empresa)!;
+      stats.total++;
+      if (this.isFavoravel(decisao.resultado)) {
+        stats.favoraveis++;
+      }
+      if (this.isDesfavoravel(decisao.resultado)) {
+        stats.desfavoraveis++;
+      }
+      if (this.isEmAnalise(decisao.resultado)) {
+        stats.emAnalise++;
+      }
+    }
+
+    const result = [];
+    for (const [empresa, stats] of Array.from(empresaMap.entries())) {
+      result.push({
+        empresa,
+        totalDecisoes: stats.total,
+        favoraveis: stats.favoraveis,
+        desfavoraveis: stats.desfavoraveis,
+        emAnalise: stats.emAnalise,
+        percentualFavoravel: stats.total > 0 ? Math.round((stats.favoraveis / stats.total) * 100) : 0,
+        percentualDesfavoravel: stats.total > 0 ? Math.round((stats.desfavoraveis / stats.total) * 100) : 0,
+      });
+    }
+
+    return result.sort((a, b) => b.totalDecisoes - a.totalDecisoes);
   }
 
   async getPassivoMensal(mes: string, ano: string): Promise<PassivoData | null> {
