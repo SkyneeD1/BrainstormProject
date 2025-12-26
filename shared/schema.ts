@@ -712,3 +712,27 @@ export const insertCasoNovoSchema = z.object({
 });
 
 export type CreateCasoNovoInput = z.infer<typeof insertCasoNovoSchema>;
+
+// Módulo Entrada & Saídas - Casos Encerrados
+export const casosEncerrados = pgTable("casos_encerrados", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  numeroProcesso: varchar("numero_processo").notNull(),
+  dataEncerramento: timestamp("data_encerramento"),
+  tribunal: varchar("tribunal").notNull(),
+  empresa: varchar("empresa").notNull(),
+  valorContingencia: varchar("valor_contingencia"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type CasoEncerrado = typeof casosEncerrados.$inferSelect;
+export type InsertCasoEncerrado = typeof casosEncerrados.$inferInsert;
+
+export const insertCasoEncerradoSchema = z.object({
+  numeroProcesso: z.string().min(1, "Número do processo é obrigatório"),
+  dataEncerramento: z.string().optional(),
+  tribunal: z.string().min(1, "Tribunal é obrigatório"),
+  empresa: z.string().min(1, "Empresa é obrigatória"),
+  valorContingencia: z.string().optional(),
+});
+
+export type CreateCasoEncerradoInput = z.infer<typeof insertCasoEncerradoSchema>;

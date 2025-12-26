@@ -44,9 +44,11 @@ import type {
   DecisaoRpac,
   InsertDecisaoRpac,
   CasoNovo,
-  InsertCasoNovo
+  InsertCasoNovo,
+  CasoEncerrado,
+  InsertCasoEncerrado
 } from "@shared/schema";
-import { users, trts, varas, juizes, julgamentos, audiencias, distribuidos, encerrados, sentencasMerito, acordaosMerito, turmas, desembargadores, decisoesRpac, passivoMensal, casosNovos } from "@shared/schema";
+import { users, trts, varas, juizes, julgamentos, audiencias, distribuidos, encerrados, sentencasMerito, acordaosMerito, turmas, desembargadores, decisoesRpac, passivoMensal, casosNovos, casosEncerrados } from "@shared/schema";
 import { and, gte, lte, inArray, sql } from "drizzle-orm";
 import { parseExcelFile } from "./excel-parser";
 import { db } from "./db";
@@ -195,6 +197,25 @@ export interface IStorage {
   deleteCasosNovosBatch(ids: string[]): Promise<boolean>;
   deleteAllCasosNovos(): Promise<boolean>;
   getCasosNovosStats(): Promise<{
+    total: number;
+    mesAtual: number;
+    mesAnterior: number;
+    variacaoPercentual: number;
+    porTribunal: Array<{ tribunal: string; quantidade: number; percentual: number }>;
+    porEmpresa: Array<{ empresa: string; quantidade: number; percentual: number }>;
+    porMes: Array<{ mes: string; ano: string; quantidade: number }>;
+    valorTotalContingencia: number;
+  }>;
+  
+  // Casos Encerrados - Entrada & Saídas
+  getAllCasosEncerrados(): Promise<CasoEncerrado[]>;
+  getCasoEncerrado(id: string): Promise<CasoEncerrado | undefined>;
+  createCasoEncerrado(caso: InsertCasoEncerrado): Promise<CasoEncerrado>;
+  createCasosEncerradosBatch(casos: InsertCasoEncerrado[]): Promise<CasoEncerrado[]>;
+  deleteCasoEncerrado(id: string): Promise<boolean>;
+  deleteCasosEncerradosBatch(ids: string[]): Promise<boolean>;
+  deleteAllCasosEncerrados(): Promise<boolean>;
+  getCasosEncerradosStats(): Promise<{
     total: number;
     mesAtual: number;
     mesAnterior: number;
@@ -2319,6 +2340,154 @@ export class MemStorage implements IStorage {
       : mesAtual > 0 ? 100 : 0;
 
     // Convert maps to arrays with percentages
+    const porTribunal = Array.from(tribunalMap.entries())
+      .map(([tribunal, quantidade]) => ({
+        tribunal,
+        quantidade,
+        percentual: total > 0 ? Math.round((quantidade / total) * 100) : 0
+      }))
+      .sort((a, b) => b.quantidade - a.quantidade);
+
+    const porEmpresa = Array.from(empresaMap.entries())
+      .map(([empresa, quantidade]) => ({
+        empresa,
+        quantidade,
+        percentual: total > 0 ? Math.round((quantidade / total) * 100) : 0
+      }))
+      .sort((a, b) => b.quantidade - a.quantidade);
+
+    const porMes = Array.from(mesMap.entries())
+      .map(([key, quantidade]) => {
+        const [mes, ano] = key.split('-');
+        return { mes, ano, quantidade };
+      })
+      .sort((a, b) => {
+        const dateA = new Date(parseInt(a.ano), parseInt(a.mes) - 1);
+        const dateB = new Date(parseInt(b.ano), parseInt(b.mes) - 1);
+        return dateA.getTime() - dateB.getTime();
+      });
+
+    return {
+      total,
+      mesAtual,
+      mesAnterior,
+      variacaoPercentual,
+      porTribunal,
+      porEmpresa,
+      porMes,
+      valorTotalContingencia: valorTotal
+    };
+  }
+
+  // Casos Encerrados - Entrada & Saídas
+  async getAllCasosEncerrados(): Promise<CasoEncerrado[]> {
+    return await db.select().from(casosEncerrados).orderBy(casosEncerrados.dataEncerramento);
+  }
+
+  async getCasoEncerrado(id: string): Promise<CasoEncerrado | undefined> {
+    const [caso] = await db.select().from(casosEncerrados).where(eq(casosEncerrados.id, id));
+    return caso;
+  }
+
+  async createCasoEncerrado(caso: InsertCasoEncerrado): Promise<CasoEncerrado> {
+    const dataEncerramento = caso.dataEncerramento ? new Date(caso.dataEncerramento) : undefined;
+    const [created] = await db.insert(casosEncerrados).values({
+      ...caso,
+      dataEncerramento: dataEncerramento
+    }).returning();
+    return created;
+  }
+
+  async createCasosEncerradosBatch(casos: InsertCasoEncerrado[]): Promise<CasoEncerrado[]> {
+    if (casos.length === 0) return [];
+    
+    const casosWithDates = casos.map(c => ({
+      ...c,
+      dataEncerramento: c.dataEncerramento ? new Date(c.dataEncerramento) : undefined
+    }));
+    
+    const created = await db.insert(casosEncerrados).values(casosWithDates).returning();
+    return created;
+  }
+
+  async deleteCasoEncerrado(id: string): Promise<boolean> {
+    await db.delete(casosEncerrados).where(eq(casosEncerrados.id, id));
+    return true;
+  }
+
+  async deleteCasosEncerradosBatch(ids: string[]): Promise<boolean> {
+    if (ids.length === 0) return true;
+    await db.delete(casosEncerrados).where(inArray(casosEncerrados.id, ids));
+    return true;
+  }
+
+  async deleteAllCasosEncerrados(): Promise<boolean> {
+    await db.delete(casosEncerrados);
+    return true;
+  }
+
+  async getCasosEncerradosStats(): Promise<{
+    total: number;
+    mesAtual: number;
+    mesAnterior: number;
+    variacaoPercentual: number;
+    porTribunal: Array<{ tribunal: string; quantidade: number; percentual: number }>;
+    porEmpresa: Array<{ empresa: string; quantidade: number; percentual: number }>;
+    porMes: Array<{ mes: string; ano: string; quantidade: number }>;
+    valorTotalContingencia: number;
+  }> {
+    const allCasos = await this.getAllCasosEncerrados();
+    const total = allCasos.length;
+
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+    const prevMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+    const prevYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+
+    let mesAtual = 0;
+    let mesAnterior = 0;
+    let valorTotal = 0;
+
+    const tribunalMap = new Map<string, number>();
+    const empresaMap = new Map<string, number>();
+    const mesMap = new Map<string, number>();
+
+    for (const caso of allCasos) {
+      if (caso.valorContingencia) {
+        const valorStr = caso.valorContingencia.trim().replace(/,/g, '');
+        const valor = parseFloat(valorStr);
+        if (!isNaN(valor)) {
+          valorTotal += valor;
+        }
+      }
+
+      const tribunal = caso.tribunal || 'Não Informado';
+      tribunalMap.set(tribunal, (tribunalMap.get(tribunal) || 0) + 1);
+
+      const empresa = caso.empresa || 'Não Informado';
+      empresaMap.set(empresa, (empresaMap.get(empresa) || 0) + 1);
+
+      if (caso.dataEncerramento) {
+        const date = new Date(caso.dataEncerramento);
+        const mes = String(date.getMonth() + 1).padStart(2, '0');
+        const ano = String(date.getFullYear());
+        const key = `${mes}-${ano}`;
+        mesMap.set(key, (mesMap.get(key) || 0) + 1);
+
+        if (date.getMonth() === currentMonth && date.getFullYear() === currentYear) {
+          mesAtual++;
+        }
+        if (date.getMonth() === prevMonth && date.getFullYear() === prevYear) {
+          mesAnterior++;
+        }
+      }
+    }
+
+    const variacaoPercentual = mesAnterior > 0 
+      ? Math.round(((mesAtual - mesAnterior) / mesAnterior) * 100)
+      : mesAtual > 0 ? 100 : 0;
+
     const porTribunal = Array.from(tribunalMap.entries())
       .map(([tribunal, quantidade]) => ({
         tribunal,

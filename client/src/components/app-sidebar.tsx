@@ -47,8 +47,13 @@ const menuItems = [
     icon: ArrowUpDown,
     subItems: [
       {
-        title: "Dashboard",
+        title: "Entradas",
         url: "/entradas/dashboard",
+        icon: BarChart3,
+      },
+      {
+        title: "Encerrados",
+        url: "/entradas/encerrados",
         icon: BarChart3,
       },
       {

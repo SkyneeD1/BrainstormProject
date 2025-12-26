@@ -1818,5 +1818,143 @@ export async function registerRoutes(
     }
   });
 
+  // =====================================================
+  // CASOS ENCERRADOS - Entrada & Saídas
+  // =====================================================
+
+  app.get("/api/casos-encerrados", isAuthenticated, async (req, res) => {
+    try {
+      const data = await storage.getAllCasosEncerrados();
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching casos encerrados:", error);
+      res.status(500).json({ error: "Erro ao buscar casos encerrados" });
+    }
+  });
+
+  app.get("/api/casos-encerrados/stats", isAuthenticated, async (req, res) => {
+    try {
+      const stats = await storage.getCasosEncerradosStats();
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching casos encerrados stats:", error);
+      res.status(500).json({ error: "Erro ao buscar estatísticas de casos encerrados" });
+    }
+  });
+
+  app.post("/api/casos-encerrados", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const created = await storage.createCasoEncerrado(req.body);
+      res.status(201).json(created);
+    } catch (error) {
+      console.error("Error creating caso encerrado:", error);
+      res.status(500).json({ error: "Erro ao criar caso encerrado" });
+    }
+  });
+
+  app.post("/api/casos-encerrados/batch", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const items = req.body as any[];
+      if (!Array.isArray(items)) {
+        return res.status(400).json({ error: "Esperado array de itens" });
+      }
+      const created = await storage.createCasosEncerradosBatch(items);
+      res.status(201).json({ count: created.length, items: created });
+    } catch (error) {
+      console.error("Error batch creating casos encerrados:", error);
+      res.status(500).json({ error: "Erro ao criar casos encerrados em lote" });
+    }
+  });
+
+  app.post("/api/casos-encerrados/upload", isAuthenticated, isAdmin, upload.single('file'), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: "Arquivo não enviado" });
+      }
+
+      const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
+      const sheetName = workbook.SheetNames[0];
+      const sheet = workbook.Sheets[sheetName];
+      const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false }) as string[][];
+
+      if (rows.length < 2) {
+        return res.status(400).json({ error: "Arquivo vazio ou sem dados" });
+      }
+
+      const dataRows = rows.slice(1).filter(row => row.some(cell => cell));
+
+      const casos = dataRows.map(row => {
+        const getCell = (idx: number) => row[idx]?.toString().trim() || '';
+        
+        let parsedDate: Date | undefined = undefined;
+        const dateVal = getCell(1);
+        if (dateVal) {
+          const parts = dateVal.split('/');
+          if (parts.length === 3) {
+            const month = parseInt(parts[0]) - 1;
+            const day = parseInt(parts[1]);
+            let year = parseInt(parts[2]);
+            if (year < 100) {
+              year = 2000 + year;
+            }
+            parsedDate = new Date(year, month, day);
+          }
+        }
+
+        return {
+          numeroProcesso: getCell(0),
+          dataEncerramento: parsedDate,
+          tribunal: getCell(2),
+          empresa: getCell(3).toUpperCase(),
+          valorContingencia: getCell(4)
+        };
+      }).filter(c => c.numeroProcesso);
+
+      const created = await storage.createCasosEncerradosBatch(casos as any);
+      res.status(201).json({ 
+        success: true, 
+        count: created.length,
+        message: `${created.length} casos encerrados importados com sucesso`
+      });
+    } catch (error) {
+      console.error("Error uploading casos encerrados:", error);
+      res.status(500).json({ error: "Erro ao processar arquivo" });
+    }
+  });
+
+  app.delete("/api/casos-encerrados/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      await storage.deleteCasoEncerrado(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting caso encerrado:", error);
+      res.status(500).json({ error: "Erro ao excluir caso encerrado" });
+    }
+  });
+
+  app.post("/api/casos-encerrados/delete-batch", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { ids } = req.body;
+      if (!Array.isArray(ids)) {
+        return res.status(400).json({ error: "Esperado array de IDs" });
+      }
+      await storage.deleteCasosEncerradosBatch(ids);
+      res.json({ success: true, count: ids.length });
+    } catch (error) {
+      console.error("Error batch deleting casos encerrados:", error);
+      res.status(500).json({ error: "Erro ao excluir casos encerrados em lote" });
+    }
+  });
+
+  app.delete("/api/casos-encerrados", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      await storage.deleteAllCasosEncerrados();
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting all casos encerrados:", error);
+      res.status(500).json({ error: "Erro ao excluir todos os casos encerrados" });
+    }
+  });
+
   return httpServer;
 }
