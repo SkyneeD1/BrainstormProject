@@ -53,17 +53,6 @@ const menuItems = [
       },
     ],
   },
-  {
-    title: "Brainstorm",
-    icon: Lightbulb,
-    subItems: [
-      {
-        title: "Relatório de Quantidades",
-        url: "/brainstorm/relatorio",
-        icon: FileSpreadsheet,
-      },
-    ],
-  },
 ];
 
 export function AppSidebar() {

@@ -535,9 +535,8 @@ function AnalyticsPanel() {
   }
 
   const pieData = estatisticas ? [
-    { name: "Favoráveis", value: estatisticas.favoraveis, color: COLORS.favoravel },
-    { name: "Desfavoráveis", value: estatisticas.desfavoraveis, color: COLORS.desfavoravel },
-    { name: "Em Análise", value: estatisticas.emAnalise, color: COLORS.emAnalise },
+    { name: `Favoráveis (${estatisticas.favoraveis})`, value: estatisticas.favoraveis, color: COLORS.favoravel },
+    { name: `Desfavoráveis (${estatisticas.desfavoraveis})`, value: estatisticas.desfavoraveis, color: COLORS.desfavoravel },
   ] : [];
 
   return (
@@ -920,7 +919,6 @@ function AnalyticsPanel() {
                 <Legend />
                 <Bar dataKey="favoraveis" name="Favoráveis" fill={COLORS.favoravel} stackId="a" />
                 <Bar dataKey="desfavoraveis" name="Desfavoráveis" fill={COLORS.desfavoravel} stackId="a" />
-                <Bar dataKey="emAnalise" name="Em Análise" fill={COLORS.emAnalise} stackId="a" />
               </BarChart>
             </ResponsiveContainer>
           ) : (

@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Database, Download, RefreshCw, AlertTriangle, Search, Upload, FileSpreadsheet, X, Trash2, Loader2, Scale, Map, Lightbulb, Building2, User, Gavel, Calendar } from "lucide-react";
+import { Database, Download, RefreshCw, AlertTriangle, Search, Upload, FileSpreadsheet, X, Trash2, Loader2, Scale, Calendar } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -9,7 +9,6 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -21,7 +20,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import type { PassivoData, TRT, Vara, Juiz, Distribuido, Encerrado, SentencaMerito, AcordaoMerito } from "@shared/schema";
+import type { PassivoData } from "@shared/schema";
 import { formatCurrencyFull, formatCurrencyValue } from "@/lib/formatters";
 
 function TableSkeleton() {
@@ -308,165 +307,6 @@ function PassivoTab() {
   );
 }
 
-function BrainstormTab() {
-  const { toast } = useToast();
-  const fileRefs = {
-    distribuidos: useRef<HTMLInputElement>(null),
-    encerrados: useRef<HTMLInputElement>(null),
-    sentencas: useRef<HTMLInputElement>(null),
-    acordaos: useRef<HTMLInputElement>(null),
-  };
-
-  const { data: distribuidos, refetch: refetchDist } = useQuery<Distribuido[]>({ queryKey: ["/api/brainstorm/distribuidos"] });
-  const { data: encerrados, refetch: refetchEnc } = useQuery<Encerrado[]>({ queryKey: ["/api/brainstorm/encerrados"] });
-  const { data: sentencas, refetch: refetchSent } = useQuery<SentencaMerito[]>({ queryKey: ["/api/brainstorm/sentencas"] });
-  const { data: acordaos, refetch: refetchAc } = useQuery<AcordaoMerito[]>({ queryKey: ["/api/brainstorm/acordaos"] });
-
-  const createUploadMutation = (endpoint: string, queryKey: string[]) => useMutation({
-    mutationFn: async (file: File) => {
-      const formData = new FormData();
-      formData.append("file", file);
-      const response = await fetch(endpoint, { method: "POST", body: formData });
-      if (!response.ok) throw new Error((await response.json()).error || "Erro no upload");
-      return response.json();
-    },
-    onSuccess: (data) => {
-      toast({ title: "Upload realizado", description: `${data.count} registros importados` });
-      queryClient.invalidateQueries({ queryKey });
-    },
-    onError: (error: Error) => toast({ title: "Erro no upload", description: error.message, variant: "destructive" }),
-  });
-
-  const createDeleteMutation = (endpoint: string, queryKey: string[]) => useMutation({
-    mutationFn: async () => { await apiRequest("DELETE", endpoint); },
-    onSuccess: () => {
-      toast({ title: "Dados apagados" });
-      queryClient.invalidateQueries({ queryKey });
-    },
-    onError: (error: Error) => toast({ title: "Erro ao apagar", description: error.message, variant: "destructive" }),
-  });
-
-  const uploadDist = createUploadMutation("/api/brainstorm/distribuidos/upload", ["/api/brainstorm/distribuidos"]);
-  const uploadEnc = createUploadMutation("/api/brainstorm/encerrados/upload", ["/api/brainstorm/encerrados"]);
-  const uploadSent = createUploadMutation("/api/brainstorm/sentencas/upload", ["/api/brainstorm/sentencas"]);
-  const uploadAc = createUploadMutation("/api/brainstorm/acordaos/upload", ["/api/brainstorm/acordaos"]);
-
-  const deleteDist = createDeleteMutation("/api/brainstorm/distribuidos", ["/api/brainstorm/distribuidos"]);
-  const deleteEnc = createDeleteMutation("/api/brainstorm/encerrados", ["/api/brainstorm/encerrados"]);
-  const deleteSent = createDeleteMutation("/api/brainstorm/sentencas", ["/api/brainstorm/sentencas"]);
-  const deleteAc = createDeleteMutation("/api/brainstorm/acordaos", ["/api/brainstorm/acordaos"]);
-
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>, mutation: any, ref: any) => {
-    const file = event.target.files?.[0];
-    if (file) mutation.mutate(file);
-    if (ref.current) ref.current.value = "";
-  };
-
-  const DataSection = ({ title, icon: Icon, count, uploadMutation, deleteMutation, fileRef, refetch, testId }: any) => (
-    <Card className="p-4">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <Icon className="h-5 w-5 text-primary" />
-          <h3 className="font-semibold">{title}</h3>
-          <span className="text-sm text-muted-foreground">({count || 0} registros)</span>
-        </div>
-      </div>
-      <div className="flex flex-wrap gap-2">
-        <input type="file" ref={fileRef} onChange={(e) => handleFileSelect(e, uploadMutation, fileRef)} accept=".xlsx,.xls" className="hidden" />
-        <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()} disabled={uploadMutation.isPending} data-testid={`button-upload-${testId}`}>
-          {uploadMutation.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
-          Importar XLSX
-        </Button>
-        {(count || 0) > 0 && (
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="outline" size="sm" className="text-destructive border-destructive hover:bg-destructive/10" data-testid={`button-delete-${testId}`}>
-                <Trash2 className="h-4 w-4 mr-2" />Apagar Todos
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle className="flex items-center gap-2"><AlertTriangle className="h-5 w-5 text-destructive" />Confirmar exclusão</AlertDialogTitle>
-                <AlertDialogDescription>Apagar todos os {count} registros de {title}?</AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                <AlertDialogAction onClick={() => deleteMutation.mutate()} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                  {deleteMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}Apagar
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        )}
-        <Button variant="ghost" size="sm" onClick={() => refetch()} data-testid={`button-refresh-${testId}`}>
-          <RefreshCw className="h-4 w-4" />
-        </Button>
-      </div>
-    </Card>
-  );
-
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <DataSection title="Distribuídos" icon={FileSpreadsheet} count={distribuidos?.length} uploadMutation={uploadDist} deleteMutation={deleteDist} fileRef={fileRefs.distribuidos} refetch={refetchDist} testId="distribuidos" />
-      <DataSection title="Encerrados" icon={FileSpreadsheet} count={encerrados?.length} uploadMutation={uploadEnc} deleteMutation={deleteEnc} fileRef={fileRefs.encerrados} refetch={refetchEnc} testId="encerrados" />
-      <DataSection title="Sentenças de Mérito" icon={Gavel} count={sentencas?.length} uploadMutation={uploadSent} deleteMutation={deleteSent} fileRef={fileRefs.sentencas} refetch={refetchSent} testId="sentencas" />
-      <DataSection title="Acórdãos de Mérito" icon={Gavel} count={acordaos?.length} uploadMutation={uploadAc} deleteMutation={deleteAc} fileRef={fileRefs.acordaos} refetch={refetchAc} testId="acordaos" />
-    </div>
-  );
-}
-
-function MapasTab() {
-  const { toast } = useToast();
-
-  const { data: trts, refetch: refetchTrts } = useQuery<TRT[]>({ queryKey: ["/api/trts"] });
-  const { data: varas, refetch: refetchVaras } = useQuery<Vara[]>({ queryKey: ["/api/varas"] });
-  const { data: juizes, refetch: refetchJuizes } = useQuery<Juiz[]>({ queryKey: ["/api/juizes"] });
-
-  return (
-    <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">
-        Os dados de Mapas (TRTs, Varas, Juízes e Julgamentos) são gerenciados diretamente nas páginas do módulo Mapas.
-        Aqui você pode ver um resumo dos dados cadastrados.
-      </p>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <Building2 className="h-5 w-5 text-primary" />
-            <h3 className="font-semibold">TRTs</h3>
-          </div>
-          <p className="text-3xl font-bold">{trts?.length || 0}</p>
-          <p className="text-xs text-muted-foreground">Tribunais Regionais do Trabalho</p>
-          <Button variant="ghost" size="sm" onClick={() => refetchTrts()} className="mt-2" data-testid="button-refresh-trts">
-            <RefreshCw className="h-4 w-4 mr-2" />Atualizar
-          </Button>
-        </Card>
-        <Card className="p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <Building2 className="h-5 w-5 text-primary" />
-            <h3 className="font-semibold">Varas</h3>
-          </div>
-          <p className="text-3xl font-bold">{varas?.length || 0}</p>
-          <p className="text-xs text-muted-foreground">Varas do Trabalho</p>
-          <Button variant="ghost" size="sm" onClick={() => refetchVaras()} className="mt-2" data-testid="button-refresh-varas">
-            <RefreshCw className="h-4 w-4 mr-2" />Atualizar
-          </Button>
-        </Card>
-        <Card className="p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <User className="h-5 w-5 text-primary" />
-            <h3 className="font-semibold">Juízes</h3>
-          </div>
-          <p className="text-3xl font-bold">{juizes?.length || 0}</p>
-          <p className="text-xs text-muted-foreground">Juízes Cadastrados</p>
-          <Button variant="ghost" size="sm" onClick={() => refetchJuizes()} className="mt-2" data-testid="button-refresh-juizes">
-            <RefreshCw className="h-4 w-4 mr-2" />Atualizar
-          </Button>
-        </Card>
-      </div>
-    </div>
-  );
-}
-
 export default function AdminDados() {
   return (
     <div className="p-6 space-y-6 max-w-[1800px] mx-auto">
@@ -480,34 +320,7 @@ export default function AdminDados() {
         </p>
       </div>
 
-      <Tabs defaultValue="passivo" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="passivo" className="flex items-center gap-2" data-testid="tab-passivo">
-            <Scale className="h-4 w-4" />
-            Passivo Sob Gestão
-          </TabsTrigger>
-          <TabsTrigger value="brainstorm" className="flex items-center gap-2" data-testid="tab-brainstorm">
-            <Lightbulb className="h-4 w-4" />
-            Brainstorm
-          </TabsTrigger>
-          <TabsTrigger value="mapas" className="flex items-center gap-2" data-testid="tab-mapas">
-            <Map className="h-4 w-4" />
-            Mapas
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="passivo">
-          <PassivoTab />
-        </TabsContent>
-
-        <TabsContent value="brainstorm">
-          <BrainstormTab />
-        </TabsContent>
-
-        <TabsContent value="mapas">
-          <MapasTab />
-        </TabsContent>
-      </Tabs>
+      <PassivoTab />
     </div>
   );
 }
