@@ -717,26 +717,38 @@ function AnalyticsPanel({ labels, instancia }: { labels: Labels; instancia: "pri
             Distribuição de Resultados
           </h3>
           {pieData.some(d => d.value > 0) ? (
-            <ResponsiveContainer width="100%" height={200}>
-              <PieChart>
-                <Pie
-                  data={pieData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={50}
-                  outerRadius={80}
-                  paddingAngle={2}
-                  dataKey="value"
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                  labelLine={false}
-                >
-                  {pieData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
+            <>
+              <ResponsiveContainer width="100%" height={200}>
+                <PieChart>
+                  <Pie
+                    data={pieData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={50}
+                    outerRadius={80}
+                    paddingAngle={2}
+                    dataKey="value"
+                    label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
+                    labelLine={false}
+                  >
+                    {pieData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value: number) => [`${value} decisões`, '']} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="flex justify-center gap-6 mt-2">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS.favoravel }} />
+                  <span className="text-sm">Favoráveis: <strong>{estatisticas?.favoraveis || 0}</strong> ({estatisticas?.percentualFavoravel || 0}%)</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS.desfavoravel }} />
+                  <span className="text-sm">Desfavoráveis: <strong>{estatisticas?.desfavoraveis || 0}</strong> ({estatisticas?.percentualDesfavoravel || 0}%)</span>
+                </div>
+              </div>
+            </>
           ) : (
             <div className="h-[200px] flex items-center justify-center text-muted-foreground">
               Nenhuma decisão registrada
@@ -886,60 +898,75 @@ function AnalyticsPanel({ labels, instancia }: { labels: Labels; instancia: "pri
       <Card className="p-4">
         <h3 className="font-semibold flex items-center gap-2 mb-4">
           <Calendar className="h-5 w-5 text-primary" />
-          Linha do Tempo - Favorabilidade por Mês
+          Linha do Tempo - Decisões por Mês
         </h3>
         {timeline && timeline.length > 0 ? (
           <>
             <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={timeline}>
+              <BarChart data={timeline}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                 <XAxis dataKey="mes" className="text-xs" />
-                <YAxis domain={[0, 100]} className="text-xs" />
+                <YAxis className="text-xs" />
                 <Tooltip 
                   formatter={(value: number, name: string) => [
-                    `${value}%`,
-                    name === "percentualFavoravel" ? "Favorabilidade" : 
-                    name === "percentualDesfavoravel" ? "Desfavorabilidade" : name
+                    value,
+                    name === "favoraveis" ? "Favoráveis" : 
+                    name === "desfavoraveis" ? "Desfavoráveis" : 
+                    name === "totalDecisoes" ? "Total" : name
                   ]}
-                  labelFormatter={(label) => `Mês: ${label}`}
+                  labelFormatter={(label, payload) => {
+                    if (payload && payload[0]) {
+                      const data = payload[0].payload as TimelineData;
+                      return `${label}/${data.ano}`;
+                    }
+                    return `Mês: ${label}`;
+                  }}
                 />
                 <Legend />
-                <Line 
-                  type="monotone" 
-                  dataKey="percentualFavoravel" 
-                  name="Favorabilidade %" 
-                  stroke={COLORS.favoravel} 
-                  strokeWidth={2}
-                  dot={{ fill: COLORS.favoravel }}
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="percentualDesfavoravel" 
-                  name="Desfavorabilidade %" 
-                  stroke={COLORS.desfavoravel} 
-                  strokeWidth={2}
-                  dot={{ fill: COLORS.desfavoravel }}
-                />
-              </LineChart>
+                <Bar dataKey="favoraveis" name="Favoráveis" fill={COLORS.favoravel} />
+                <Bar dataKey="desfavoraveis" name="Desfavoráveis" fill={COLORS.desfavoravel} />
+              </BarChart>
             </ResponsiveContainer>
 
             {timeline.length >= 2 && (
               <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t">
                 <div className="text-center">
                   <p className="text-sm text-muted-foreground">Mês Anterior</p>
-                  <p className="text-2xl font-bold">
-                    {timeline[timeline.length - 2]?.percentualFavoravel || 0}%
-                  </p>
-                  <p className="text-xs text-muted-foreground">
+                  <div className="flex justify-center gap-4">
+                    <div>
+                      <p className="text-xl font-bold text-emerald-600 dark:text-emerald-400">
+                        {timeline[timeline.length - 2]?.favoraveis || 0}
+                      </p>
+                      <p className="text-xs text-muted-foreground">Favoráveis</p>
+                    </div>
+                    <div>
+                      <p className="text-xl font-bold text-red-600 dark:text-red-400">
+                        {timeline[timeline.length - 2]?.desfavoraveis || 0}
+                      </p>
+                      <p className="text-xs text-muted-foreground">Desfavoráveis</p>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
                     {timeline[timeline.length - 2]?.mes}/{timeline[timeline.length - 2]?.ano}
                   </p>
                 </div>
                 <div className="text-center">
                   <p className="text-sm text-muted-foreground">Mês Atual</p>
-                  <p className="text-2xl font-bold">
-                    {timeline[timeline.length - 1]?.percentualFavoravel || 0}%
-                  </p>
-                  <p className="text-xs text-muted-foreground">
+                  <div className="flex justify-center gap-4">
+                    <div>
+                      <p className="text-xl font-bold text-emerald-600 dark:text-emerald-400">
+                        {timeline[timeline.length - 1]?.favoraveis || 0}
+                      </p>
+                      <p className="text-xs text-muted-foreground">Favoráveis</p>
+                    </div>
+                    <div>
+                      <p className="text-xl font-bold text-red-600 dark:text-red-400">
+                        {timeline[timeline.length - 1]?.desfavoraveis || 0}
+                      </p>
+                      <p className="text-xs text-muted-foreground">Desfavoráveis</p>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
                     {timeline[timeline.length - 1]?.mes}/{timeline[timeline.length - 1]?.ano}
                   </p>
                 </div>
