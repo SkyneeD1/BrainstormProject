@@ -1174,7 +1174,8 @@ export async function registerRoutes(
       const dataInicio = req.query.dataInicio ? new Date(req.query.dataInicio as string) : undefined;
       const dataFim = req.query.dataFim ? new Date(req.query.dataFim as string) : undefined;
       const responsabilidade = req.query.responsabilidade as string | undefined;
-      const topTurmas = await storage.getTopTurmasFavorabilidade(limit, dataInicio, dataFim, responsabilidade);
+      const instancia = (req.query.instancia as string) || 'segunda';
+      const topTurmas = await storage.getTopTurmasFavorabilidade(limit, dataInicio, dataFim, responsabilidade, instancia);
       res.json(topTurmas);
     } catch (error) {
       console.error("Error fetching top turmas:", error);
@@ -1188,7 +1189,8 @@ export async function registerRoutes(
       const dataInicio = req.query.dataInicio ? new Date(req.query.dataInicio as string) : undefined;
       const dataFim = req.query.dataFim ? new Date(req.query.dataFim as string) : undefined;
       const responsabilidade = req.query.responsabilidade as string | undefined;
-      const topRegioes = await storage.getTopRegioes(limit, dataInicio, dataFim, responsabilidade);
+      const instancia = (req.query.instancia as string) || 'segunda';
+      const topRegioes = await storage.getTopRegioes(limit, dataInicio, dataFim, responsabilidade, instancia);
       res.json(topRegioes);
     } catch (error) {
       console.error("Error fetching top regioes:", error);
@@ -1202,7 +1204,8 @@ export async function registerRoutes(
       const dataInicio = req.query.dataInicio ? new Date(req.query.dataInicio as string) : undefined;
       const dataFim = req.query.dataFim ? new Date(req.query.dataFim as string) : undefined;
       const responsabilidade = req.query.responsabilidade as string | undefined;
-      const topDesembargadores = await storage.getTopDesembargadores(limit, dataInicio, dataFim, responsabilidade);
+      const instancia = (req.query.instancia as string) || 'segunda';
+      const topDesembargadores = await storage.getTopDesembargadores(limit, dataInicio, dataFim, responsabilidade, instancia);
       res.json(topDesembargadores);
     } catch (error) {
       console.error("Error fetching top desembargadores:", error);
@@ -1215,7 +1218,8 @@ export async function registerRoutes(
       const dataInicio = req.query.dataInicio ? new Date(req.query.dataInicio as string) : undefined;
       const dataFim = req.query.dataFim ? new Date(req.query.dataFim as string) : undefined;
       const responsabilidade = req.query.responsabilidade as string | undefined;
-      const estatisticas = await storage.getEstatisticasGerais(dataInicio, dataFim, responsabilidade);
+      const instancia = (req.query.instancia as string) || 'segunda';
+      const estatisticas = await storage.getEstatisticasGerais(dataInicio, dataFim, responsabilidade, instancia);
       res.json(estatisticas);
     } catch (error) {
       console.error("Error fetching estatisticas:", error);
@@ -1228,7 +1232,8 @@ export async function registerRoutes(
       const dataInicio = req.query.dataInicio ? new Date(req.query.dataInicio as string) : undefined;
       const dataFim = req.query.dataFim ? new Date(req.query.dataFim as string) : undefined;
       const responsabilidade = req.query.responsabilidade as string | undefined;
-      const timeline = await storage.getTimelineData(dataInicio, dataFim, responsabilidade);
+      const instancia = (req.query.instancia as string) || 'segunda';
+      const timeline = await storage.getTimelineData(dataInicio, dataFim, responsabilidade, instancia);
       res.json(timeline);
     } catch (error) {
       console.error("Error fetching timeline:", error);
@@ -1241,7 +1246,8 @@ export async function registerRoutes(
       const dataInicio = req.query.dataInicio ? new Date(req.query.dataInicio as string) : undefined;
       const dataFim = req.query.dataFim ? new Date(req.query.dataFim as string) : undefined;
       const responsabilidade = req.query.responsabilidade as string | undefined;
-      const estatsPorEmpresa = await storage.getEstatisticasPorEmpresa(dataInicio, dataFim, responsabilidade);
+      const instancia = (req.query.instancia as string) || 'segunda';
+      const estatsPorEmpresa = await storage.getEstatisticasPorEmpresa(dataInicio, dataFim, responsabilidade, instancia);
       res.json(estatsPorEmpresa);
     } catch (error) {
       console.error("Error fetching empresa stats:", error);
