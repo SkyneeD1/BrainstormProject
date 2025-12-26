@@ -47,13 +47,13 @@ const menuItems = [
     icon: Map,
     subItems: [
       {
-        title: "2ª Instância",
-        url: "/mapas/segunda-instancia",
+        title: "1ª Instância",
+        url: "/mapas/primeira-instancia",
         icon: Gavel,
       },
       {
-        title: "1ª Instância",
-        url: "/mapas/primeira-instancia",
+        title: "2ª Instância",
+        url: "/mapas/segunda-instancia",
         icon: Gavel,
       },
     ],
