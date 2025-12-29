@@ -5,8 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
-import { CheckSquare, TrendingUp, TrendingDown, Calendar as CalendarIcon, Building2, Briefcase, DollarSign, FileText, ChevronLeft, ChevronRight } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Cell } from "recharts";
+import { CheckSquare, TrendingUp, TrendingDown, Calendar as CalendarIcon, Building2, Briefcase, FileText, ChevronLeft, ChevronRight } from "lucide-react";
 import { format, subMonths, addMonths, startOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -21,23 +21,15 @@ interface CasosEncerradosStats {
   valorTotalContingencia: number;
 }
 
-const EMPRESA_COLORS: Record<string, string> = {
-  "V.TAL": "#f59e0b",
-  "VTAL": "#f59e0b",
-  "OI": "#3b82f6",
-  "SEREDE": "#10b981",
-  "OUTROS": "#6b7280",
-  "SPRINK": "#ec4899",
-};
+const GRAY_COLOR = "#6b7280";
 
-const CHART_COLORS = [
-  "#8b5cf6", "#06b6d4", "#f59e0b", "#ec4899", "#10b981", 
-  "#3b82f6", "#ef4444", "#84cc16", "#f97316", "#6366f1"
+const GRAY_SHADES = [
+  "#374151", "#4b5563", "#6b7280", "#9ca3af", "#d1d5db",
+  "#e5e7eb", "#f3f4f6", "#525252", "#737373", "#a3a3a3"
 ];
 
-function getEmpresaColor(empresa: string): string {
-  const upper = empresa?.toUpperCase() || "";
-  return EMPRESA_COLORS[upper] || "#8b5cf6";
+function getGrayShade(index: number): string {
+  return GRAY_SHADES[index % GRAY_SHADES.length];
 }
 
 function formatCurrency(value: number): string {
@@ -111,21 +103,21 @@ export default function EntradasEncerrados() {
   const timelineData = stats?.porMes.map((item, index) => ({
     ...item,
     mesLabel: `${getMonthName(item.mes)}/${item.ano.slice(2)}`,
-    fill: CHART_COLORS[index % CHART_COLORS.length]
+    fill: getGrayShade(index)
   })) || [];
 
-  const empresaData = stats?.porEmpresa.map(item => ({
+  const empresaData = stats?.porEmpresa.map((item, index) => ({
     name: item.empresa,
     value: item.quantidade,
     percentual: item.percentual,
-    color: getEmpresaColor(item.empresa),
+    color: getGrayShade(index),
   })) || [];
 
   const tribunalData = stats?.porTribunal.slice(0, 10).map((item, index) => ({
     tribunal: `TRT ${item.tribunal}`,
     quantidade: item.quantidade,
     percentual: item.percentual,
-    fill: CHART_COLORS[index % CHART_COLORS.length]
+    fill: getGrayShade(index)
   })) || [];
 
   const isPositiveVariation = (stats?.variacaoPercentual || 0) >= 0;
@@ -186,7 +178,7 @@ export default function EntradasEncerrados() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="p-4">
           <div className="flex items-center justify-between">
             <div>
@@ -195,7 +187,7 @@ export default function EntradasEncerrados() {
                 {formatNumber(stats?.total || 0)}
               </p>
             </div>
-            <FileText className="h-10 w-10 text-violet-500/20" />
+            <FileText className="h-10 w-10 text-muted-foreground/20" />
           </div>
         </Card>
 
@@ -220,7 +212,7 @@ export default function EntradasEncerrados() {
                 <span className="text-xs text-muted-foreground">vs anterior</span>
               </div>
             </div>
-            <CalendarIcon className="h-10 w-10 text-violet-500/20" />
+            <CalendarIcon className="h-10 w-10 text-muted-foreground/20" />
           </div>
         </Card>
 
@@ -237,24 +229,12 @@ export default function EntradasEncerrados() {
             <CalendarIcon className="h-10 w-10 text-muted-foreground/20" />
           </div>
         </Card>
-
-        <Card className="p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground">Valor Contingência</p>
-              <p className="text-2xl font-bold" data-testid="text-valor-contingencia-encerrados">
-                {formatCurrency(stats?.valorTotalContingencia || 0)}
-              </p>
-            </div>
-            <DollarSign className="h-10 w-10 text-violet-500/20" />
-          </div>
-        </Card>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="p-4">
           <h3 className="font-semibold flex items-center gap-2 mb-4">
-            <CalendarIcon className="h-5 w-5 text-violet-500" />
+            <CalendarIcon className="h-5 w-5 text-muted-foreground" />
             Evolução Mensal de Encerramentos
           </h3>
           {timelineData.length > 0 ? (
@@ -287,27 +267,23 @@ export default function EntradasEncerrados() {
 
         <Card className="p-4">
           <h3 className="font-semibold flex items-center gap-2 mb-4">
-            <Building2 className="h-5 w-5 text-violet-500" />
+            <Building2 className="h-5 w-5 text-muted-foreground" />
             Distribuição por Empresa
           </h3>
           {empresaData.length > 0 ? (
             <div className="flex items-center gap-4">
-              <ResponsiveContainer width="50%" height={250}>
-                <PieChart>
-                  <Pie
-                    data={empresaData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={50}
-                    outerRadius={80}
+              <ResponsiveContainer width="60%" height={250}>
+                <RadarChart cx="50%" cy="50%" outerRadius="80%" data={empresaData}>
+                  <PolarGrid stroke="hsl(var(--border))" />
+                  <PolarAngleAxis dataKey="name" className="text-xs" />
+                  <PolarRadiusAxis className="text-xs" />
+                  <Radar
+                    name="Casos"
                     dataKey="value"
-                    label={({ percentual }) => `${percentual}%`}
-                    labelLine={false}
-                  >
-                    {empresaData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
+                    stroke={GRAY_COLOR}
+                    fill={GRAY_COLOR}
+                    fillOpacity={0.5}
+                  />
                   <Tooltip 
                     formatter={(value: number) => [formatNumber(value), 'Casos']}
                     contentStyle={{ 
@@ -316,7 +292,7 @@ export default function EntradasEncerrados() {
                       borderRadius: '8px'
                     }}
                   />
-                </PieChart>
+                </RadarChart>
               </ResponsiveContainer>
               <div className="flex-1 space-y-2">
                 {empresaData.map((item, index) => (
@@ -324,7 +300,7 @@ export default function EntradasEncerrados() {
                     <div className="flex items-center gap-2">
                       <div 
                         className="w-3 h-3 rounded-full" 
-                        style={{ backgroundColor: item.color }}
+                        style={{ backgroundColor: GRAY_COLOR }}
                       />
                       <span>{item.name}</span>
                     </div>
@@ -343,7 +319,7 @@ export default function EntradasEncerrados() {
 
       <Card className="p-4">
         <h3 className="font-semibold flex items-center gap-2 mb-4">
-          <Briefcase className="h-5 w-5 text-violet-500" />
+          <Briefcase className="h-5 w-5 text-muted-foreground" />
           Top 10 Tribunais - Encerramentos
         </h3>
         {tribunalData.length > 0 ? (

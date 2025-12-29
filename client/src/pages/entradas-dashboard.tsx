@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from "recharts";
 import { ArrowUpDown, TrendingUp, TrendingDown, Calendar as CalendarIcon, Building2, Briefcase, DollarSign, FileText, ChevronLeft, ChevronRight } from "lucide-react";
 import { format, subMonths, addMonths, startOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -23,26 +23,20 @@ interface CasosNovosStats {
   mesAnteriorLabel?: string;
 }
 
-const COLORS = {
-  vtal: "#f59e0b",
-  oi: "#3b82f6",
-  serede: "#10b981",
-  outros: "#6b7280",
-  default: "#8b5cf6",
-};
+const YELLOW_COLOR = "#eab308";
 
 const EMPRESA_COLORS: Record<string, string> = {
-  "V.TAL": COLORS.vtal,
-  "VTAL": COLORS.vtal,
-  "OI": COLORS.oi,
-  "SEREDE": COLORS.serede,
-  "OUTROS": COLORS.outros,
-  "SPRINK": "#ec4899",
+  "V.TAL": YELLOW_COLOR,
+  "VTAL": YELLOW_COLOR,
+  "OI": "#facc15",
+  "SEREDE": "#fde047",
+  "OUTROS": "#fef08a",
+  "SPRINK": "#fef9c3",
 };
 
 function getEmpresaColor(empresa: string): string {
   const upper = empresa.toUpperCase();
-  return EMPRESA_COLORS[upper] || COLORS.default;
+  return EMPRESA_COLORS[upper] || YELLOW_COLOR;
 }
 
 function formatCurrency(value: number): string {
@@ -281,7 +275,7 @@ export default function EntradasDashboard() {
                     borderRadius: '8px'
                   }}
                 />
-                <Bar dataKey="quantidade" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="quantidade" fill={YELLOW_COLOR} radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           ) : (
@@ -298,22 +292,18 @@ export default function EntradasDashboard() {
           </h3>
           {empresaData.length > 0 ? (
             <div className="flex items-center gap-4">
-              <ResponsiveContainer width="50%" height={250}>
-                <PieChart>
-                  <Pie
-                    data={empresaData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={50}
-                    outerRadius={80}
+              <ResponsiveContainer width="60%" height={250}>
+                <RadarChart cx="50%" cy="50%" outerRadius="80%" data={empresaData}>
+                  <PolarGrid stroke="hsl(var(--border))" />
+                  <PolarAngleAxis dataKey="name" className="text-xs" />
+                  <PolarRadiusAxis className="text-xs" />
+                  <Radar
+                    name="Casos"
                     dataKey="value"
-                    label={({ percentual }) => `${percentual}%`}
-                    labelLine={false}
-                  >
-                    {empresaData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
+                    stroke={YELLOW_COLOR}
+                    fill={YELLOW_COLOR}
+                    fillOpacity={0.5}
+                  />
                   <Tooltip 
                     formatter={(value: number) => [formatNumber(value), 'Casos']}
                     contentStyle={{ 
@@ -322,7 +312,7 @@ export default function EntradasDashboard() {
                       borderRadius: '8px'
                     }}
                   />
-                </PieChart>
+                </RadarChart>
               </ResponsiveContainer>
               <div className="flex-1 space-y-2">
                 {empresaData.map((item, index) => (
@@ -330,7 +320,7 @@ export default function EntradasDashboard() {
                     <div className="flex items-center gap-2">
                       <div 
                         className="w-3 h-3 rounded-full" 
-                        style={{ backgroundColor: item.color }}
+                        style={{ backgroundColor: YELLOW_COLOR }}
                       />
                       <span>{item.name}</span>
                     </div>
@@ -366,7 +356,7 @@ export default function EntradasDashboard() {
                   borderRadius: '8px'
                 }}
               />
-              <Bar dataKey="quantidade" fill="#f59e0b" radius={[0, 4, 4, 0]} />
+              <Bar dataKey="quantidade" fill={YELLOW_COLOR} radius={[0, 4, 4, 0]} />
             </BarChart>
           </ResponsiveContainer>
         ) : (
