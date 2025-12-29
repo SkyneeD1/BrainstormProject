@@ -313,19 +313,23 @@ function TurmasList({ turmas, trtNome, onSelect, onBack, labels }: {
   );
 }
 
-function DesembargadorView({ desembargadores, turmaNome, trtNome, onBack, labels }: {
+function DesembargadorView({ desembargadores, turmaNome, trtNome, onBack, labels, responsabilidadeFilter = "todas" }: {
   desembargadores: DesembargadorData[];
   turmaNome: string;
   trtNome: string;
   onBack: () => void;
   labels: Labels;
+  responsabilidadeFilter?: string;
 }) {
   const [selectedDesembargador, setSelectedDesembargador] = useState<DesembargadorData | null>(null);
   const [empresaFilter, setEmpresaFilter] = useState<string>("todas");
 
   const filteredDecisoes = selectedDesembargador?.decisoes.filter(d => {
-    if (empresaFilter === "todas") return true;
-    return d.empresa === empresaFilter;
+    // Filter by empresa
+    if (empresaFilter !== "todas" && d.empresa !== empresaFilter) return false;
+    // Filter by responsabilidade
+    if (responsabilidadeFilter !== "todas" && d.responsabilidade !== responsabilidadeFilter) return false;
+    return true;
   }) || [];
 
   const getVotoColor = (voto: string) => {
@@ -433,7 +437,9 @@ function DesembargadorView({ desembargadores, turmaNome, trtNome, onBack, labels
               
               {filteredDecisoes.length === 0 ? (
                 <p className="text-center text-muted-foreground py-8">
-                  {empresaFilter !== "todas" ? "Nenhuma decisão para esta empresa" : "Nenhuma decisão registrada"}
+                  {(empresaFilter !== "todas" || responsabilidadeFilter !== "todas") 
+                    ? "Nenhuma decisão encontrada com os filtros selecionados" 
+                    : "Nenhuma decisão registrada"}
                 </p>
               ) : (
                 <div className="space-y-2 max-h-96 overflow-y-auto">
@@ -1221,6 +1227,7 @@ export default function MapaDecisoesPage() {
               trtNome={selectedTRT || ""}
               onBack={handleBackToTurmas}
               labels={labels}
+              responsabilidadeFilter={responsabilidadeFilter}
             />
           ) : selectedTRT && turmas ? (
             loadingTurmas ? (
