@@ -23,15 +23,15 @@ interface CasosNovosStats {
   mesAnteriorLabel?: string;
 }
 
-const YELLOW_COLOR = "#eab308";
+const YELLOW_COLOR = "#ffd700";
 
 const EMPRESA_COLORS: Record<string, string> = {
   "V.TAL": YELLOW_COLOR,
   "VTAL": YELLOW_COLOR,
-  "OI": "#facc15",
-  "SEREDE": "#fde047",
-  "OUTROS": "#fef08a",
-  "SPRINK": "#fef9c3",
+  "OI": "#ffeb3b",
+  "SEREDE": "#fff176",
+  "OUTROS": "#fff59d",
+  "SPRINK": "#fffde7",
 };
 
 function getEmpresaColor(empresa: string): string {
