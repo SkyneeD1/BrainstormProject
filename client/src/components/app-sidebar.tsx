@@ -281,8 +281,8 @@ export function AppSidebar() {
           </div>
         )}
         <div className="flex items-center gap-2 px-2 pt-3 border-t border-sidebar-accent mt-3">
-          <Building2 className="h-4 w-4 text-primary" />
-          <span className="text-xs text-sidebar-foreground/60 font-medium">V.tal</span>
+          <Building2 className="h-4 w-4" style={{ color: primaryColor }} />
+          <span className="text-xs text-sidebar-foreground/60 font-medium">{tenantName}</span>
         </div>
       </SidebarFooter>
     </Sidebar>

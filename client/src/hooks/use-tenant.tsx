@@ -21,8 +21,9 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   const { tenant } = useAuth();
 
   useEffect(() => {
+    const root = document.documentElement;
+    
     if (tenant) {
-      const root = document.documentElement;
       root.style.setProperty("--tenant-primary", tenant.primaryColor);
       root.style.setProperty("--tenant-background", tenant.backgroundColor);
       
@@ -35,6 +36,12 @@ export function TenantProvider({ children }: { children: ReactNode }) {
         root.style.setProperty("--sidebar-primary", "51 100% 50%");
         root.style.setProperty("--chart-1", "51 100% 50%");
       }
+    } else {
+      root.style.removeProperty("--tenant-primary");
+      root.style.removeProperty("--tenant-background");
+      root.style.setProperty("--primary", "51 100% 50%");
+      root.style.setProperty("--sidebar-primary", "51 100% 50%");
+      root.style.setProperty("--chart-1", "51 100% 50%");
     }
   }, [tenant]);
 
