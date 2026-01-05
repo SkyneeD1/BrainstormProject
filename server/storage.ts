@@ -46,25 +46,37 @@ import type {
   CasoNovo,
   InsertCasoNovo,
   CasoEncerrado,
-  InsertCasoEncerrado
+  InsertCasoEncerrado,
+  Tenant,
+  InsertTenant
 } from "@shared/schema";
-import { users, trts, varas, juizes, julgamentos, audiencias, distribuidos, encerrados, sentencasMerito, acordaosMerito, turmas, desembargadores, decisoesRpac, passivoMensal, casosNovos, casosEncerrados } from "@shared/schema";
+import { users, trts, varas, juizes, julgamentos, audiencias, distribuidos, encerrados, sentencasMerito, acordaosMerito, turmas, desembargadores, decisoesRpac, passivoMensal, casosNovos, casosEncerrados, tenants } from "@shared/schema";
 import { and, gte, lte, inArray, sql } from "drizzle-orm";
 import { parseExcelFile } from "./excel-parser";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
 
 export interface IStorage {
+  // Tenant methods
+  getAllTenants(): Promise<Tenant[]>;
+  getTenant(id: string): Promise<Tenant | undefined>;
+  getTenantByCode(code: string): Promise<Tenant | undefined>;
+  createTenant(tenant: InsertTenant): Promise<Tenant>;
+  updateTenant(id: string, data: Partial<InsertTenant>): Promise<Tenant | undefined>;
+  seedDefaultTenants(): Promise<void>;
+  
   getPassivoData(): Promise<PassivoData>;
   setRawData(data: ProcessoRaw[]): Promise<void>;
   getRawData(): Promise<ProcessoRaw[]>;
   clearRawData(): Promise<void>;
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
+  getUserByUsernameAndTenant(username: string, tenantId: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUserRole(id: string, role: string): Promise<User | undefined>;
   updateUserPassword(id: string, passwordHash: string): Promise<User | undefined>;
   getAllUsers(): Promise<User[]>;
+  getUsersByTenant(tenantId: string): Promise<User[]>;
   
   getAllTRTs(): Promise<TRT[]>;
   getTRT(id: string): Promise<TRT | undefined>;
@@ -301,6 +313,80 @@ export class MemStorage implements IStorage {
 
   async getAllUsers(): Promise<User[]> {
     return await db.select().from(users);
+  }
+
+  async getUsersByTenant(tenantId: string): Promise<User[]> {
+    return await db.select().from(users).where(eq(users.tenantId, tenantId));
+  }
+
+  async getUserByUsernameAndTenant(username: string, tenantId: string): Promise<User | undefined> {
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(and(eq(users.username, username), eq(users.tenantId, tenantId)));
+    return user;
+  }
+
+  // Tenant methods
+  async getAllTenants(): Promise<Tenant[]> {
+    return await db.select().from(tenants).where(eq(tenants.isActive, "true"));
+  }
+
+  async getTenant(id: string): Promise<Tenant | undefined> {
+    const [tenant] = await db.select().from(tenants).where(eq(tenants.id, id));
+    return tenant;
+  }
+
+  async getTenantByCode(code: string): Promise<Tenant | undefined> {
+    const [tenant] = await db.select().from(tenants).where(eq(tenants.code, code));
+    return tenant;
+  }
+
+  async createTenant(tenantData: InsertTenant): Promise<Tenant> {
+    const [tenant] = await db
+      .insert(tenants)
+      .values(tenantData)
+      .returning();
+    return tenant;
+  }
+
+  async updateTenant(id: string, data: Partial<InsertTenant>): Promise<Tenant | undefined> {
+    const [tenant] = await db
+      .update(tenants)
+      .set(data)
+      .where(eq(tenants.id, id))
+      .returning();
+    return tenant;
+  }
+
+  async seedDefaultTenants(): Promise<void> {
+    try {
+      // Check if V.tal tenant exists
+      const existingVtal = await this.getTenantByCode("vtal");
+      if (!existingVtal) {
+        await this.createTenant({
+          code: "vtal",
+          name: "V.tal",
+          primaryColor: "#ffd700",
+          backgroundColor: "#0a1628",
+        });
+        console.log("Default tenant V.tal created");
+      }
+
+      // Check if NIO tenant exists
+      const existingNio = await this.getTenantByCode("nio");
+      if (!existingNio) {
+        await this.createTenant({
+          code: "nio",
+          name: "NIO",
+          primaryColor: "#01DA01",
+          backgroundColor: "#182B1B",
+        });
+        console.log("Default tenant NIO created");
+      }
+    } catch (error) {
+      console.error("Error seeding default tenants:", error);
+    }
   }
 
   async getPassivoData(): Promise<PassivoData> {

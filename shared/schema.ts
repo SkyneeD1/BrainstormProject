@@ -8,6 +8,38 @@ import {
   varchar,
 } from "drizzle-orm/pg-core";
 
+// ============================================
+// MULTI-TENANT (EMPRESAS) SYSTEM
+// ============================================
+
+export const tenants = pgTable("tenants", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  code: varchar("code").unique().notNull(), // "vtal", "nio"
+  name: varchar("name").notNull(), // "V.tal", "NIO"
+  primaryColor: varchar("primary_color").notNull(), // "#ffd700", "#01DA01"
+  backgroundColor: varchar("background_color").notNull(), // "#0a1628", "#182B1B"
+  logoUrl: varchar("logo_url"),
+  isActive: varchar("is_active").default("true").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type Tenant = typeof tenants.$inferSelect;
+export type InsertTenant = typeof tenants.$inferInsert;
+
+export const insertTenantSchema = z.object({
+  code: z.string().min(1, "Código da empresa é obrigatório"),
+  name: z.string().min(1, "Nome da empresa é obrigatório"),
+  primaryColor: z.string().min(4, "Cor primária é obrigatória"),
+  backgroundColor: z.string().min(4, "Cor de fundo é obrigatória"),
+  logoUrl: z.string().optional(),
+});
+
+export type CreateTenantInput = z.infer<typeof insertTenantSchema>;
+
+// ============================================
+// EXISTING SCHEMAS
+// ============================================
+
 export const faseProcessualEnum = z.enum(["Conhecimento", "Recursal", "Execução"]);
 export const classificacaoRiscoEnum = z.enum(["Remoto", "Possível", "Provável"]);
 export const empresaEnum = z.enum(["V.tal", "OI", "Serede", "Sprink", "Outros Terceiros"]);
@@ -127,14 +159,18 @@ export const sessions = pgTable(
 
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  username: varchar("username").unique().notNull(),
+  tenantId: varchar("tenant_id").references(() => tenants.id, { onDelete: "cascade" }),
+  username: varchar("username").notNull(),
   passwordHash: varchar("password_hash").notNull(),
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   role: varchar("role").default("viewer").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => [
+  index("IDX_users_tenant").on(table.tenantId),
+  index("IDX_users_username_tenant").on(table.username, table.tenantId),
+]);
 
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
@@ -142,9 +178,24 @@ export type InsertUser = typeof users.$inferInsert;
 export const loginSchema = z.object({
   username: z.string().min(1, "Nome de usuário obrigatório"),
   password: z.string().min(1, "Senha obrigatória"),
+  tenantCode: z.string().min(1, "Empresa é obrigatória"),
 });
 
 export type LoginInput = z.infer<typeof loginSchema>;
+
+// Session user with tenant info
+export const sessionUserSchema = z.object({
+  id: z.string(),
+  username: z.string(),
+  role: z.string(),
+  tenantId: z.string(),
+  tenantCode: z.string(),
+  tenantName: z.string(),
+  tenantPrimaryColor: z.string(),
+  tenantBackgroundColor: z.string(),
+});
+
+export type SessionUser = z.infer<typeof sessionUserSchema>;
 
 export const createUserSchema = z.object({
   username: z.string().min(3, "Nome de usuário deve ter pelo menos 3 caracteres"),
@@ -152,6 +203,7 @@ export const createUserSchema = z.object({
   firstName: z.string().optional(),
   lastName: z.string().optional(),
   role: roleEnum.default("viewer"),
+  tenantId: z.string().optional(),
 });
 
 export type CreateUserInput = z.infer<typeof createUserSchema>;
