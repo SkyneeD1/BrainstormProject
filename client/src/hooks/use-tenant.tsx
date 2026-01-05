@@ -1,0 +1,62 @@
+import { createContext, useContext, useEffect, type ReactNode } from "react";
+import { useAuth, type Tenant } from "./useAuth";
+
+interface TenantContextType {
+  tenant: Tenant | undefined;
+  primaryColor: string;
+  backgroundColor: string;
+  tenantCode: string;
+  tenantName: string;
+}
+
+const TenantContext = createContext<TenantContextType>({
+  tenant: undefined,
+  primaryColor: "#ffd700",
+  backgroundColor: "#0a1628",
+  tenantCode: "vtal",
+  tenantName: "V.tal",
+});
+
+export function TenantProvider({ children }: { children: ReactNode }) {
+  const { tenant } = useAuth();
+
+  useEffect(() => {
+    if (tenant) {
+      const root = document.documentElement;
+      root.style.setProperty("--tenant-primary", tenant.primaryColor);
+      root.style.setProperty("--tenant-background", tenant.backgroundColor);
+      
+      if (tenant.code === "nio") {
+        root.style.setProperty("--primary", "120 100% 43%");
+        root.style.setProperty("--sidebar-primary", "120 100% 43%");
+        root.style.setProperty("--chart-1", "120 100% 43%");
+      } else {
+        root.style.setProperty("--primary", "51 100% 50%");
+        root.style.setProperty("--sidebar-primary", "51 100% 50%");
+        root.style.setProperty("--chart-1", "51 100% 50%");
+      }
+    }
+  }, [tenant]);
+
+  const value: TenantContextType = {
+    tenant,
+    primaryColor: tenant?.primaryColor || "#ffd700",
+    backgroundColor: tenant?.backgroundColor || "#0a1628",
+    tenantCode: tenant?.code || "vtal",
+    tenantName: tenant?.name || "V.tal",
+  };
+
+  return (
+    <TenantContext.Provider value={value}>
+      {children}
+    </TenantContext.Provider>
+  );
+}
+
+export function useTenant() {
+  const context = useContext(TenantContext);
+  if (!context) {
+    throw new Error("useTenant must be used within a TenantProvider");
+  }
+  return context;
+}

@@ -4,6 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/hooks/use-theme";
+import { TenantProvider, useTenant } from "@/hooks/use-tenant";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
@@ -43,7 +44,9 @@ function AuthenticatedRouter() {
   );
 }
 
-function AuthenticatedApp() {
+function AuthenticatedAppContent() {
+  const { tenantName, primaryColor } = useTenant();
+  
   const style = {
     "--sidebar-width": "17rem",
     "--sidebar-width-icon": "4rem",
@@ -58,8 +61,11 @@ function AuthenticatedApp() {
             <div className="flex items-center gap-3">
               <SidebarTrigger data-testid="button-sidebar-toggle" />
               <div className="h-4 w-px bg-border" />
-              <span className="text-sm font-medium text-muted-foreground">
-                Módulo 1
+              <span 
+                className="text-sm font-bold"
+                style={{ color: primaryColor }}
+              >
+                {tenantName}
               </span>
             </div>
             <ThemeToggle />
@@ -70,6 +76,14 @@ function AuthenticatedApp() {
         </div>
       </div>
     </SidebarProvider>
+  );
+}
+
+function AuthenticatedApp() {
+  return (
+    <TenantProvider>
+      <AuthenticatedAppContent />
+    </TenantProvider>
   );
 }
 

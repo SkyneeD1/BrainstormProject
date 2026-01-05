@@ -1,6 +1,7 @@
 import { Link, useLocation } from "wouter";
 import { BarChart3, Database, ChevronDown, Building2, Scale, Users, LogOut, Shield, Eye, Loader2, Map, Gavel, User, TrendingUp, Calendar, Lightbulb, FileSpreadsheet, Table2, ArrowUpDown, FileUp } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useTenant } from "@/hooks/use-tenant";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -79,6 +80,7 @@ const menuItems = [
 export function AppSidebar() {
   const [location] = useLocation();
   const { user, isAdmin, logout, isLoggingOut } = useAuth();
+  const { tenantName, primaryColor } = useTenant();
 
   const getInitials = () => {
     if (user?.firstName && user?.lastName) {
@@ -104,9 +106,14 @@ export function AppSidebar() {
           <h1 className="text-lg font-bold text-sidebar-foreground tracking-tight leading-tight">
             CONTENCIOSO
           </h1>
-          <p className="text-xs text-sidebar-foreground/70 font-medium tracking-wide uppercase">Gerenciamento V.TAL</p>
+          <p className="text-xs text-sidebar-foreground/70 font-medium tracking-wide uppercase">
+            Gerenciamento {tenantName.toUpperCase()}
+          </p>
         </div>
-        <div className="mt-4 h-1 w-12 bg-primary rounded-full" />
+        <div 
+          className="mt-4 h-1 w-12 rounded-full" 
+          style={{ backgroundColor: primaryColor }}
+        />
       </SidebarHeader>
       <SidebarContent className="px-3">
         <SidebarGroup>
