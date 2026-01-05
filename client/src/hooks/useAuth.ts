@@ -1,12 +1,21 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest, getQueryFn } from "@/lib/queryClient";
 
+interface Tenant {
+  id: string;
+  code: string;
+  name: string;
+  primaryColor: string;
+  backgroundColor: string;
+}
+
 interface User {
   id: string;
   username: string;
   firstName: string | null;
   lastName: string | null;
   role: string;
+  tenant?: Tenant;
 }
 
 export function useAuth() {
@@ -20,7 +29,7 @@ export function useAuth() {
   });
 
   const loginMutation = useMutation({
-    mutationFn: async (credentials: { username: string; password: string }) => {
+    mutationFn: async (credentials: { username: string; password: string; tenantCode: string }) => {
       const response = await apiRequest("POST", "/api/login", credentials);
       return response.json();
     },
@@ -42,6 +51,7 @@ export function useAuth() {
 
   return {
     user,
+    tenant: user?.tenant,
     isLoading,
     isAuthenticated: !!user,
     isAdmin: user?.role === "admin",
@@ -53,3 +63,5 @@ export function useAuth() {
     isLoggingOut: logoutMutation.isPending,
   };
 }
+
+export type { Tenant, User };

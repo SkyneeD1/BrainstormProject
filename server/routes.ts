@@ -86,7 +86,24 @@ export async function registerRoutes(
   // Initialize Brainstorm data from Excel
   await storage.initializeBrainstorm();
 
-  // Login route
+  // Get available tenants (for company selection before login)
+  app.get('/api/tenants', async (_req, res) => {
+    try {
+      const allTenants = await storage.getAllTenants();
+      res.json(allTenants.map(t => ({
+        id: t.id,
+        code: t.code,
+        name: t.name,
+        primaryColor: t.primaryColor,
+        backgroundColor: t.backgroundColor,
+      })));
+    } catch (error) {
+      console.error("Error fetching tenants:", error);
+      res.status(500).json({ error: "Erro ao buscar empresas" });
+    }
+  });
+
+  // Login route with tenant support
   app.post('/api/login', async (req, res) => {
     try {
       const parsed = loginSchema.safeParse(req.body);
@@ -94,8 +111,16 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Dados inválidos" });
       }
 
-      const { username, password } = parsed.data;
-      const user = await storage.getUserByUsername(username);
+      const { username, password, tenantCode } = parsed.data;
+      
+      // First get the tenant
+      const tenant = await storage.getTenantByCode(tenantCode);
+      if (!tenant) {
+        return res.status(401).json({ error: "Empresa não encontrada" });
+      }
+      
+      // Get user by username and tenant
+      const user = await storage.getUserByUsernameAndTenant(username, tenant.id);
       
       if (!user) {
         return res.status(401).json({ error: "Usuário ou senha incorretos" });
@@ -106,11 +131,16 @@ export async function registerRoutes(
         return res.status(401).json({ error: "Usuário ou senha incorretos" });
       }
 
-      // Set session
+      // Set session with tenant info
       req.session.user = {
         id: user.id,
         username: user.username,
         role: user.role,
+        tenantId: tenant.id,
+        tenantCode: tenant.code,
+        tenantName: tenant.name,
+        tenantPrimaryColor: tenant.primaryColor,
+        tenantBackgroundColor: tenant.backgroundColor,
       };
 
       res.json({
@@ -119,6 +149,13 @@ export async function registerRoutes(
         firstName: user.firstName,
         lastName: user.lastName,
         role: user.role,
+        tenant: {
+          id: tenant.id,
+          code: tenant.code,
+          name: tenant.name,
+          primaryColor: tenant.primaryColor,
+          backgroundColor: tenant.backgroundColor,
+        }
       });
     } catch (error) {
       console.error("Login error:", error);
@@ -144,12 +181,23 @@ export async function registerRoutes(
       if (!user) {
         return res.status(404).json({ error: "Usuário não encontrado" });
       }
+      
+      // Get tenant info from session
+      const sessionUser = req.session.user!;
+      
       res.json({
         id: user.id,
         username: user.username,
         firstName: user.firstName,
         lastName: user.lastName,
         role: user.role,
+        tenant: {
+          id: sessionUser.tenantId,
+          code: sessionUser.tenantCode,
+          name: sessionUser.tenantName,
+          primaryColor: sessionUser.tenantPrimaryColor,
+          backgroundColor: sessionUser.tenantBackgroundColor,
+        }
       });
     } catch (error) {
       console.error("Error fetching user:", error);
