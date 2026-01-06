@@ -259,11 +259,14 @@ export type DecisionResult = z.infer<typeof decisionResultEnum>;
 
 export const trts = pgTable("trts", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" }),
   numero: varchar("numero").notNull(),
   nome: varchar("nome").notNull(),
   uf: varchar("uf", { length: 2 }).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (table) => [
+  index("IDX_trts_tenant").on(table.tenantId),
+]);
 
 export type TRT = typeof trts.$inferSelect;
 export type InsertTRT = typeof trts.$inferInsert;
@@ -278,6 +281,7 @@ export type CreateTRTInput = z.infer<typeof insertTRTSchema>;
 
 export const varas = pgTable("varas", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" }),
   trtId: varchar("trt_id").notNull().references(() => trts.id, { onDelete: "cascade" }),
   nome: varchar("nome").notNull(),
   cidade: varchar("cidade").notNull(),
@@ -285,7 +289,9 @@ export const varas = pgTable("varas", {
   latitude: varchar("latitude"),
   longitude: varchar("longitude"),
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (table) => [
+  index("IDX_varas_tenant").on(table.tenantId),
+]);
 
 export type Vara = typeof varas.$inferSelect;
 export type InsertVara = typeof varas.$inferInsert;
@@ -303,6 +309,7 @@ export type CreateVaraInput = z.infer<typeof insertVaraSchema>;
 
 export const juizes = pgTable("juizes", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" }),
   varaId: varchar("vara_id").notNull().references(() => varas.id, { onDelete: "cascade" }),
   nome: varchar("nome").notNull(),
   tipo: varchar("tipo").notNull(),
@@ -310,7 +317,9 @@ export const juizes = pgTable("juizes", {
   dataSaida: timestamp("data_saida"),
   observacoes: varchar("observacoes"),
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (table) => [
+  index("IDX_juizes_tenant").on(table.tenantId),
+]);
 
 export type Juiz = typeof juizes.$inferSelect;
 export type InsertJuiz = typeof juizes.$inferInsert;
@@ -328,13 +337,16 @@ export type CreateJuizInput = z.infer<typeof insertJuizSchema>;
 
 export const julgamentos = pgTable("julgamentos", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" }),
   juizId: varchar("juiz_id").notNull().references(() => juizes.id, { onDelete: "cascade" }),
   numeroProcesso: varchar("numero_processo").notNull(),
   dataJulgamento: timestamp("data_julgamento"),
   parte: varchar("parte"),
   resultado: varchar("resultado").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (table) => [
+  index("IDX_julgamentos_tenant").on(table.tenantId),
+]);
 
 export type Julgamento = typeof julgamentos.$inferSelect;
 export type InsertJulgamento = typeof julgamentos.$inferInsert;
@@ -404,6 +416,7 @@ export type TipoAudiencia = z.infer<typeof tipoAudienciaEnum>;
 
 export const audiencias = pgTable("audiencias", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" }),
   varaId: varchar("vara_id").notNull().references(() => varas.id, { onDelete: "cascade" }),
   juizId: varchar("juiz_id").references(() => juizes.id, { onDelete: "set null" }),
   numeroProcesso: varchar("numero_processo").notNull(),
@@ -413,7 +426,9 @@ export const audiencias = pgTable("audiencias", {
   parte: varchar("parte"),
   observacoes: varchar("observacoes"),
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (table) => [
+  index("IDX_audiencias_tenant").on(table.tenantId),
+]);
 
 export type Audiencia = typeof audiencias.$inferSelect;
 export type InsertAudiencia = typeof audiencias.$inferInsert;
@@ -456,12 +471,15 @@ export type EventoTimeline = z.infer<typeof eventoTimelineSchema>;
 
 export const distribuidos = pgTable("distribuidos", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" }),
   numeroProcesso: varchar("numero_processo").notNull(),
   reclamada: varchar("reclamada"),
   tipoEmpregado: varchar("tipo_empregado"),
   empregadora: varchar("empregadora"),
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (table) => [
+  index("IDX_distribuidos_tenant").on(table.tenantId),
+]);
 
 export type Distribuido = typeof distribuidos.$inferSelect;
 export type InsertDistribuido = typeof distribuidos.$inferInsert;
@@ -477,12 +495,15 @@ export type CreateDistribuidoInput = z.infer<typeof insertDistribuidoSchema>;
 
 export const encerrados = pgTable("encerrados", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" }),
   numeroProcesso: varchar("numero_processo").notNull(),
   reclamada: varchar("reclamada"),
   tipoEmpregado: varchar("tipo_empregado"),
   empregadora: varchar("empregadora"),
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (table) => [
+  index("IDX_encerrados_tenant").on(table.tenantId),
+]);
 
 export type Encerrado = typeof encerrados.$inferSelect;
 export type InsertEncerrado = typeof encerrados.$inferInsert;
@@ -498,13 +519,16 @@ export type CreateEncerradoInput = z.infer<typeof insertEncerradoSchema>;
 
 export const sentencasMerito = pgTable("sentencas_merito", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" }),
   numeroProcesso: varchar("numero_processo").notNull(),
   empresa: varchar("empresa"),
   tipoDecisao: varchar("tipo_decisao"),
   favorabilidade: varchar("favorabilidade"),
   empregadora: varchar("empregadora"),
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (table) => [
+  index("IDX_sentencas_merito_tenant").on(table.tenantId),
+]);
 
 export type SentencaMerito = typeof sentencasMerito.$inferSelect;
 export type InsertSentencaMerito = typeof sentencasMerito.$inferInsert;
@@ -521,13 +545,16 @@ export type CreateSentencaMeritoInput = z.infer<typeof insertSentencaMeritoSchem
 
 export const acordaosMerito = pgTable("acordaos_merito", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" }),
   numeroProcesso: varchar("numero_processo").notNull(),
   empresa: varchar("empresa"),
   tipoDecisao: varchar("tipo_decisao"),
   sinteseDecisao: varchar("sintese_decisao"),
   empregadora: varchar("empregadora"),
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (table) => [
+  index("IDX_acordaos_merito_tenant").on(table.tenantId),
+]);
 
 export type AcordaoMerito = typeof acordaosMerito.$inferSelect;
 export type InsertAcordaoMerito = typeof acordaosMerito.$inferInsert;
@@ -561,11 +588,14 @@ export type Instancia = z.infer<typeof instanciaEnum>;
 
 export const turmas = pgTable("turmas", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" }),
   nome: varchar("nome").notNull(),
   regiao: varchar("regiao"),
   instancia: varchar("instancia").default("segunda").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (table) => [
+  index("IDX_turmas_tenant").on(table.tenantId),
+]);
 
 export type Turma = typeof turmas.$inferSelect;
 export type InsertTurma = typeof turmas.$inferInsert;
@@ -580,12 +610,15 @@ export type CreateTurmaInput = z.infer<typeof insertTurmaSchema>;
 
 export const desembargadores = pgTable("desembargadores", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" }),
   turmaId: varchar("turma_id").notNull().references(() => turmas.id, { onDelete: "cascade" }),
   nome: varchar("nome").notNull(),
   voto: varchar("voto").notNull().default("EM ANÁLISE"),
   observacoes: varchar("observacoes"),
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (table) => [
+  index("IDX_desembargadores_tenant").on(table.tenantId),
+]);
 
 export type Desembargador = typeof desembargadores.$inferSelect;
 export type InsertDesembargador = typeof desembargadores.$inferInsert;
@@ -606,6 +639,7 @@ export type Responsabilidade = z.infer<typeof responsabilidadeEnum>;
 // Decisões RPAC - para rastrear decisões específicas
 export const decisoesRpac = pgTable("decisoes_rpac", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" }),
   desembargadorId: varchar("desembargador_id").notNull().references(() => desembargadores.id, { onDelete: "cascade" }),
   numeroProcesso: varchar("numero_processo").notNull(),
   dataDecisao: timestamp("data_decisao"),
@@ -615,7 +649,9 @@ export const decisoesRpac = pgTable("decisoes_rpac", {
   empresa: varchar("empresa").default("V.tal"),
   observacoes: varchar("observacoes"),
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (table) => [
+  index("IDX_decisoes_rpac_tenant").on(table.tenantId),
+]);
 
 export type DecisaoRpac = typeof decisoesRpac.$inferSelect;
 export type InsertDecisaoRpac = typeof decisoesRpac.$inferInsert;
@@ -639,12 +675,15 @@ export type CreateDecisaoRpacInput = z.infer<typeof insertDecisaoRpacSchema>;
 // Carteira RPAC - processos em carteira
 export const carteiraRpac = pgTable("carteira_rpac", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" }),
   turmaId: varchar("turma_id").references(() => turmas.id, { onDelete: "set null" }),
   numeroProcesso: varchar("numero_processo").notNull(),
   parte: varchar("parte"),
   status: varchar("status"),
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (table) => [
+  index("IDX_carteira_rpac_tenant").on(table.tenantId),
+]);
 
 export type CarteiraRpacItem = typeof carteiraRpac.$inferSelect;
 export type InsertCarteiraRpac = typeof carteiraRpac.$inferInsert;
@@ -730,12 +769,14 @@ export type MapaDecisoes = MapaDecisoesGeral;
 // Passivo Mensal - dados de passivo organizados por mês/ano
 export const passivoMensal = pgTable("passivo_mensal", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" }),
   mes: varchar("mes").notNull(), // "01" a "12"
   ano: varchar("ano").notNull(), // "2024", "2025", etc
   dados: jsonb("dados").notNull(), // PassivoData completo em JSON
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
+  index("IDX_passivo_mensal_tenant").on(table.tenantId),
   index("IDX_passivo_mensal_periodo").on(table.mes, table.ano),
 ]);
 
@@ -775,13 +816,16 @@ export type ComparacaoMensal = z.infer<typeof comparacaoMensalSchema>;
 // Módulo Entrada & Saídas - Casos Novos
 export const casosNovos = pgTable("casos_novos", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" }),
   numeroProcesso: varchar("numero_processo").notNull(),
   dataDistribuicao: timestamp("data_distribuicao"),
   tribunal: varchar("tribunal").notNull(),
   empresa: varchar("empresa").notNull(),
   valorContingencia: varchar("valor_contingencia"),
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (table) => [
+  index("IDX_casos_novos_tenant").on(table.tenantId),
+]);
 
 export type CasoNovo = typeof casosNovos.$inferSelect;
 export type InsertCasoNovo = typeof casosNovos.$inferInsert;
@@ -799,13 +843,16 @@ export type CreateCasoNovoInput = z.infer<typeof insertCasoNovoSchema>;
 // Módulo Entrada & Saídas - Casos Encerrados
 export const casosEncerrados = pgTable("casos_encerrados", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" }),
   numeroProcesso: varchar("numero_processo").notNull(),
   dataEncerramento: timestamp("data_encerramento"),
   tribunal: varchar("tribunal").notNull(),
   empresa: varchar("empresa").notNull(),
   valorContingencia: varchar("valor_contingencia"),
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (table) => [
+  index("IDX_casos_encerrados_tenant").on(table.tenantId),
+]);
 
 export type CasoEncerrado = typeof casosEncerrados.$inferSelect;
 export type InsertCasoEncerrado = typeof casosEncerrados.$inferInsert;
