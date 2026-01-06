@@ -240,9 +240,6 @@ export default function Landing() {
       </main>
 
       <footer className="py-6 px-8 border-t bg-background">
-        <div className="max-w-6xl mx-auto text-center text-sm text-muted-foreground">
-          Ecossistema de Gestão Contenciosa | Base Dez/24
-        </div>
       </footer>
     </div>
   );
