@@ -214,6 +214,17 @@ export const updatePasswordSchema = z.object({
 
 export type UpdatePasswordInput = z.infer<typeof updatePasswordSchema>;
 
+export const selfChangePasswordSchema = z.object({
+  currentPassword: z.string().min(1, "Senha atual é obrigatória"),
+  newPassword: z.string().min(4, "Nova senha deve ter pelo menos 4 caracteres"),
+  confirmPassword: z.string().min(1, "Confirmação de senha é obrigatória"),
+}).refine(data => data.newPassword === data.confirmPassword, {
+  message: "As senhas não coincidem",
+  path: ["confirmPassword"],
+});
+
+export type SelfChangePasswordInput = z.infer<typeof selfChangePasswordSchema>;
+
 export const updateRoleSchema = z.object({
   role: roleEnum,
 });

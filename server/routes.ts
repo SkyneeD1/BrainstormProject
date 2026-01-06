@@ -5,7 +5,8 @@ import { setupAuth, isAuthenticated, isAdmin, hashPassword, verifyPassword } fro
 import { 
   loginSchema, 
   createUserSchema, 
-  updatePasswordSchema, 
+  updatePasswordSchema,
+  selfChangePasswordSchema,
   updateRoleSchema,
   insertTRTSchema,
   insertVaraSchema,
@@ -202,6 +203,37 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+
+  // Self password change (any authenticated user)
+  app.patch('/api/profile/password', isAuthenticated, async (req, res) => {
+    try {
+      const parsed = selfChangePasswordSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.errors[0]?.message || "Dados inválidos" });
+      }
+
+      const userId = req.session.user!.id;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ error: "Usuário não encontrado" });
+      }
+
+      // Verify current password
+      const isValid = await verifyPassword(parsed.data.currentPassword, user.passwordHash);
+      if (!isValid) {
+        return res.status(401).json({ error: "Senha atual incorreta" });
+      }
+
+      // Update password
+      const passwordHash = await hashPassword(parsed.data.newPassword);
+      await storage.updateUserPassword(userId, passwordHash);
+
+      res.json({ success: true, message: "Senha alterada com sucesso" });
+    } catch (error) {
+      console.error("Error changing password:", error);
+      res.status(500).json({ error: "Erro ao alterar senha" });
     }
   });
 
