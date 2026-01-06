@@ -542,7 +542,9 @@ export async function registerRoutes(
   // Get all available periods
   app.get("/api/passivo/periodos", isAuthenticated, requireModule("passivo"), async (req, res) => {
     try {
-      const periodos = await storage.getAllPassivoMensalPeriodos();
+      const tenantId = req.session.user?.tenantId;
+      if (!tenantId) return res.status(401).json({ error: "Tenant não identificado" });
+      const periodos = await storage.getAllPassivoMensalPeriodos(tenantId);
       res.json(periodos);
     } catch (error) {
       console.error("Error fetching passivo periods:", error);
@@ -553,8 +555,10 @@ export async function registerRoutes(
   // Get passivo data for a specific month/year
   app.get("/api/passivo/mensal/:ano/:mes", isAuthenticated, requireModule("passivo"), async (req, res) => {
     try {
+      const tenantId = req.session.user?.tenantId;
+      if (!tenantId) return res.status(401).json({ error: "Tenant não identificado" });
       const { ano, mes } = req.params;
-      const data = await storage.getPassivoMensal(mes, ano);
+      const data = await storage.getPassivoMensal(tenantId, mes, ano);
       
       if (!data) {
         return res.status(404).json({ error: "Dados não encontrados para este período" });
@@ -661,8 +665,10 @@ export async function registerRoutes(
       await storage.setRawData(processos);
       
       // Get computed passivo data and save to database with month/year
+      const tenantId = req.session.user?.tenantId;
+      if (!tenantId) return res.status(401).json({ error: "Tenant não identificado" });
       const passivoData = await storage.getPassivoData();
-      await storage.savePassivoMensal(mes, ano, passivoData);
+      await storage.savePassivoMensal(tenantId, mes, ano, passivoData);
       
       console.log(`Upload mensal: ${processos.length} processos importados para ${mes}/${ano}`);
       
@@ -682,8 +688,10 @@ export async function registerRoutes(
   // Delete passivo for a specific month/year (admin only)
   app.delete("/api/passivo/mensal/:ano/:mes", isAuthenticated, isAdmin, requireModule("passivo"), async (req, res) => {
     try {
+      const tenantId = req.session.user?.tenantId;
+      if (!tenantId) return res.status(401).json({ error: "Tenant não identificado" });
       const { ano, mes } = req.params;
-      await storage.deletePassivoMensal(mes, ano);
+      await storage.deletePassivoMensal(tenantId, mes, ano);
       res.json({ success: true });
     } catch (error) {
       console.error("Error deleting monthly passivo:", error);
@@ -694,14 +702,16 @@ export async function registerRoutes(
   // Compare two months
   app.get("/api/passivo/comparar", isAuthenticated, requireModule("passivo"), async (req, res) => {
     try {
+      const tenantId = req.session.user?.tenantId;
+      if (!tenantId) return res.status(401).json({ error: "Tenant não identificado" });
       const { mes1, ano1, mes2, ano2 } = req.query;
       
       if (!mes1 || !ano1 || !mes2 || !ano2) {
         return res.status(400).json({ error: "Parâmetros mes1, ano1, mes2 e ano2 são obrigatórios" });
       }
       
-      const dados1 = await storage.getPassivoMensal(mes1 as string, ano1 as string);
-      const dados2 = await storage.getPassivoMensal(mes2 as string, ano2 as string);
+      const dados1 = await storage.getPassivoMensal(tenantId, mes1 as string, ano1 as string);
+      const dados2 = await storage.getPassivoMensal(tenantId, mes2 as string, ano2 as string);
       
       if (!dados1 || !dados2) {
         return res.status(404).json({ error: "Dados não encontrados para um ou ambos os períodos" });
@@ -759,11 +769,13 @@ export async function registerRoutes(
 
   app.post("/api/trts", isAuthenticated, isAdmin, async (req, res) => {
     try {
+      const tenantId = req.session.user?.tenantId;
+      if (!tenantId) return res.status(401).json({ error: "Tenant não identificado" });
       const parsed = insertTRTSchema.safeParse(req.body);
       if (!parsed.success) {
         return res.status(400).json({ error: parsed.error.errors[0]?.message || "Dados inválidos" });
       }
-      const trt = await storage.createTRT(parsed.data);
+      const trt = await storage.createTRT({ ...parsed.data, tenantId });
       res.status(201).json(trt);
     } catch (error) {
       console.error("Error creating TRT:", error);
@@ -820,11 +832,13 @@ export async function registerRoutes(
 
   app.post("/api/varas", isAuthenticated, isAdmin, async (req, res) => {
     try {
+      const tenantId = req.session.user?.tenantId;
+      if (!tenantId) return res.status(401).json({ error: "Tenant não identificado" });
       const parsed = insertVaraSchema.safeParse(req.body);
       if (!parsed.success) {
         return res.status(400).json({ error: parsed.error.errors[0]?.message || "Dados inválidos" });
       }
-      const vara = await storage.createVara(parsed.data);
+      const vara = await storage.createVara({ ...parsed.data, tenantId });
       res.status(201).json(vara);
     } catch (error) {
       console.error("Error creating vara:", error);
@@ -881,12 +895,15 @@ export async function registerRoutes(
 
   app.post("/api/juizes", isAuthenticated, isAdmin, async (req, res) => {
     try {
+      const tenantId = req.session.user?.tenantId;
+      if (!tenantId) return res.status(401).json({ error: "Tenant não identificado" });
       const parsed = insertJuizSchema.safeParse(req.body);
       if (!parsed.success) {
         return res.status(400).json({ error: parsed.error.errors[0]?.message || "Dados inválidos" });
       }
       const data = {
         ...parsed.data,
+        tenantId,
         dataEntrada: parsed.data.dataEntrada ? new Date(parsed.data.dataEntrada) : null,
         dataSaida: parsed.data.dataSaida ? new Date(parsed.data.dataSaida) : null,
       };
@@ -947,12 +964,15 @@ export async function registerRoutes(
 
   app.post("/api/julgamentos", isAuthenticated, isAdmin, async (req, res) => {
     try {
+      const tenantId = req.session.user?.tenantId;
+      if (!tenantId) return res.status(401).json({ error: "Tenant não identificado" });
       const parsed = insertJulgamentoSchema.safeParse(req.body);
       if (!parsed.success) {
         return res.status(400).json({ error: parsed.error.errors[0]?.message || "Dados inválidos" });
       }
       const data = {
         ...parsed.data,
+        tenantId,
         dataJulgamento: parsed.data.dataJulgamento ? new Date(parsed.data.dataJulgamento) : null,
       };
       const julgamento = await storage.createJulgamento(data);
@@ -1020,7 +1040,10 @@ export async function registerRoutes(
   // ========== Turma Routes (Mapas Estratégicos) ==========
   app.get("/api/turmas", isAuthenticated, requireModule("mapas"), async (req, res) => {
     try {
-      const turmas = await storage.getAllTurmas();
+      const tenantId = req.session.user?.tenantId;
+      if (!tenantId) return res.status(401).json({ error: "Tenant não identificado" });
+      const instancia = req.query.instancia as string | undefined;
+      const turmas = await storage.getAllTurmas(tenantId, instancia);
       res.json(turmas);
     } catch (error) {
       console.error("Error fetching turmas:", error);
@@ -1043,11 +1066,13 @@ export async function registerRoutes(
 
   app.post("/api/turmas", isAuthenticated, isAdmin, requireModule("mapas"), async (req, res) => {
     try {
+      const tenantId = req.session.user?.tenantId;
+      if (!tenantId) return res.status(401).json({ error: "Tenant não identificado" });
       const parsed = insertTurmaSchema.safeParse(req.body);
       if (!parsed.success) {
         return res.status(400).json({ error: parsed.error.errors[0]?.message || "Dados inválidos" });
       }
-      const turma = await storage.createTurma(parsed.data);
+      const turma = await storage.createTurma(tenantId, { ...parsed.data, tenantId });
       res.status(201).json(turma);
     } catch (error) {
       console.error("Error creating turma:", error);
@@ -1081,7 +1106,9 @@ export async function registerRoutes(
   // ========== Desembargador Routes (Mapas Estratégicos) ==========
   app.get("/api/desembargadores", isAuthenticated, requireModule("mapas"), async (req, res) => {
     try {
-      const desembargadores = await storage.getAllDesembargadores();
+      const tenantId = req.session.user?.tenantId;
+      if (!tenantId) return res.status(401).json({ error: "Tenant não identificado" });
+      const desembargadores = await storage.getAllDesembargadores(tenantId);
       res.json(desembargadores);
     } catch (error) {
       console.error("Error fetching desembargadores:", error);
@@ -1114,11 +1141,13 @@ export async function registerRoutes(
 
   app.post("/api/desembargadores", isAuthenticated, isAdmin, requireModule("mapas"), async (req, res) => {
     try {
+      const tenantId = req.session.user?.tenantId;
+      if (!tenantId) return res.status(401).json({ error: "Tenant não identificado" });
       const parsed = insertDesembargadorSchema.safeParse(req.body);
       if (!parsed.success) {
         return res.status(400).json({ error: parsed.error.errors[0]?.message || "Dados inválidos" });
       }
-      const desembargador = await storage.createDesembargador(parsed.data);
+      const desembargador = await storage.createDesembargador(tenantId, { ...parsed.data, tenantId });
       res.status(201).json(desembargador);
     } catch (error) {
       console.error("Error creating desembargador:", error);
@@ -1152,7 +1181,9 @@ export async function registerRoutes(
   // ========== Mapa de Decisões Routes ==========
   app.get("/api/mapa-decisoes", isAuthenticated, requireModule("mapas"), async (req, res) => {
     try {
-      const mapa = await storage.getMapaDecisoesGeral();
+      const tenantId = req.session.user?.tenantId;
+      if (!tenantId) return res.status(401).json({ error: "Tenant não identificado" });
+      const mapa = await storage.getMapaDecisoesGeral(tenantId);
       res.json(mapa);
     } catch (error) {
       console.error("Error fetching mapa de decisões:", error);
@@ -1174,7 +1205,9 @@ export async function registerRoutes(
   // ========== Decisões RPAC Routes ==========
   app.get("/api/decisoes", isAuthenticated, requireModule("mapas"), async (req, res) => {
     try {
-      const decisoes = await storage.getAllDecisoesRpac();
+      const tenantId = req.session.user?.tenantId;
+      if (!tenantId) return res.status(401).json({ error: "Tenant não identificado" });
+      const decisoes = await storage.getAllDecisoesRpac(tenantId);
       res.json(decisoes);
     } catch (error) {
       console.error("Error fetching decisoes:", error);
@@ -1194,15 +1227,18 @@ export async function registerRoutes(
 
   app.post("/api/decisoes", isAuthenticated, isAdmin, requireModule("mapas"), async (req, res) => {
     try {
+      const tenantId = req.session.user?.tenantId;
+      if (!tenantId) return res.status(401).json({ error: "Tenant não identificado" });
       const parsed = insertDecisaoRpacSchema.safeParse(req.body);
       if (!parsed.success) {
         return res.status(400).json({ error: parsed.error.errors[0]?.message || "Dados inválidos" });
       }
       const data = {
         ...parsed.data,
+        tenantId,
         dataDecisao: parsed.data.dataDecisao ? new Date(parsed.data.dataDecisao) : undefined,
       };
-      const decisao = await storage.createDecisaoRpac(data);
+      const decisao = await storage.createDecisaoRpac(tenantId, data);
       res.status(201).json(decisao);
     } catch (error) {
       console.error("Error creating decisao:", error);
@@ -1239,6 +1275,8 @@ export async function registerRoutes(
 
   app.post("/api/decisoes/batch", isAuthenticated, isAdmin, requireModule("mapas"), async (req, res) => {
     try {
+      const tenantId = req.session.user?.tenantId;
+      if (!tenantId) return res.status(401).json({ error: "Tenant não identificado" });
       const { decisoes } = req.body;
       if (!Array.isArray(decisoes) || decisoes.length === 0) {
         return res.status(400).json({ error: "Lista de decisões vazia ou inválida" });
@@ -1257,9 +1295,10 @@ export async function registerRoutes(
           }
           const data = {
             ...parsed.data,
+            tenantId,
             dataDecisao: parsed.data.dataDecisao ? new Date(parsed.data.dataDecisao) : undefined,
           };
-          const decisao = await storage.createDecisaoRpac(data);
+          const decisao = await storage.createDecisaoRpac(tenantId, data);
           results.push(decisao);
         } catch (err) {
           errors.push({ index: i, error: "Erro ao criar decisão" });
@@ -1319,12 +1358,14 @@ export async function registerRoutes(
 
   app.get("/api/mapa-decisoes/analytics/top-turmas", isAuthenticated, async (req, res) => {
     try {
+      const tenantId = req.session.user?.tenantId;
+      if (!tenantId) return res.status(401).json({ error: "Tenant não identificado" });
       const limit = parseInt(req.query.limit as string) || 5;
       const dataInicio = req.query.dataInicio ? new Date(req.query.dataInicio as string) : undefined;
       const dataFim = req.query.dataFim ? new Date(req.query.dataFim as string) : undefined;
       const responsabilidade = req.query.responsabilidade as string | undefined;
       const instancia = (req.query.instancia as string) || 'segunda';
-      const topTurmas = await storage.getTopTurmasFavorabilidade(limit, dataInicio, dataFim, responsabilidade, instancia);
+      const topTurmas = await storage.getTopTurmasFavorabilidade(tenantId, limit, dataInicio, dataFim, responsabilidade, instancia);
       res.json(topTurmas);
     } catch (error) {
       console.error("Error fetching top turmas:", error);
@@ -1334,12 +1375,14 @@ export async function registerRoutes(
 
   app.get("/api/mapa-decisoes/analytics/top-regioes", isAuthenticated, async (req, res) => {
     try {
+      const tenantId = req.session.user?.tenantId;
+      if (!tenantId) return res.status(401).json({ error: "Tenant não identificado" });
       const limit = parseInt(req.query.limit as string) || 5;
       const dataInicio = req.query.dataInicio ? new Date(req.query.dataInicio as string) : undefined;
       const dataFim = req.query.dataFim ? new Date(req.query.dataFim as string) : undefined;
       const responsabilidade = req.query.responsabilidade as string | undefined;
       const instancia = (req.query.instancia as string) || 'segunda';
-      const topRegioes = await storage.getTopRegioes(limit, dataInicio, dataFim, responsabilidade, instancia);
+      const topRegioes = await storage.getTopRegioes(tenantId, limit, dataInicio, dataFim, responsabilidade, instancia);
       res.json(topRegioes);
     } catch (error) {
       console.error("Error fetching top regioes:", error);
@@ -1349,12 +1392,14 @@ export async function registerRoutes(
 
   app.get("/api/mapa-decisoes/analytics/top-desembargadores", isAuthenticated, async (req, res) => {
     try {
+      const tenantId = req.session.user?.tenantId;
+      if (!tenantId) return res.status(401).json({ error: "Tenant não identificado" });
       const limit = parseInt(req.query.limit as string) || 5;
       const dataInicio = req.query.dataInicio ? new Date(req.query.dataInicio as string) : undefined;
       const dataFim = req.query.dataFim ? new Date(req.query.dataFim as string) : undefined;
       const responsabilidade = req.query.responsabilidade as string | undefined;
       const instancia = (req.query.instancia as string) || 'segunda';
-      const topDesembargadores = await storage.getTopDesembargadores(limit, dataInicio, dataFim, responsabilidade, instancia);
+      const topDesembargadores = await storage.getTopDesembargadores(tenantId, limit, dataInicio, dataFim, responsabilidade, instancia);
       res.json(topDesembargadores);
     } catch (error) {
       console.error("Error fetching top desembargadores:", error);
@@ -1364,11 +1409,13 @@ export async function registerRoutes(
 
   app.get("/api/mapa-decisoes/analytics/estatisticas", isAuthenticated, async (req, res) => {
     try {
+      const tenantId = req.session.user?.tenantId;
+      if (!tenantId) return res.status(401).json({ error: "Tenant não identificado" });
       const dataInicio = req.query.dataInicio ? new Date(req.query.dataInicio as string) : undefined;
       const dataFim = req.query.dataFim ? new Date(req.query.dataFim as string) : undefined;
       const responsabilidade = req.query.responsabilidade as string | undefined;
       const instancia = (req.query.instancia as string) || 'segunda';
-      const estatisticas = await storage.getEstatisticasGerais(dataInicio, dataFim, responsabilidade, instancia);
+      const estatisticas = await storage.getEstatisticasGerais(tenantId, dataInicio, dataFim, responsabilidade, instancia);
       res.json(estatisticas);
     } catch (error) {
       console.error("Error fetching estatisticas:", error);
@@ -1378,11 +1425,13 @@ export async function registerRoutes(
 
   app.get("/api/mapa-decisoes/analytics/timeline", isAuthenticated, async (req, res) => {
     try {
+      const tenantId = req.session.user?.tenantId;
+      if (!tenantId) return res.status(401).json({ error: "Tenant não identificado" });
       const dataInicio = req.query.dataInicio ? new Date(req.query.dataInicio as string) : undefined;
       const dataFim = req.query.dataFim ? new Date(req.query.dataFim as string) : undefined;
       const responsabilidade = req.query.responsabilidade as string | undefined;
       const instancia = (req.query.instancia as string) || 'segunda';
-      const timeline = await storage.getTimelineData(dataInicio, dataFim, responsabilidade, instancia);
+      const timeline = await storage.getTimelineData(tenantId, dataInicio, dataFim, responsabilidade, instancia);
       res.json(timeline);
     } catch (error) {
       console.error("Error fetching timeline:", error);
@@ -1392,11 +1441,13 @@ export async function registerRoutes(
 
   app.get("/api/mapa-decisoes/analytics/por-empresa", isAuthenticated, async (req, res) => {
     try {
+      const tenantId = req.session.user?.tenantId;
+      if (!tenantId) return res.status(401).json({ error: "Tenant não identificado" });
       const dataInicio = req.query.dataInicio ? new Date(req.query.dataInicio as string) : undefined;
       const dataFim = req.query.dataFim ? new Date(req.query.dataFim as string) : undefined;
       const responsabilidade = req.query.responsabilidade as string | undefined;
       const instancia = (req.query.instancia as string) || 'segunda';
-      const estatsPorEmpresa = await storage.getEstatisticasPorEmpresa(dataInicio, dataFim, responsabilidade, instancia);
+      const estatsPorEmpresa = await storage.getEstatisticasPorEmpresa(tenantId, dataInicio, dataFim, responsabilidade, instancia);
       res.json(estatsPorEmpresa);
     } catch (error) {
       console.error("Error fetching empresa stats:", error);
@@ -1404,16 +1455,16 @@ export async function registerRoutes(
     }
   });
 
-  // ========== Demo Data Seed ==========
-  app.post("/api/seed-demo", isAuthenticated, isAdmin, async (req, res) => {
-    try {
-      await storage.seedDemoData();
-      res.json({ success: true, message: "Dados de demonstração inseridos com sucesso" });
-    } catch (error) {
-      console.error("Error seeding demo data:", error);
-      res.status(500).json({ error: "Erro ao inserir dados de demonstração" });
-    }
-  });
+  // ========== Demo Data Seed (disabled - method no longer exists) ==========
+  // app.post("/api/seed-demo", isAuthenticated, isAdmin, async (req, res) => {
+  //   try {
+  //     await storage.seedDemoData();
+  //     res.json({ success: true, message: "Dados de demonstração inseridos com sucesso" });
+  //   } catch (error) {
+  //     console.error("Error seeding demo data:", error);
+  //     res.status(500).json({ error: "Erro ao inserir dados de demonstração" });
+  //   }
+  // });
 
   // ========== Audiencia Routes ==========
   app.get("/api/audiencias", isAuthenticated, async (req, res) => {
@@ -1451,12 +1502,15 @@ export async function registerRoutes(
 
   app.post("/api/audiencias", isAuthenticated, isAdmin, async (req, res) => {
     try {
+      const tenantId = req.session.user?.tenantId;
+      if (!tenantId) return res.status(401).json({ error: "Tenant não identificado" });
       const parsed = insertAudienciaSchema.safeParse(req.body);
       if (!parsed.success) {
         return res.status(400).json({ error: parsed.error.errors[0]?.message || "Dados inválidos" });
       }
       const data = {
         ...parsed.data,
+        tenantId,
         dataAudiencia: new Date(parsed.data.dataAudiencia),
       };
       const audiencia = await storage.createAudiencia(data);
@@ -1531,11 +1585,13 @@ export async function registerRoutes(
 
   app.post("/api/brainstorm/distribuidos", isAuthenticated, isAdmin, async (req, res) => {
     try {
+      const tenantId = req.session.user?.tenantId;
+      if (!tenantId) return res.status(401).json({ error: "Tenant não identificado" });
       const parsed = insertDistribuidoSchema.safeParse(req.body);
       if (!parsed.success) {
         return res.status(400).json({ error: parsed.error.errors[0]?.message || "Dados inválidos" });
       }
-      const created = await storage.createDistribuido(parsed.data);
+      const created = await storage.createDistribuido({ ...parsed.data, tenantId });
       res.status(201).json(created);
     } catch (error) {
       console.error("Error creating distribuido:", error);
@@ -1545,6 +1601,8 @@ export async function registerRoutes(
 
   app.post("/api/brainstorm/distribuidos/batch", isAuthenticated, isAdmin, async (req, res) => {
     try {
+      const tenantId = req.session.user?.tenantId;
+      if (!tenantId) return res.status(401).json({ error: "Tenant não identificado" });
       const items = req.body as any[];
       if (!Array.isArray(items)) {
         return res.status(400).json({ error: "Esperado array de itens" });
@@ -1552,7 +1610,7 @@ export async function registerRoutes(
       const validItems = items.filter(item => {
         const parsed = insertDistribuidoSchema.safeParse(item);
         return parsed.success;
-      }).map(item => insertDistribuidoSchema.parse(item));
+      }).map(item => ({ ...insertDistribuidoSchema.parse(item), tenantId }));
       const created = await storage.createDistribuidosBatch(validItems);
       res.status(201).json({ count: created.length, items: created });
     } catch (error) {
@@ -1608,11 +1666,13 @@ export async function registerRoutes(
 
   app.post("/api/brainstorm/encerrados", isAuthenticated, isAdmin, async (req, res) => {
     try {
+      const tenantId = req.session.user?.tenantId;
+      if (!tenantId) return res.status(401).json({ error: "Tenant não identificado" });
       const parsed = insertEncerradoSchema.safeParse(req.body);
       if (!parsed.success) {
         return res.status(400).json({ error: parsed.error.errors[0]?.message || "Dados inválidos" });
       }
-      const created = await storage.createEncerrado(parsed.data);
+      const created = await storage.createEncerrado({ ...parsed.data, tenantId });
       res.status(201).json(created);
     } catch (error) {
       console.error("Error creating encerrado:", error);
@@ -1622,6 +1682,8 @@ export async function registerRoutes(
 
   app.post("/api/brainstorm/encerrados/batch", isAuthenticated, isAdmin, async (req, res) => {
     try {
+      const tenantId = req.session.user?.tenantId;
+      if (!tenantId) return res.status(401).json({ error: "Tenant não identificado" });
       const items = req.body as any[];
       if (!Array.isArray(items)) {
         return res.status(400).json({ error: "Esperado array de itens" });
@@ -1629,7 +1691,7 @@ export async function registerRoutes(
       const validItems = items.filter(item => {
         const parsed = insertEncerradoSchema.safeParse(item);
         return parsed.success;
-      }).map(item => insertEncerradoSchema.parse(item));
+      }).map(item => ({ ...insertEncerradoSchema.parse(item), tenantId }));
       const created = await storage.createEncerradosBatch(validItems);
       res.status(201).json({ count: created.length, items: created });
     } catch (error) {
@@ -1685,11 +1747,13 @@ export async function registerRoutes(
 
   app.post("/api/brainstorm/sentencas-merito", isAuthenticated, isAdmin, async (req, res) => {
     try {
+      const tenantId = req.session.user?.tenantId;
+      if (!tenantId) return res.status(401).json({ error: "Tenant não identificado" });
       const parsed = insertSentencaMeritoSchema.safeParse(req.body);
       if (!parsed.success) {
         return res.status(400).json({ error: parsed.error.errors[0]?.message || "Dados inválidos" });
       }
-      const created = await storage.createSentencaMerito(parsed.data);
+      const created = await storage.createSentencaMerito({ ...parsed.data, tenantId });
       res.status(201).json(created);
     } catch (error) {
       console.error("Error creating sentenca merito:", error);
@@ -1699,6 +1763,8 @@ export async function registerRoutes(
 
   app.post("/api/brainstorm/sentencas-merito/batch", isAuthenticated, isAdmin, async (req, res) => {
     try {
+      const tenantId = req.session.user?.tenantId;
+      if (!tenantId) return res.status(401).json({ error: "Tenant não identificado" });
       const items = req.body as any[];
       if (!Array.isArray(items)) {
         return res.status(400).json({ error: "Esperado array de itens" });
@@ -1706,7 +1772,7 @@ export async function registerRoutes(
       const validItems = items.filter(item => {
         const parsed = insertSentencaMeritoSchema.safeParse(item);
         return parsed.success;
-      }).map(item => insertSentencaMeritoSchema.parse(item));
+      }).map(item => ({ ...insertSentencaMeritoSchema.parse(item), tenantId }));
       const created = await storage.createSentencasMeritoBatch(validItems);
       res.status(201).json({ count: created.length, items: created });
     } catch (error) {
@@ -1762,11 +1828,13 @@ export async function registerRoutes(
 
   app.post("/api/brainstorm/acordaos-merito", isAuthenticated, isAdmin, async (req, res) => {
     try {
+      const tenantId = req.session.user?.tenantId;
+      if (!tenantId) return res.status(401).json({ error: "Tenant não identificado" });
       const parsed = insertAcordaoMeritoSchema.safeParse(req.body);
       if (!parsed.success) {
         return res.status(400).json({ error: parsed.error.errors[0]?.message || "Dados inválidos" });
       }
-      const created = await storage.createAcordaoMerito(parsed.data);
+      const created = await storage.createAcordaoMerito({ ...parsed.data, tenantId });
       res.status(201).json(created);
     } catch (error) {
       console.error("Error creating acordao merito:", error);
@@ -1776,6 +1844,8 @@ export async function registerRoutes(
 
   app.post("/api/brainstorm/acordaos-merito/batch", isAuthenticated, isAdmin, async (req, res) => {
     try {
+      const tenantId = req.session.user?.tenantId;
+      if (!tenantId) return res.status(401).json({ error: "Tenant não identificado" });
       const items = req.body as any[];
       if (!Array.isArray(items)) {
         return res.status(400).json({ error: "Esperado array de itens" });
@@ -1783,7 +1853,7 @@ export async function registerRoutes(
       const validItems = items.filter(item => {
         const parsed = insertAcordaoMeritoSchema.safeParse(item);
         return parsed.success;
-      }).map(item => insertAcordaoMeritoSchema.parse(item));
+      }).map(item => ({ ...insertAcordaoMeritoSchema.parse(item), tenantId }));
       const created = await storage.createAcordaosMeritoBatch(validItems);
       res.status(201).json({ count: created.length, items: created });
     } catch (error) {
@@ -1832,7 +1902,9 @@ export async function registerRoutes(
 
   app.get("/api/casos-novos", isAuthenticated, requireModule("entradas"), async (req, res) => {
     try {
-      const data = await storage.getAllCasosNovos();
+      const tenantId = req.session.user?.tenantId;
+      if (!tenantId) return res.status(401).json({ error: "Tenant não identificado" });
+      const data = await storage.getAllCasosNovos(tenantId);
       res.json(data);
     } catch (error) {
       console.error("Error fetching casos novos:", error);
@@ -1842,8 +1914,11 @@ export async function registerRoutes(
 
   app.get("/api/casos-novos/stats", isAuthenticated, requireModule("entradas"), async (req, res) => {
     try {
+      const tenantId = req.session.user?.tenantId;
+      if (!tenantId) return res.status(401).json({ error: "Tenant não identificado" });
       const { mesReferencia } = req.query;
       const stats = await storage.getCasosNovosStats(
+        tenantId,
         mesReferencia ? mesReferencia as string : undefined
       );
       res.json(stats);
@@ -1855,7 +1930,9 @@ export async function registerRoutes(
 
   app.post("/api/casos-novos", isAuthenticated, isAdmin, requireModule("entradas"), async (req, res) => {
     try {
-      const created = await storage.createCasoNovo(req.body);
+      const tenantId = req.session.user?.tenantId;
+      if (!tenantId) return res.status(401).json({ error: "Tenant não identificado" });
+      const created = await storage.createCasoNovo(tenantId, req.body);
       res.status(201).json(created);
     } catch (error) {
       console.error("Error creating caso novo:", error);
@@ -1865,11 +1942,13 @@ export async function registerRoutes(
 
   app.post("/api/casos-novos/batch", isAuthenticated, isAdmin, requireModule("entradas"), async (req, res) => {
     try {
+      const tenantId = req.session.user?.tenantId;
+      if (!tenantId) return res.status(401).json({ error: "Tenant não identificado" });
       const items = req.body as any[];
       if (!Array.isArray(items)) {
         return res.status(400).json({ error: "Esperado array de itens" });
       }
-      const created = await storage.createCasosNovosBatch(items);
+      const created = await storage.createCasosNovosBatch(tenantId, items);
       res.status(201).json({ count: created.length, items: created });
     } catch (error) {
       console.error("Error batch creating casos novos:", error);
@@ -1924,7 +2003,9 @@ export async function registerRoutes(
         };
       }).filter(c => c.numeroProcesso);
 
-      const created = await storage.createCasosNovosBatch(casos as any);
+      const tenantId = req.session.user?.tenantId;
+      if (!tenantId) return res.status(400).json({ error: "Tenant não identificado" });
+      const created = await storage.createCasosNovosBatch(tenantId, casos as any);
       res.status(201).json({ 
         success: true, 
         count: created.length,
@@ -1962,7 +2043,9 @@ export async function registerRoutes(
 
   app.delete("/api/casos-novos", isAuthenticated, isAdmin, requireModule("entradas"), async (req, res) => {
     try {
-      await storage.deleteAllCasosNovos();
+      const tenantId = req.session.user?.tenantId;
+      if (!tenantId) return res.status(401).json({ error: "Tenant não identificado" });
+      await storage.deleteAllCasosNovos(tenantId);
       res.json({ success: true });
     } catch (error) {
       console.error("Error deleting all casos novos:", error);
@@ -1976,7 +2059,9 @@ export async function registerRoutes(
 
   app.get("/api/casos-encerrados", isAuthenticated, requireModule("encerrados"), async (req, res) => {
     try {
-      const data = await storage.getAllCasosEncerrados();
+      const tenantId = req.session.user?.tenantId;
+      if (!tenantId) return res.status(401).json({ error: "Tenant não identificado" });
+      const data = await storage.getAllCasosEncerrados(tenantId);
       res.json(data);
     } catch (error) {
       console.error("Error fetching casos encerrados:", error);
@@ -1986,8 +2071,11 @@ export async function registerRoutes(
 
   app.get("/api/casos-encerrados/stats", isAuthenticated, requireModule("encerrados"), async (req, res) => {
     try {
+      const tenantId = req.session.user?.tenantId;
+      if (!tenantId) return res.status(401).json({ error: "Tenant não identificado" });
       const { mesReferencia } = req.query;
       const stats = await storage.getCasosEncerradosStats(
+        tenantId,
         mesReferencia ? mesReferencia as string : undefined
       );
       res.json(stats);
@@ -1999,7 +2087,9 @@ export async function registerRoutes(
 
   app.post("/api/casos-encerrados", isAuthenticated, isAdmin, requireModule("encerrados"), async (req, res) => {
     try {
-      const created = await storage.createCasoEncerrado(req.body);
+      const tenantId = req.session.user?.tenantId;
+      if (!tenantId) return res.status(401).json({ error: "Tenant não identificado" });
+      const created = await storage.createCasoEncerrado(tenantId, req.body);
       res.status(201).json(created);
     } catch (error) {
       console.error("Error creating caso encerrado:", error);
@@ -2009,11 +2099,13 @@ export async function registerRoutes(
 
   app.post("/api/casos-encerrados/batch", isAuthenticated, isAdmin, requireModule("encerrados"), async (req, res) => {
     try {
+      const tenantId = req.session.user?.tenantId;
+      if (!tenantId) return res.status(401).json({ error: "Tenant não identificado" });
       const items = req.body as any[];
       if (!Array.isArray(items)) {
         return res.status(400).json({ error: "Esperado array de itens" });
       }
-      const created = await storage.createCasosEncerradosBatch(items);
+      const created = await storage.createCasosEncerradosBatch(tenantId, items);
       res.status(201).json({ count: created.length, items: created });
     } catch (error) {
       console.error("Error batch creating casos encerrados:", error);
@@ -2065,7 +2157,9 @@ export async function registerRoutes(
         };
       }).filter(c => c.numeroProcesso);
 
-      const created = await storage.createCasosEncerradosBatch(casos as any);
+      const tenantId = req.session.user?.tenantId;
+      if (!tenantId) return res.status(400).json({ error: "Tenant não identificado" });
+      const created = await storage.createCasosEncerradosBatch(tenantId, casos as any);
       res.status(201).json({ 
         success: true, 
         count: created.length,
@@ -2103,7 +2197,9 @@ export async function registerRoutes(
 
   app.delete("/api/casos-encerrados", isAuthenticated, isAdmin, requireModule("encerrados"), async (req, res) => {
     try {
-      await storage.deleteAllCasosEncerrados();
+      const tenantId = req.session.user?.tenantId;
+      if (!tenantId) return res.status(401).json({ error: "Tenant não identificado" });
+      await storage.deleteAllCasosEncerrados(tenantId);
       res.json({ success: true });
     } catch (error) {
       console.error("Error deleting all casos encerrados:", error);
