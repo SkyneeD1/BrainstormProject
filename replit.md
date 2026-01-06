@@ -1,15 +1,23 @@
 # Contencioso - Ecossistema de Gestão
 
 ## Overview
-A Power BI-style litigation management dashboard for V.tal with role-based access control (Admin/Viewer). The system includes:
-- **Module 1**: "Passivo Sob Gestão" - Displays 2,276 lawsuits organized by procedural phase, risk classification, and company origin (December 2024 data)
-- **Module 2**: "Mapas Estratégicos" - Mapa de Decisões with Turmas → Desembargadores structure for tracking judicial vote status (FAVORÁVEL, DESFAVORÁVEL, EM ANÁLISE, SUSPEITO)
-- **Module 3**: "Brainstorm" - Reporting and batch management for case data (DISTRIBUÍDOS, ENCERRADOS, SENTENÇA DE MÉRITO, ACÓRDÃO DE MÉRITO)
+A Power BI-style litigation management dashboard with multi-tenant support for V.tal and NIO, featuring role-based access control (Admin/Viewer) and module-level permissions. The system includes:
+- **Module 1**: "Passivo Sob Gestão" - Displays lawsuits organized by procedural phase, risk classification, and company origin with period comparison
+- **Module 2**: "Entrada & Saídas" - Case tracking with "Entradas" (new cases) and "Encerrados" (closed cases) sub-modules
+- **Module 3**: "Mapas Estratégicos" - Mapa de Decisões with Turmas → Desembargadores structure for tracking judicial vote status
 
-## Authentication
+## Multi-Tenant Architecture
+- **Two Tenants**: V.tal (yellow #ffd700) and NIO (green #01DA01)
+- **Complete Data Isolation**: All data tables have tenantId columns, all queries filter by tenant
+- **Row-Level Security**: Storage layer enforces tenant scoping on every CRUD operation
+- **Session-Based Tenant Context**: User's tenantId stored in session, extracted by routes
+
+## Authentication & Authorization
 - PostgreSQL-backed sessions with bcrypt password hashing
-- Default admin credentials: username "admin", password "123456"
+- Default admin credentials: username "admin", password "123456" (V.tal tenant)
 - Role-based access: Admin (full CRUD) vs Viewer (read-only)
+- Module-level permissions: Admins can configure which modules each viewer can access
+- Server-side middleware enforces both role and module permissions
 
 ## Current State
 - Module 1 (Passivo Sob Gestão) is fully implemented with:
@@ -93,6 +101,11 @@ A Power BI-style litigation management dashboard for V.tal with role-based acces
 - November 2024: Added authentication system with PostgreSQL sessions
 - December 2024: Restructured Module 2 - Removed TRT/Vara/Juízes, now uses Turmas → Desembargadores with vote status
 - December 2024: Implemented Brainstorm module with relatorio and gestao pages
+- January 2026: Implemented complete multi-tenant data isolation architecture
+  - Added tenantId columns to all 16 data tables
+  - Updated storage layer with tenant-scoped CRUD operations
+  - All API routes now extract tenantId from session and pass to storage
+  - In-memory Passivo data stored per tenant using Map structure
 
 ## Running the Project
 ```bash
