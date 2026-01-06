@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { BarChart3, Database, ChevronDown, Building2, Scale, Users, LogOut, Shield, Eye, Loader2, Map, Gavel, User, TrendingUp, Calendar, Lightbulb, FileSpreadsheet, Table2, ArrowUpDown, FileUp } from "lucide-react";
+import { BarChart3, Database, ChevronDown, Building2, Scale, Users, LogOut, Shield, Eye, Loader2, Map, Gavel, User, TrendingUp, Calendar, Lightbulb, FileSpreadsheet, Table2, ArrowUpDown, FileUp, Key } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/use-tenant";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -263,21 +263,34 @@ export function AppSidebar() {
                 </div>
               </div>
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="w-full justify-start text-sidebar-foreground/70 hover:text-sidebar-foreground"
-              onClick={() => logout()}
-              disabled={isLoggingOut}
-              data-testid="button-logout"
-            >
-              {isLoggingOut ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <LogOut className="h-4 w-4 mr-2" />
-              )}
-              Sair
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="flex-1 justify-start text-sidebar-foreground/70 hover:text-sidebar-foreground"
+                asChild
+                data-testid="button-profile"
+              >
+                <Link href="/perfil">
+                  <Key className="h-4 w-4 mr-2" />
+                  Alterar Senha
+                </Link>
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-sidebar-foreground/70 hover:text-sidebar-foreground"
+                onClick={() => logout()}
+                disabled={isLoggingOut}
+                data-testid="button-logout"
+              >
+                {isLoggingOut ? (
+                  <Loader2 className="h-4 w-4" />
+                ) : (
+                  <LogOut className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
           </div>
         )}
         <div className="flex items-center gap-2 px-2 pt-3 border-t border-sidebar-accent mt-3">

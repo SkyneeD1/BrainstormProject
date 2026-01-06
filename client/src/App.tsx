@@ -20,6 +20,7 @@ import AdminMapas from "@/pages/admin-mapas";
 import EntradasDashboard from "@/pages/entradas-dashboard";
 import EntradasEncerrados from "@/pages/entradas-encerrados";
 import AdminImportar from "@/pages/admin-importar";
+import Profile from "@/pages/profile";
 import Landing from "@/pages/landing";
 import NotFound from "@/pages/not-found";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -39,6 +40,7 @@ function AuthenticatedRouter() {
       <Route path="/admin/mapas" component={AdminMapas} />
       <Route path="/brainstorm/relatorio" component={BrainstormRelatorio} />
       <Route path="/brainstorm/gestao" component={BrainstormGestao} />
+      <Route path="/perfil" component={Profile} />
       <Route component={NotFound} />
     </Switch>
   );
