@@ -8,6 +8,7 @@ import {
   updatePasswordSchema,
   selfChangePasswordSchema,
   updateRoleSchema,
+  updateUserSchema,
   insertTRTSchema,
   insertVaraSchema,
   insertJuizSchema,
@@ -137,6 +138,7 @@ export async function registerRoutes(
         id: user.id,
         username: user.username,
         role: user.role,
+        modulePermissions: user.modulePermissions || [],
         tenantId: tenant.id,
         tenantCode: tenant.code,
         tenantName: tenant.name,
@@ -150,6 +152,7 @@ export async function registerRoutes(
         firstName: user.firstName,
         lastName: user.lastName,
         role: user.role,
+        modulePermissions: user.modulePermissions || [],
         tenant: {
           id: tenant.id,
           code: tenant.code,
@@ -192,6 +195,7 @@ export async function registerRoutes(
         firstName: user.firstName,
         lastName: user.lastName,
         role: user.role,
+        modulePermissions: user.modulePermissions || [],
         tenant: {
           id: sessionUser.tenantId,
           code: sessionUser.tenantCode,
@@ -247,6 +251,7 @@ export async function registerRoutes(
         firstName: u.firstName,
         lastName: u.lastName,
         role: u.role,
+        modulePermissions: u.modulePermissions || [],
         createdAt: u.createdAt,
       })));
     } catch (error) {
@@ -263,7 +268,7 @@ export async function registerRoutes(
         return res.status(400).json({ error: parsed.error.errors[0]?.message || "Dados inválidos" });
       }
 
-      const { username, password, firstName, lastName, role } = parsed.data;
+      const { username, password, firstName, lastName, role, modulePermissions } = parsed.data;
 
       // Check if username already exists
       const existingUser = await storage.getUserByUsername(username);
@@ -272,12 +277,16 @@ export async function registerRoutes(
       }
 
       const passwordHash = await hashPassword(password);
+      // Admins have full access, so clear permissions for admin role
+      const permissions = role === "admin" ? [] : (modulePermissions || []);
+      
       const user = await storage.createUser({
         username,
         passwordHash,
         firstName: firstName || null,
         lastName: lastName || null,
         role: role || "viewer",
+        modulePermissions: permissions,
       });
 
       res.json({
@@ -286,6 +295,7 @@ export async function registerRoutes(
         firstName: user.firstName,
         lastName: user.lastName,
         role: user.role,
+        modulePermissions: user.modulePermissions || [],
       });
     } catch (error) {
       console.error("Error creating user:", error);
@@ -342,6 +352,65 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error updating password:", error);
       res.status(500).json({ error: "Erro ao atualizar senha" });
+    }
+  });
+
+  // Update user (role and permissions) (admin only)
+  app.patch("/api/users/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const parsed = updateUserSchema.safeParse(req.body);
+      
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Dados inválidos" });
+      }
+
+      // If role is admin, clear modulePermissions (admins have full access)
+      const updateData = { ...parsed.data };
+      if (updateData.role === "admin") {
+        updateData.modulePermissions = [];
+      }
+
+      const user = await storage.updateUser(id, updateData);
+      if (!user) {
+        return res.status(404).json({ error: "Usuário não encontrado" });
+      }
+
+      res.json({
+        id: user.id,
+        username: user.username,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+        modulePermissions: user.modulePermissions || [],
+      });
+    } catch (error) {
+      console.error("Error updating user:", error);
+      res.status(500).json({ error: "Erro ao atualizar usuário" });
+    }
+  });
+
+  // Delete user (admin only)
+  app.delete("/api/users/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const currentUser = req.user as { id: string };
+
+      // Prevent admin from deleting themselves
+      if (currentUser.id === id) {
+        return res.status(400).json({ error: "Você não pode excluir a si mesmo" });
+      }
+
+      const user = await storage.getUser(id);
+      if (!user) {
+        return res.status(404).json({ error: "Usuário não encontrado" });
+      }
+
+      await storage.deleteUser(id);
+      res.json({ success: true, message: "Usuário excluído com sucesso" });
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      res.status(500).json({ error: "Erro ao excluir usuário" });
     }
   });
 
