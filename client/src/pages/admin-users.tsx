@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -20,8 +21,28 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Users, Shield, Eye, UserPlus, Key, Loader2, AlertCircle } from "lucide-react";
-import type { User } from "@shared/schema";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Users, Shield, Eye, UserPlus, Key, Loader2, AlertCircle, Trash2, Settings } from "lucide-react";
+import { AVAILABLE_MODULES } from "@shared/schema";
+
+interface UserWithPermissions {
+  id: string;
+  username: string;
+  firstName: string | null;
+  lastName: string | null;
+  role: string;
+  modulePermissions: string[];
+  createdAt: Date | null;
+}
 
 interface UserFormData {
   username: string;
@@ -29,6 +50,7 @@ interface UserFormData {
   firstName: string;
   lastName: string;
   role: string;
+  modulePermissions: string[];
 }
 
 export default function AdminUsers() {
@@ -36,18 +58,22 @@ export default function AdminUsers() {
   const { toast } = useToast();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [permissionsDialogOpen, setPermissionsDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<UserWithPermissions | null>(null);
   const [newPassword, setNewPassword] = useState("");
+  const [editPermissions, setEditPermissions] = useState<string[]>([]);
   const [formData, setFormData] = useState<UserFormData>({
     username: "",
     password: "",
     firstName: "",
     lastName: "",
     role: "viewer",
+    modulePermissions: [],
   });
   const [formError, setFormError] = useState("");
 
-  const { data: users, isLoading } = useQuery<User[]>({
+  const { data: users, isLoading } = useQuery<UserWithPermissions[]>({
     queryKey: ["/api/users"],
     enabled: isAdmin,
   });
@@ -64,7 +90,7 @@ export default function AdminUsers() {
         description: "O usuário foi criado com sucesso.",
       });
       setCreateDialogOpen(false);
-      setFormData({ username: "", password: "", firstName: "", lastName: "", role: "viewer" });
+      setFormData({ username: "", password: "", firstName: "", lastName: "", role: "viewer", modulePermissions: [] });
       setFormError("");
     },
     onError: async (error: any) => {
@@ -77,20 +103,22 @@ export default function AdminUsers() {
     },
   });
 
-  const updateRoleMutation = useMutation({
-    mutationFn: async ({ id, role }: { id: string; role: string }) => {
-      return await apiRequest("PATCH", `/api/users/${id}/role`, { role });
+  const updateUserMutation = useMutation({
+    mutationFn: async ({ id, role, modulePermissions }: { id: string; role?: string; modulePermissions?: string[] }) => {
+      return await apiRequest("PATCH", `/api/users/${id}`, { role, modulePermissions });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
       toast({
-        title: "Permissão atualizada",
-        description: "A permissão do usuário foi alterada com sucesso.",
+        title: "Usuário atualizado",
+        description: "As permissões do usuário foram alteradas com sucesso.",
       });
+      setPermissionsDialogOpen(false);
+      setSelectedUser(null);
     },
     onError: (error) => {
       toast({
-        title: "Erro ao atualizar permissão",
+        title: "Erro ao atualizar usuário",
         description: String(error),
         variant: "destructive",
       });
@@ -114,6 +142,28 @@ export default function AdminUsers() {
     onError: (error) => {
       toast({
         title: "Erro ao atualizar senha",
+        description: String(error),
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteUserMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return await apiRequest("DELETE", `/api/users/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      toast({
+        title: "Usuário excluído",
+        description: "O usuário foi excluído com sucesso.",
+      });
+      setDeleteDialogOpen(false);
+      setSelectedUser(null);
+    },
+    onError: (error) => {
+      toast({
+        title: "Erro ao excluir usuário",
         description: String(error),
         variant: "destructive",
       });
@@ -150,7 +200,14 @@ export default function AdminUsers() {
   }
 
   const handleRoleChange = (userId: string, newRole: string) => {
-    updateRoleMutation.mutate({ id: userId, role: newRole });
+    const user = users?.find(u => u.id === userId);
+    if (user) {
+      updateUserMutation.mutate({ 
+        id: userId, 
+        role: newRole,
+        modulePermissions: newRole === "admin" ? [] : user.modulePermissions 
+      });
+    }
   };
 
   const handleCreateUser = (e: React.FormEvent) => {
@@ -163,6 +220,10 @@ export default function AdminUsers() {
     }
     if (!formData.password || formData.password.length < 4) {
       setFormError("Senha deve ter pelo menos 4 caracteres");
+      return;
+    }
+    if (formData.role === "viewer" && formData.modulePermissions.length === 0) {
+      setFormError("Selecione pelo menos um módulo para o usuário viewer");
       return;
     }
     
@@ -185,13 +246,54 @@ export default function AdminUsers() {
     updatePasswordMutation.mutate({ id: selectedUser.id, newPassword });
   };
 
-  const openPasswordDialog = (user: User) => {
+  const handlePermissionsChange = () => {
+    if (!selectedUser) return;
+    updateUserMutation.mutate({ 
+      id: selectedUser.id, 
+      modulePermissions: editPermissions 
+    });
+  };
+
+  const handleDeleteUser = () => {
+    if (!selectedUser) return;
+    deleteUserMutation.mutate(selectedUser.id);
+  };
+
+  const openPasswordDialog = (user: UserWithPermissions) => {
     setSelectedUser(user);
     setNewPassword("");
     setPasswordDialogOpen(true);
   };
 
-  const getInitials = (user: User) => {
+  const openPermissionsDialog = (user: UserWithPermissions) => {
+    setSelectedUser(user);
+    setEditPermissions(user.modulePermissions || []);
+    setPermissionsDialogOpen(true);
+  };
+
+  const openDeleteDialog = (user: UserWithPermissions) => {
+    setSelectedUser(user);
+    setDeleteDialogOpen(true);
+  };
+
+  const toggleFormPermission = (moduleId: string) => {
+    setFormData(prev => ({
+      ...prev,
+      modulePermissions: prev.modulePermissions.includes(moduleId)
+        ? prev.modulePermissions.filter(id => id !== moduleId)
+        : [...prev.modulePermissions, moduleId]
+    }));
+  };
+
+  const toggleEditPermission = (moduleId: string) => {
+    setEditPermissions(prev => 
+      prev.includes(moduleId)
+        ? prev.filter(id => id !== moduleId)
+        : [...prev, moduleId]
+    );
+  };
+
+  const getInitials = (user: UserWithPermissions) => {
     if (user.firstName && user.lastName) {
       return `${user.firstName[0]}${user.lastName[0]}`.toUpperCase();
     }
@@ -199,6 +301,11 @@ export default function AdminUsers() {
       return user.username[0].toUpperCase();
     }
     return "U";
+  };
+
+  const getModuleName = (moduleId: string) => {
+    const module = AVAILABLE_MODULES.find(m => m.id === moduleId);
+    return module?.name || moduleId;
   };
 
   return (
@@ -215,7 +322,7 @@ export default function AdminUsers() {
               Novo Usuário
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle>Criar Novo Usuário</DialogTitle>
               <DialogDescription>
@@ -278,7 +385,7 @@ export default function AdminUsers() {
                 <Label htmlFor="role">Função</Label>
                 <Select
                   value={formData.role}
-                  onValueChange={(value) => setFormData({ ...formData, role: value })}
+                  onValueChange={(value) => setFormData({ ...formData, role: value, modulePermissions: value === "admin" ? [] : formData.modulePermissions })}
                 >
                   <SelectTrigger data-testid="select-create-role">
                     <SelectValue />
@@ -299,6 +406,31 @@ export default function AdminUsers() {
                   </SelectContent>
                 </Select>
               </div>
+
+              {formData.role === "viewer" && (
+                <div className="space-y-3">
+                  <Label>Módulos Permitidos *</Label>
+                  <div className="space-y-2 border rounded-md p-3">
+                    {AVAILABLE_MODULES.map((module) => (
+                      <div key={module.id} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`create-${module.id}`}
+                          checked={formData.modulePermissions.includes(module.id)}
+                          onCheckedChange={() => toggleFormPermission(module.id)}
+                          data-testid={`checkbox-create-${module.id}`}
+                        />
+                        <label
+                          htmlFor={`create-${module.id}`}
+                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                        >
+                          {module.name}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setCreateDialogOpen(false)}>
                   Cancelar
@@ -326,7 +458,7 @@ export default function AdminUsers() {
             Usuários do Sistema
           </CardTitle>
           <CardDescription>
-            Gerencie as permissões e senhas dos usuários
+            Gerencie as permissões, senhas e módulos de acesso dos usuários
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -348,10 +480,19 @@ export default function AdminUsers() {
                         : user.username}
                     </p>
                     <p className="text-sm text-muted-foreground">@{user.username}</p>
+                    {user.role === "viewer" && user.modulePermissions && user.modulePermissions.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {user.modulePermissions.map((moduleId) => (
+                          <Badge key={moduleId} variant="secondary" className="text-[10px] px-1.5 py-0">
+                            {getModuleName(moduleId)}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
 
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
                   {user.id === currentUser?.id && (
                     <Badge variant="secondary">Você</Badge>
                   )}
@@ -366,10 +507,22 @@ export default function AdminUsers() {
                     Senha
                   </Button>
 
+                  {user.role === "viewer" && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openPermissionsDialog(user)}
+                      data-testid={`button-permissions-${user.id}`}
+                    >
+                      <Settings className="w-4 h-4 mr-1" />
+                      Módulos
+                    </Button>
+                  )}
+
                   <Select
                     value={user.role}
                     onValueChange={(value) => handleRoleChange(user.id, value)}
-                    disabled={user.id === currentUser?.id || updateRoleMutation.isPending}
+                    disabled={user.id === currentUser?.id || updateUserMutation.isPending}
                   >
                     <SelectTrigger className="w-36" data-testid={`select-role-${user.id}`}>
                       <SelectValue />
@@ -389,6 +542,17 @@ export default function AdminUsers() {
                       </SelectItem>
                     </SelectContent>
                   </Select>
+
+                  {user.id !== currentUser?.id && (
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => openDeleteDialog(user)}
+                      data-testid={`button-delete-${user.id}`}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  )}
                 </div>
               </div>
             ))}
@@ -442,6 +606,83 @@ export default function AdminUsers() {
         </DialogContent>
       </Dialog>
 
+      <Dialog open={permissionsDialogOpen} onOpenChange={setPermissionsDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Módulos</DialogTitle>
+            <DialogDescription>
+              Selecione os módulos que {selectedUser?.firstName || selectedUser?.username} pode acessar
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-4">
+            {AVAILABLE_MODULES.map((module) => (
+              <div key={module.id} className="flex items-center space-x-2">
+                <Checkbox
+                  id={`edit-${module.id}`}
+                  checked={editPermissions.includes(module.id)}
+                  onCheckedChange={() => toggleEditPermission(module.id)}
+                  data-testid={`checkbox-edit-${module.id}`}
+                />
+                <label
+                  htmlFor={`edit-${module.id}`}
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                >
+                  {module.name}
+                </label>
+              </div>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setPermissionsDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handlePermissionsChange} 
+              disabled={updateUserMutation.isPending || editPermissions.length === 0}
+              data-testid="button-submit-permissions"
+            >
+              {updateUserMutation.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Salvando...
+                </>
+              ) : (
+                "Salvar"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir Usuário</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir o usuário <strong>{selectedUser?.firstName || selectedUser?.username}</strong>? 
+              Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteUser}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              data-testid="button-confirm-delete"
+            >
+              {deleteUserMutation.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Excluindo...
+                </>
+              ) : (
+                "Excluir"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <Card>
         <CardHeader>
           <CardTitle>Níveis de Permissão</CardTitle>
@@ -452,7 +693,7 @@ export default function AdminUsers() {
             <div>
               <p className="font-medium">Admin</p>
               <p className="text-sm text-muted-foreground">
-                Acesso completo: pode visualizar dashboards, fazer upload de dados, exportar PDFs, criar usuários e gerenciar permissões.
+                Acesso completo a todos os módulos: pode visualizar dashboards, fazer upload de dados, exportar PDFs, criar usuários e gerenciar permissões.
               </p>
             </div>
           </div>
@@ -461,7 +702,7 @@ export default function AdminUsers() {
             <div>
               <p className="font-medium">Viewer</p>
               <p className="text-sm text-muted-foreground">
-                Acesso de leitura: pode visualizar dashboards e exportar PDFs, mas não pode fazer upload de dados ou gerenciar usuários.
+                Acesso limitado: pode visualizar apenas os módulos permitidos pelo administrador. Não pode fazer upload de dados ou gerenciar usuários.
               </p>
             </div>
           </div>
