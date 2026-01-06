@@ -108,3 +108,23 @@ export function isAdmin(req: Request, res: Response, next: NextFunction) {
   }
   res.status(403).json({ message: "Forbidden: Admin access required" });
 }
+
+export function requireModule(moduleId: string) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const user = req.session?.user;
+    if (!user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    
+    if (user.role === "admin") {
+      return next();
+    }
+    
+    const permissions = user.modulePermissions || [];
+    if (permissions.includes(moduleId)) {
+      return next();
+    }
+    
+    res.status(403).json({ message: "Forbidden: Module access required" });
+  };
+}

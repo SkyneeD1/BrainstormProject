@@ -15,6 +15,7 @@ interface User {
   firstName: string | null;
   lastName: string | null;
   role: string;
+  modulePermissions: string[];
   tenant?: Tenant;
 }
 

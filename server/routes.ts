@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated, isAdmin, hashPassword, verifyPassword } from "./auth";
+import { setupAuth, isAuthenticated, isAdmin, requireModule, hashPassword, verifyPassword } from "./auth";
 import { 
   loginSchema, 
   createUserSchema, 
@@ -394,10 +394,10 @@ export async function registerRoutes(
   app.delete("/api/users/:id", isAuthenticated, isAdmin, async (req, res) => {
     try {
       const { id } = req.params;
-      const currentUser = req.user as { id: string };
+      const currentUserId = req.session.user?.id;
 
       // Prevent admin from deleting themselves
-      if (currentUser.id === id) {
+      if (currentUserId === id) {
         return res.status(400).json({ error: "Você não pode excluir a si mesmo" });
       }
 
@@ -414,8 +414,8 @@ export async function registerRoutes(
     }
   });
 
-  // Passivo data routes (authenticated)
-  app.get("/api/passivo", isAuthenticated, async (req, res) => {
+  // Passivo data routes (authenticated with module permission)
+  app.get("/api/passivo", isAuthenticated, requireModule("passivo"), async (req, res) => {
     try {
       const data = await storage.getPassivoData();
       res.json(data);
@@ -425,7 +425,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/passivo/raw", isAuthenticated, async (req, res) => {
+  app.get("/api/passivo/raw", isAuthenticated, requireModule("passivo"), async (req, res) => {
     try {
       const data = await storage.getRawData();
       res.json(data);
@@ -435,7 +435,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/passivo", isAuthenticated, isAdmin, async (req, res) => {
+  app.delete("/api/passivo", isAuthenticated, isAdmin, requireModule("passivo"), async (req, res) => {
     try {
       await storage.clearRawData();
       res.json({ success: true });
@@ -446,7 +446,7 @@ export async function registerRoutes(
   });
 
   // Upload Excel (admin only)
-  app.post("/api/passivo/upload", isAuthenticated, isAdmin, upload.single("file"), async (req, res) => {
+  app.post("/api/passivo/upload", isAuthenticated, isAdmin, requireModule("passivo"), upload.single("file"), async (req, res) => {
     try {
       if (!req.file) {
         return res.status(400).json({ error: "Nenhum arquivo enviado" });
@@ -540,7 +540,7 @@ export async function registerRoutes(
   // ========== Passivo Mensal Routes ==========
   
   // Get all available periods
-  app.get("/api/passivo/periodos", isAuthenticated, async (req, res) => {
+  app.get("/api/passivo/periodos", isAuthenticated, requireModule("passivo"), async (req, res) => {
     try {
       const periodos = await storage.getAllPassivoMensalPeriodos();
       res.json(periodos);
@@ -551,7 +551,7 @@ export async function registerRoutes(
   });
 
   // Get passivo data for a specific month/year
-  app.get("/api/passivo/mensal/:ano/:mes", isAuthenticated, async (req, res) => {
+  app.get("/api/passivo/mensal/:ano/:mes", isAuthenticated, requireModule("passivo"), async (req, res) => {
     try {
       const { ano, mes } = req.params;
       const data = await storage.getPassivoMensal(mes, ano);
@@ -568,7 +568,7 @@ export async function registerRoutes(
   });
 
   // Upload Excel with month/year selection (admin only)
-  app.post("/api/passivo/mensal/upload", isAuthenticated, isAdmin, upload.single("file"), async (req, res) => {
+  app.post("/api/passivo/mensal/upload", isAuthenticated, isAdmin, requireModule("passivo"), upload.single("file"), async (req, res) => {
     try {
       if (!req.file) {
         return res.status(400).json({ error: "Nenhum arquivo enviado" });
@@ -680,7 +680,7 @@ export async function registerRoutes(
   });
 
   // Delete passivo for a specific month/year (admin only)
-  app.delete("/api/passivo/mensal/:ano/:mes", isAuthenticated, isAdmin, async (req, res) => {
+  app.delete("/api/passivo/mensal/:ano/:mes", isAuthenticated, isAdmin, requireModule("passivo"), async (req, res) => {
     try {
       const { ano, mes } = req.params;
       await storage.deletePassivoMensal(mes, ano);
@@ -692,7 +692,7 @@ export async function registerRoutes(
   });
 
   // Compare two months
-  app.get("/api/passivo/comparar", isAuthenticated, async (req, res) => {
+  app.get("/api/passivo/comparar", isAuthenticated, requireModule("passivo"), async (req, res) => {
     try {
       const { mes1, ano1, mes2, ano2 } = req.query;
       
@@ -1018,7 +1018,7 @@ export async function registerRoutes(
   });
 
   // ========== Turma Routes (Mapas Estratégicos) ==========
-  app.get("/api/turmas", isAuthenticated, async (req, res) => {
+  app.get("/api/turmas", isAuthenticated, requireModule("mapas"), async (req, res) => {
     try {
       const turmas = await storage.getAllTurmas();
       res.json(turmas);
@@ -1028,7 +1028,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/turmas/:id", isAuthenticated, async (req, res) => {
+  app.get("/api/turmas/:id", isAuthenticated, requireModule("mapas"), async (req, res) => {
     try {
       const turma = await storage.getTurma(req.params.id);
       if (!turma) {
@@ -1041,7 +1041,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/turmas", isAuthenticated, isAdmin, async (req, res) => {
+  app.post("/api/turmas", isAuthenticated, isAdmin, requireModule("mapas"), async (req, res) => {
     try {
       const parsed = insertTurmaSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -1055,7 +1055,7 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/turmas/:id", isAuthenticated, isAdmin, async (req, res) => {
+  app.patch("/api/turmas/:id", isAuthenticated, isAdmin, requireModule("mapas"), async (req, res) => {
     try {
       const turma = await storage.updateTurma(req.params.id, req.body);
       if (!turma) {
@@ -1068,7 +1068,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/turmas/:id", isAuthenticated, isAdmin, async (req, res) => {
+  app.delete("/api/turmas/:id", isAuthenticated, isAdmin, requireModule("mapas"), async (req, res) => {
     try {
       await storage.deleteTurma(req.params.id);
       res.json({ success: true });
@@ -1079,7 +1079,7 @@ export async function registerRoutes(
   });
 
   // ========== Desembargador Routes (Mapas Estratégicos) ==========
-  app.get("/api/desembargadores", isAuthenticated, async (req, res) => {
+  app.get("/api/desembargadores", isAuthenticated, requireModule("mapas"), async (req, res) => {
     try {
       const desembargadores = await storage.getAllDesembargadores();
       res.json(desembargadores);
@@ -1089,7 +1089,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/turmas/:turmaId/desembargadores", isAuthenticated, async (req, res) => {
+  app.get("/api/turmas/:turmaId/desembargadores", isAuthenticated, requireModule("mapas"), async (req, res) => {
     try {
       const desembargadores = await storage.getDesembargadoresByTurma(req.params.turmaId);
       res.json(desembargadores);
@@ -1099,7 +1099,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/desembargadores/:id", isAuthenticated, async (req, res) => {
+  app.get("/api/desembargadores/:id", isAuthenticated, requireModule("mapas"), async (req, res) => {
     try {
       const desembargador = await storage.getDesembargador(req.params.id);
       if (!desembargador) {
@@ -1112,7 +1112,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/desembargadores", isAuthenticated, isAdmin, async (req, res) => {
+  app.post("/api/desembargadores", isAuthenticated, isAdmin, requireModule("mapas"), async (req, res) => {
     try {
       const parsed = insertDesembargadorSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -1126,7 +1126,7 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/desembargadores/:id", isAuthenticated, isAdmin, async (req, res) => {
+  app.patch("/api/desembargadores/:id", isAuthenticated, isAdmin, requireModule("mapas"), async (req, res) => {
     try {
       const desembargador = await storage.updateDesembargador(req.params.id, req.body);
       if (!desembargador) {
@@ -1139,7 +1139,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/desembargadores/:id", isAuthenticated, isAdmin, async (req, res) => {
+  app.delete("/api/desembargadores/:id", isAuthenticated, isAdmin, requireModule("mapas"), async (req, res) => {
     try {
       await storage.deleteDesembargador(req.params.id);
       res.json({ success: true });
@@ -1150,7 +1150,7 @@ export async function registerRoutes(
   });
 
   // ========== Mapa de Decisões Routes ==========
-  app.get("/api/mapa-decisoes", isAuthenticated, async (req, res) => {
+  app.get("/api/mapa-decisoes", isAuthenticated, requireModule("mapas"), async (req, res) => {
     try {
       const mapa = await storage.getMapaDecisoesGeral();
       res.json(mapa);
@@ -1160,7 +1160,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/mapa-decisoes/admin", isAuthenticated, isAdmin, async (req, res) => {
+  app.get("/api/mapa-decisoes/admin", isAuthenticated, isAdmin, requireModule("mapas"), async (req, res) => {
     try {
       const instancia = (req.query.instancia as string) || 'segunda';
       const data = await storage.getMapaDecisoesAdminData(instancia);
@@ -1172,7 +1172,7 @@ export async function registerRoutes(
   });
 
   // ========== Decisões RPAC Routes ==========
-  app.get("/api/decisoes", isAuthenticated, async (req, res) => {
+  app.get("/api/decisoes", isAuthenticated, requireModule("mapas"), async (req, res) => {
     try {
       const decisoes = await storage.getAllDecisoesRpac();
       res.json(decisoes);
@@ -1182,7 +1182,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/desembargadores/:desembargadorId/decisoes", isAuthenticated, async (req, res) => {
+  app.get("/api/desembargadores/:desembargadorId/decisoes", isAuthenticated, requireModule("mapas"), async (req, res) => {
     try {
       const decisoes = await storage.getDecisoesRpacByDesembargador(req.params.desembargadorId);
       res.json(decisoes);
@@ -1192,7 +1192,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/decisoes", isAuthenticated, isAdmin, async (req, res) => {
+  app.post("/api/decisoes", isAuthenticated, isAdmin, requireModule("mapas"), async (req, res) => {
     try {
       const parsed = insertDecisaoRpacSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -1210,7 +1210,7 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/decisoes/:id", isAuthenticated, isAdmin, async (req, res) => {
+  app.patch("/api/decisoes/:id", isAuthenticated, isAdmin, requireModule("mapas"), async (req, res) => {
     try {
       const updateData = {
         ...req.body,
@@ -1227,7 +1227,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/decisoes/:id", isAuthenticated, isAdmin, async (req, res) => {
+  app.delete("/api/decisoes/:id", isAuthenticated, isAdmin, requireModule("mapas"), async (req, res) => {
     try {
       await storage.deleteDecisaoRpac(req.params.id);
       res.json({ success: true });
@@ -1237,7 +1237,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/decisoes/batch", isAuthenticated, isAdmin, async (req, res) => {
+  app.post("/api/decisoes/batch", isAuthenticated, isAdmin, requireModule("mapas"), async (req, res) => {
     try {
       const { decisoes } = req.body;
       if (!Array.isArray(decisoes) || decisoes.length === 0) {
@@ -1827,10 +1827,10 @@ export async function registerRoutes(
   });
 
   // =====================================================
-  // CASOS NOVOS - Entrada & Saídas
+  // CASOS NOVOS - Entrada & Saídas (requires "entradas" module)
   // =====================================================
 
-  app.get("/api/casos-novos", isAuthenticated, async (req, res) => {
+  app.get("/api/casos-novos", isAuthenticated, requireModule("entradas"), async (req, res) => {
     try {
       const data = await storage.getAllCasosNovos();
       res.json(data);
@@ -1840,7 +1840,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/casos-novos/stats", isAuthenticated, async (req, res) => {
+  app.get("/api/casos-novos/stats", isAuthenticated, requireModule("entradas"), async (req, res) => {
     try {
       const { mesReferencia } = req.query;
       const stats = await storage.getCasosNovosStats(
@@ -1853,7 +1853,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/casos-novos", isAuthenticated, isAdmin, async (req, res) => {
+  app.post("/api/casos-novos", isAuthenticated, isAdmin, requireModule("entradas"), async (req, res) => {
     try {
       const created = await storage.createCasoNovo(req.body);
       res.status(201).json(created);
@@ -1863,7 +1863,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/casos-novos/batch", isAuthenticated, isAdmin, async (req, res) => {
+  app.post("/api/casos-novos/batch", isAuthenticated, isAdmin, requireModule("entradas"), async (req, res) => {
     try {
       const items = req.body as any[];
       if (!Array.isArray(items)) {
@@ -1877,7 +1877,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/casos-novos/upload", isAuthenticated, isAdmin, upload.single('file'), async (req, res) => {
+  app.post("/api/casos-novos/upload", isAuthenticated, isAdmin, requireModule("entradas"), upload.single('file'), async (req, res) => {
     try {
       if (!req.file) {
         return res.status(400).json({ error: "Arquivo não enviado" });
@@ -1936,7 +1936,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/casos-novos/:id", isAuthenticated, isAdmin, async (req, res) => {
+  app.delete("/api/casos-novos/:id", isAuthenticated, isAdmin, requireModule("entradas"), async (req, res) => {
     try {
       await storage.deleteCasoNovo(req.params.id);
       res.json({ success: true });
@@ -1946,7 +1946,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/casos-novos/delete-batch", isAuthenticated, isAdmin, async (req, res) => {
+  app.post("/api/casos-novos/delete-batch", isAuthenticated, isAdmin, requireModule("entradas"), async (req, res) => {
     try {
       const { ids } = req.body;
       if (!Array.isArray(ids)) {
@@ -1960,7 +1960,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/casos-novos", isAuthenticated, isAdmin, async (req, res) => {
+  app.delete("/api/casos-novos", isAuthenticated, isAdmin, requireModule("entradas"), async (req, res) => {
     try {
       await storage.deleteAllCasosNovos();
       res.json({ success: true });
@@ -1971,10 +1971,10 @@ export async function registerRoutes(
   });
 
   // =====================================================
-  // CASOS ENCERRADOS - Entrada & Saídas
+  // CASOS ENCERRADOS - Entrada & Saídas (requires "encerrados" module)
   // =====================================================
 
-  app.get("/api/casos-encerrados", isAuthenticated, async (req, res) => {
+  app.get("/api/casos-encerrados", isAuthenticated, requireModule("encerrados"), async (req, res) => {
     try {
       const data = await storage.getAllCasosEncerrados();
       res.json(data);
@@ -1984,7 +1984,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/casos-encerrados/stats", isAuthenticated, async (req, res) => {
+  app.get("/api/casos-encerrados/stats", isAuthenticated, requireModule("encerrados"), async (req, res) => {
     try {
       const { mesReferencia } = req.query;
       const stats = await storage.getCasosEncerradosStats(
@@ -1997,7 +1997,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/casos-encerrados", isAuthenticated, isAdmin, async (req, res) => {
+  app.post("/api/casos-encerrados", isAuthenticated, isAdmin, requireModule("encerrados"), async (req, res) => {
     try {
       const created = await storage.createCasoEncerrado(req.body);
       res.status(201).json(created);
@@ -2007,7 +2007,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/casos-encerrados/batch", isAuthenticated, isAdmin, async (req, res) => {
+  app.post("/api/casos-encerrados/batch", isAuthenticated, isAdmin, requireModule("encerrados"), async (req, res) => {
     try {
       const items = req.body as any[];
       if (!Array.isArray(items)) {
@@ -2021,7 +2021,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/casos-encerrados/upload", isAuthenticated, isAdmin, upload.single('file'), async (req, res) => {
+  app.post("/api/casos-encerrados/upload", isAuthenticated, isAdmin, requireModule("encerrados"), upload.single('file'), async (req, res) => {
     try {
       if (!req.file) {
         return res.status(400).json({ error: "Arquivo não enviado" });
@@ -2077,7 +2077,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/casos-encerrados/:id", isAuthenticated, isAdmin, async (req, res) => {
+  app.delete("/api/casos-encerrados/:id", isAuthenticated, isAdmin, requireModule("encerrados"), async (req, res) => {
     try {
       await storage.deleteCasoEncerrado(req.params.id);
       res.json({ success: true });
@@ -2087,7 +2087,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/casos-encerrados/delete-batch", isAuthenticated, isAdmin, async (req, res) => {
+  app.post("/api/casos-encerrados/delete-batch", isAuthenticated, isAdmin, requireModule("encerrados"), async (req, res) => {
     try {
       const { ids } = req.body;
       if (!Array.isArray(ids)) {
@@ -2101,7 +2101,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/casos-encerrados", isAuthenticated, isAdmin, async (req, res) => {
+  app.delete("/api/casos-encerrados", isAuthenticated, isAdmin, requireModule("encerrados"), async (req, res) => {
     try {
       await storage.deleteAllCasosEncerrados();
       res.json({ success: true });

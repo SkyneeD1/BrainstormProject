@@ -26,7 +26,20 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 
-const menuItems = [
+interface SubMenuItem {
+  title: string;
+  url: string;
+  icon: any;
+  moduleId: string;
+}
+
+interface MenuItem {
+  title: string;
+  icon: any;
+  subItems: SubMenuItem[];
+}
+
+const menuItems: MenuItem[] = [
   {
     title: "Passivo Sob Gestão",
     icon: Scale,
@@ -35,11 +48,13 @@ const menuItems = [
         title: "Dashboard",
         url: "/",
         icon: BarChart3,
+        moduleId: "passivo",
       },
       {
         title: "Comparação de Períodos",
         url: "/passivo/comparacao",
         icon: TrendingUp,
+        moduleId: "passivo",
       },
     ],
   },
@@ -51,11 +66,13 @@ const menuItems = [
         title: "Entradas",
         url: "/entradas/dashboard",
         icon: BarChart3,
+        moduleId: "entradas",
       },
       {
         title: "Encerrados",
         url: "/entradas/encerrados",
         icon: BarChart3,
+        moduleId: "encerrados",
       },
     ],
   },
@@ -67,11 +84,13 @@ const menuItems = [
         title: "1ª Instância",
         url: "/mapas/primeira-instancia",
         icon: Gavel,
+        moduleId: "mapas",
       },
       {
         title: "2ª Instância",
         url: "/mapas/segunda-instancia",
         icon: Gavel,
+        moduleId: "mapas",
       },
     ],
   },
@@ -99,6 +118,25 @@ export function AppSidebar() {
     return user?.username || "Usuário";
   };
 
+  const hasModuleAccess = (moduleId: string): boolean => {
+    if (isAdmin) return true;
+    if (!user?.modulePermissions) return false;
+    return user.modulePermissions.includes(moduleId);
+  };
+
+  const getFilteredMenuItems = (): MenuItem[] => {
+    if (isAdmin) return menuItems;
+
+    return menuItems
+      .map(item => ({
+        ...item,
+        subItems: item.subItems.filter(subItem => hasModuleAccess(subItem.moduleId))
+      }))
+      .filter(item => item.subItems.length > 0);
+  };
+
+  const filteredMenuItems = getFilteredMenuItems();
+
   return (
     <Sidebar className="border-r-0">
       <SidebarHeader className="p-6 pb-4">
@@ -122,7 +160,7 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {menuItems.map((item) => (
+              {filteredMenuItems.map((item) => (
                 <Collapsible key={item.title} defaultOpen className="group/collapsible">
                   <SidebarMenuItem>
                     <CollapsibleTrigger asChild>
