@@ -65,10 +65,10 @@ export interface IStorage {
   updateTenant(id: string, data: Partial<InsertTenant>): Promise<Tenant | undefined>;
   seedDefaultTenants(): Promise<void>;
   
-  getPassivoData(): Promise<PassivoData>;
-  setRawData(data: ProcessoRaw[]): Promise<void>;
-  getRawData(): Promise<ProcessoRaw[]>;
-  clearRawData(): Promise<void>;
+  getPassivoData(tenantId: string): Promise<PassivoData>;
+  setRawData(tenantId: string, data: ProcessoRaw[]): Promise<void>;
+  getRawData(tenantId: string): Promise<ProcessoRaw[]>;
+  clearRawData(tenantId: string): Promise<void>;
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   getUserByUsernameAndTenant(username: string, tenantId: string): Promise<User | undefined>;
@@ -80,42 +80,42 @@ export interface IStorage {
   getAllUsers(): Promise<User[]>;
   getUsersByTenant(tenantId: string): Promise<User[]>;
   
-  getAllTRTs(): Promise<TRT[]>;
-  getTRT(id: string): Promise<TRT | undefined>;
-  createTRT(trt: InsertTRT): Promise<TRT>;
-  updateTRT(id: string, data: Partial<InsertTRT>): Promise<TRT | undefined>;
-  deleteTRT(id: string): Promise<boolean>;
+  getAllTRTs(tenantId: string): Promise<TRT[]>;
+  getTRT(id: string, tenantId: string): Promise<TRT | undefined>;
+  createTRT(tenantId: string, trt: InsertTRT): Promise<TRT>;
+  updateTRT(id: string, data: Partial<InsertTRT>, tenantId: string): Promise<TRT | undefined>;
+  deleteTRT(id: string, tenantId: string): Promise<boolean>;
   
-  getVarasByTRT(trtId: string): Promise<Vara[]>;
-  getVara(id: string): Promise<Vara | undefined>;
+  getVarasByTRT(trtId: string, tenantId: string): Promise<Vara[]>;
+  getVara(id: string, tenantId: string): Promise<Vara | undefined>;
   createVara(vara: InsertVara): Promise<Vara>;
-  updateVara(id: string, data: Partial<InsertVara>): Promise<Vara | undefined>;
-  deleteVara(id: string): Promise<boolean>;
+  updateVara(id: string, data: Partial<InsertVara>, tenantId: string): Promise<Vara | undefined>;
+  deleteVara(id: string, tenantId: string): Promise<boolean>;
   
-  getJuizesByVara(varaId: string): Promise<Juiz[]>;
-  getJuiz(id: string): Promise<Juiz | undefined>;
+  getJuizesByVara(varaId: string, tenantId: string): Promise<Juiz[]>;
+  getJuiz(id: string, tenantId: string): Promise<Juiz | undefined>;
   createJuiz(juiz: InsertJuiz): Promise<Juiz>;
-  updateJuiz(id: string, data: Partial<InsertJuiz>): Promise<Juiz | undefined>;
-  deleteJuiz(id: string): Promise<boolean>;
+  updateJuiz(id: string, data: Partial<InsertJuiz>, tenantId: string): Promise<Juiz | undefined>;
+  deleteJuiz(id: string, tenantId: string): Promise<boolean>;
   
-  getJulgamentosByJuiz(juizId: string): Promise<Julgamento[]>;
-  getJulgamento(id: string): Promise<Julgamento | undefined>;
+  getJulgamentosByJuiz(juizId: string, tenantId: string): Promise<Julgamento[]>;
+  getJulgamento(id: string, tenantId: string): Promise<Julgamento | undefined>;
   createJulgamento(julgamento: InsertJulgamento): Promise<Julgamento>;
-  updateJulgamento(id: string, data: Partial<InsertJulgamento>): Promise<Julgamento | undefined>;
-  deleteJulgamento(id: string): Promise<boolean>;
+  updateJulgamento(id: string, data: Partial<InsertJulgamento>, tenantId: string): Promise<Julgamento | undefined>;
+  deleteJulgamento(id: string, tenantId: string): Promise<boolean>;
   
-  getJuizFavorabilidade(juizId: string): Promise<Favorabilidade>;
-  getAllJuizesComFavorabilidade(): Promise<JuizComFavorabilidade[]>;
-  getAllTRTsComFavorabilidade(): Promise<TRTComFavorabilidade[]>;
+  getJuizFavorabilidade(juizId: string, tenantId: string): Promise<Favorabilidade>;
+  getAllJuizesComFavorabilidade(tenantId: string): Promise<JuizComFavorabilidade[]>;
+  getAllTRTsComFavorabilidade(tenantId: string): Promise<TRTComFavorabilidade[]>;
   
-  getAllAudiencias(): Promise<Audiencia[]>;
-  getAudienciasByVara(varaId: string): Promise<Audiencia[]>;
-  getAudiencia(id: string): Promise<Audiencia | undefined>;
-  createAudiencia(audiencia: InsertAudiencia): Promise<Audiencia>;
-  updateAudiencia(id: string, data: Partial<InsertAudiencia>): Promise<Audiencia | undefined>;
-  deleteAudiencia(id: string): Promise<boolean>;
+  getAllAudiencias(tenantId: string): Promise<Audiencia[]>;
+  getAudienciasByVara(varaId: string, tenantId: string): Promise<Audiencia[]>;
+  getAudiencia(id: string, tenantId: string): Promise<Audiencia | undefined>;
+  createAudiencia(tenantId: string, audiencia: InsertAudiencia): Promise<Audiencia>;
+  updateAudiencia(id: string, data: Partial<InsertAudiencia>, tenantId: string): Promise<Audiencia | undefined>;
+  deleteAudiencia(id: string, tenantId: string): Promise<boolean>;
   
-  getEventosTimeline(filters: {
+  getEventosTimeline(tenantId: string, filters: {
     dataInicio?: string;
     dataFim?: string;
     trtId?: string;
@@ -123,64 +123,62 @@ export interface IStorage {
   }): Promise<EventoTimeline[]>;
   
   // Brainstorm
-  getBrainstormStats(): Promise<BrainstormStats>;
+  getBrainstormStats(tenantId: string): Promise<BrainstormStats>;
   
-  getAllDistribuidos(): Promise<Distribuido[]>;
-  createDistribuido(data: InsertDistribuido): Promise<Distribuido>;
-  createDistribuidosBatch(data: InsertDistribuido[]): Promise<Distribuido[]>;
-  deleteDistribuido(id: string): Promise<boolean>;
-  deleteDistribuidosBatch(ids: string[]): Promise<boolean>;
-  deleteAllDistribuidos(): Promise<boolean>;
+  getAllDistribuidos(tenantId: string): Promise<Distribuido[]>;
+  createDistribuido(tenantId: string, data: InsertDistribuido): Promise<Distribuido>;
+  createDistribuidosBatch(tenantId: string, data: InsertDistribuido[]): Promise<Distribuido[]>;
+  deleteDistribuido(id: string, tenantId: string): Promise<boolean>;
+  deleteDistribuidosBatch(ids: string[], tenantId: string): Promise<boolean>;
+  deleteAllDistribuidos(tenantId: string): Promise<boolean>;
   
-  getAllEncerrados(): Promise<Encerrado[]>;
-  createEncerrado(data: InsertEncerrado): Promise<Encerrado>;
-  createEncerradosBatch(data: InsertEncerrado[]): Promise<Encerrado[]>;
-  deleteEncerrado(id: string): Promise<boolean>;
-  deleteEncerradosBatch(ids: string[]): Promise<boolean>;
-  deleteAllEncerrados(): Promise<boolean>;
+  getAllEncerrados(tenantId: string): Promise<Encerrado[]>;
+  createEncerrado(tenantId: string, data: InsertEncerrado): Promise<Encerrado>;
+  createEncerradosBatch(tenantId: string, data: InsertEncerrado[]): Promise<Encerrado[]>;
+  deleteEncerrado(id: string, tenantId: string): Promise<boolean>;
+  deleteEncerradosBatch(ids: string[], tenantId: string): Promise<boolean>;
+  deleteAllEncerrados(tenantId: string): Promise<boolean>;
   
-  getAllSentencasMerito(): Promise<SentencaMerito[]>;
-  createSentencaMerito(data: InsertSentencaMerito): Promise<SentencaMerito>;
-  createSentencasMeritoBatch(data: InsertSentencaMerito[]): Promise<SentencaMerito[]>;
-  deleteSentencaMerito(id: string): Promise<boolean>;
-  deleteSentencasMeritoBatch(ids: string[]): Promise<boolean>;
-  deleteAllSentencasMerito(): Promise<boolean>;
+  getAllSentencasMerito(tenantId: string): Promise<SentencaMerito[]>;
+  createSentencaMerito(tenantId: string, data: InsertSentencaMerito): Promise<SentencaMerito>;
+  createSentencasMeritoBatch(tenantId: string, data: InsertSentencaMerito[]): Promise<SentencaMerito[]>;
+  deleteSentencaMerito(id: string, tenantId: string): Promise<boolean>;
+  deleteSentencasMeritoBatch(ids: string[], tenantId: string): Promise<boolean>;
+  deleteAllSentencasMerito(tenantId: string): Promise<boolean>;
   
-  getAllAcordaosMerito(): Promise<AcordaoMerito[]>;
-  createAcordaoMerito(data: InsertAcordaoMerito): Promise<AcordaoMerito>;
-  createAcordaosMeritoBatch(data: InsertAcordaoMerito[]): Promise<AcordaoMerito[]>;
-  deleteAcordaoMerito(id: string): Promise<boolean>;
-  deleteAcordaosMeritoBatch(ids: string[]): Promise<boolean>;
-  deleteAllAcordaosMerito(): Promise<boolean>;
-  
-  initializeBrainstorm(): Promise<void>;
+  getAllAcordaosMerito(tenantId: string): Promise<AcordaoMerito[]>;
+  createAcordaoMerito(tenantId: string, data: InsertAcordaoMerito): Promise<AcordaoMerito>;
+  createAcordaosMeritoBatch(tenantId: string, data: InsertAcordaoMerito[]): Promise<AcordaoMerito[]>;
+  deleteAcordaoMerito(id: string, tenantId: string): Promise<boolean>;
+  deleteAcordaosMeritoBatch(ids: string[], tenantId: string): Promise<boolean>;
+  deleteAllAcordaosMerito(tenantId: string): Promise<boolean>;
   
   // Mapas Estratégicos - Turmas e Desembargadores
   getAllTurmas(tenantId: string, instancia?: string): Promise<Turma[]>;
-  getTurma(id: string): Promise<Turma | undefined>;
+  getTurma(id: string, tenantId: string): Promise<Turma | undefined>;
   createTurma(tenantId: string, turma: InsertTurma): Promise<Turma>;
-  updateTurma(id: string, data: Partial<InsertTurma>): Promise<Turma | undefined>;
-  deleteTurma(id: string): Promise<boolean>;
+  updateTurma(id: string, data: Partial<InsertTurma>, tenantId: string): Promise<Turma | undefined>;
+  deleteTurma(id: string, tenantId: string): Promise<boolean>;
   
   getAllDesembargadores(tenantId: string): Promise<Desembargador[]>;
-  getDesembargadoresByTurma(turmaId: string): Promise<Desembargador[]>;
-  getDesembargador(id: string): Promise<Desembargador | undefined>;
+  getDesembargadoresByTurma(turmaId: string, tenantId: string): Promise<Desembargador[]>;
+  getDesembargador(id: string, tenantId: string): Promise<Desembargador | undefined>;
   createDesembargador(tenantId: string, desembargador: InsertDesembargador): Promise<Desembargador>;
-  updateDesembargador(id: string, data: Partial<InsertDesembargador>): Promise<Desembargador | undefined>;
-  deleteDesembargador(id: string): Promise<boolean>;
+  updateDesembargador(id: string, data: Partial<InsertDesembargador>, tenantId: string): Promise<Desembargador | undefined>;
+  deleteDesembargador(id: string, tenantId: string): Promise<boolean>;
   
   getMapaDecisoesGeral(tenantId: string): Promise<MapaDecisoes>;
   
   // Decisões RPAC
   getAllDecisoesRpac(tenantId: string): Promise<DecisaoRpac[]>;
-  getDecisoesRpacByDesembargador(desembargadorId: string): Promise<DecisaoRpac[]>;
-  getDecisaoRpac(id: string): Promise<DecisaoRpac | undefined>;
+  getDecisoesRpacByDesembargador(desembargadorId: string, tenantId: string): Promise<DecisaoRpac[]>;
+  getDecisaoRpac(id: string, tenantId: string): Promise<DecisaoRpac | undefined>;
   createDecisaoRpac(tenantId: string, decisao: InsertDecisaoRpac): Promise<DecisaoRpac>;
-  updateDecisaoRpac(id: string, data: Partial<InsertDecisaoRpac>): Promise<DecisaoRpac | undefined>;
-  deleteDecisaoRpac(id: string): Promise<boolean>;
+  updateDecisaoRpac(id: string, data: Partial<InsertDecisaoRpac>, tenantId: string): Promise<DecisaoRpac | undefined>;
+  deleteDecisaoRpac(id: string, tenantId: string): Promise<boolean>;
   
   // Dados completos para admin
-  getMapaDecisoesAdminData(): Promise<{
+  getMapaDecisoesAdminData(tenantId: string, instancia?: string): Promise<{
     trts: Array<{
       nome: string;
       turmas: Array<{
@@ -204,11 +202,11 @@ export interface IStorage {
   
   // Casos Novos - Entrada & Saídas
   getAllCasosNovos(tenantId: string): Promise<CasoNovo[]>;
-  getCasoNovo(id: string): Promise<CasoNovo | undefined>;
+  getCasoNovo(id: string, tenantId: string): Promise<CasoNovo | undefined>;
   createCasoNovo(tenantId: string, caso: InsertCasoNovo): Promise<CasoNovo>;
   createCasosNovosBatch(tenantId: string, casos: InsertCasoNovo[]): Promise<CasoNovo[]>;
-  deleteCasoNovo(id: string): Promise<boolean>;
-  deleteCasosNovosBatch(ids: string[]): Promise<boolean>;
+  deleteCasoNovo(id: string, tenantId: string): Promise<boolean>;
+  deleteCasosNovosBatch(ids: string[], tenantId: string): Promise<boolean>;
   deleteAllCasosNovos(tenantId: string): Promise<boolean>;
   getCasosNovosStats(tenantId: string, mesReferencia?: string): Promise<{
     total: number;
@@ -223,11 +221,11 @@ export interface IStorage {
   
   // Casos Encerrados - Entrada & Saídas
   getAllCasosEncerrados(tenantId: string): Promise<CasoEncerrado[]>;
-  getCasoEncerrado(id: string): Promise<CasoEncerrado | undefined>;
+  getCasoEncerrado(id: string, tenantId: string): Promise<CasoEncerrado | undefined>;
   createCasoEncerrado(tenantId: string, caso: InsertCasoEncerrado): Promise<CasoEncerrado>;
   createCasosEncerradosBatch(tenantId: string, casos: InsertCasoEncerrado[]): Promise<CasoEncerrado[]>;
-  deleteCasoEncerrado(id: string): Promise<boolean>;
-  deleteCasosEncerradosBatch(ids: string[]): Promise<boolean>;
+  deleteCasoEncerrado(id: string, tenantId: string): Promise<boolean>;
+  deleteCasosEncerradosBatch(ids: string[], tenantId: string): Promise<boolean>;
   deleteAllCasosEncerrados(tenantId: string): Promise<boolean>;
   getCasosEncerradosStats(tenantId: string, mesReferencia?: string): Promise<{
     total: number;
@@ -242,7 +240,7 @@ export interface IStorage {
 }
 
 export class MemStorage implements IStorage {
-  private rawData: ProcessoRaw[] = [];
+  private rawDataByTenant: Map<string, ProcessoRaw[]> = new Map();
   private initialized = false;
 
   constructor() {
@@ -259,16 +257,16 @@ export class MemStorage implements IStorage {
     console.log('Sistema iniciado sem dados pré-carregados');
   }
 
-  async setRawData(data: ProcessoRaw[]): Promise<void> {
-    this.rawData = data;
+  async setRawData(tenantId: string, data: ProcessoRaw[]): Promise<void> {
+    this.rawDataByTenant.set(tenantId, data);
   }
 
-  async getRawData(): Promise<ProcessoRaw[]> {
-    return this.rawData;
+  async getRawData(tenantId: string): Promise<ProcessoRaw[]> {
+    return this.rawDataByTenant.get(tenantId) || [];
   }
 
-  async clearRawData(): Promise<void> {
-    this.rawData = [];
+  async clearRawData(tenantId: string): Promise<void> {
+    this.rawDataByTenant.delete(tenantId);
   }
 
   async getUser(id: string): Promise<User | undefined> {
@@ -406,36 +404,37 @@ export class MemStorage implements IStorage {
     }
   }
 
-  async getPassivoData(): Promise<PassivoData> {
-    const fases = this.calculateFaseData();
-    const riscos = this.calculateRiscoData();
-    const empresas = this.calculateEmpresaData();
-    const summary = this.calculateSummary();
+  async getPassivoData(tenantId: string): Promise<PassivoData> {
+    const rawData = this.rawDataByTenant.get(tenantId) || [];
+    const fases = this.calculateFaseData(rawData);
+    const riscos = this.calculateRiscoData(rawData);
+    const empresas = this.calculateEmpresaData(rawData);
+    const summary = this.calculateSummary(rawData);
 
     return {
       fases,
       riscos,
       empresas,
       summary,
-      rawData: this.rawData,
+      rawData,
     };
   }
 
-  private calculateFaseData(): FaseData[] {
+  private calculateFaseData(rawData: ProcessoRaw[]): FaseData[] {
     const faseMap = new Map<FaseProcessual, { processos: number; valor: number }>();
     
     const fases: FaseProcessual[] = ["Conhecimento", "Recursal", "Execução"];
     fases.forEach(f => faseMap.set(f, { processos: 0, valor: 0 }));
 
-    this.rawData.forEach(p => {
+    rawData.forEach(p => {
       const current = faseMap.get(p.faseProcessual) || { processos: 0, valor: 0 };
       current.processos += 1;
       current.valor += p.valorTotal;
       faseMap.set(p.faseProcessual, current);
     });
 
-    const totalProcessos = this.rawData.length;
-    const totalValor = this.rawData.reduce((sum, p) => sum + p.valorTotal, 0);
+    const totalProcessos = rawData.length;
+    const totalValor = rawData.reduce((sum, p) => sum + p.valorTotal, 0);
 
     return fases.map(fase => {
       const data = faseMap.get(fase)!;
@@ -450,21 +449,21 @@ export class MemStorage implements IStorage {
     });
   }
 
-  private calculateRiscoData(): RiscoData[] {
+  private calculateRiscoData(rawData: ProcessoRaw[]): RiscoData[] {
     const riscoMap = new Map<ClassificacaoRisco, { processos: number; valor: number }>();
     
     const riscos: ClassificacaoRisco[] = ["Remoto", "Possível", "Provável"];
     riscos.forEach(r => riscoMap.set(r, { processos: 0, valor: 0 }));
 
-    this.rawData.forEach(p => {
+    rawData.forEach(p => {
       const current = riscoMap.get(p.classificacaoRisco) || { processos: 0, valor: 0 };
       current.processos += 1;
       current.valor += p.valorTotal;
       riscoMap.set(p.classificacaoRisco, current);
     });
 
-    const totalProcessos = this.rawData.length;
-    const totalValor = this.rawData.reduce((sum, p) => sum + p.valorTotal, 0);
+    const totalProcessos = rawData.length;
+    const totalValor = rawData.reduce((sum, p) => sum + p.valorTotal, 0);
 
     return riscos.map(risco => {
       const data = riscoMap.get(risco)!;
@@ -479,7 +478,7 @@ export class MemStorage implements IStorage {
     });
   }
 
-  private calculateEmpresaData(): EmpresaFaseData[] {
+  private calculateEmpresaData(rawData: ProcessoRaw[]): EmpresaFaseData[] {
     const empresas: Empresa[] = ["V.tal", "OI", "Serede", "Sprink", "Outros Terceiros"];
     const fases: FaseProcessual[] = ["Conhecimento", "Recursal", "Execução"];
     
@@ -491,7 +490,7 @@ export class MemStorage implements IStorage {
       empresaMap.set(emp, faseMap);
     });
 
-    this.rawData.forEach(p => {
+    rawData.forEach(p => {
       const faseMap = empresaMap.get(p.empresa);
       if (faseMap) {
         const current = faseMap.get(p.faseProcessual) || { processos: 0, valor: 0 };
@@ -501,8 +500,8 @@ export class MemStorage implements IStorage {
       }
     });
 
-    const totalProcessos = this.rawData.length;
-    const totalValor = this.rawData.reduce((sum, p) => sum + p.valorTotal, 0);
+    const totalProcessos = rawData.length;
+    const totalValor = rawData.reduce((sum, p) => sum + p.valorTotal, 0);
 
     return empresas.map(empresa => {
       const faseMap = empresaMap.get(empresa)!;
@@ -540,12 +539,12 @@ export class MemStorage implements IStorage {
     });
   }
 
-  private calculateSummary(): DashboardSummary {
-    const totalProcessos = this.rawData.length;
-    const totalValor = this.rawData.reduce((sum, p) => sum + p.valorTotal, 0);
+  private calculateSummary(rawData: ProcessoRaw[]): DashboardSummary {
+    const totalProcessos = rawData.length;
+    const totalValor = rawData.reduce((sum, p) => sum + p.valorTotal, 0);
     
-    const riscoProvavel = this.rawData.filter(p => p.classificacaoRisco === "Provável").length;
-    const faseRecursal = this.rawData.filter(p => p.faseProcessual === "Recursal").length;
+    const riscoProvavel = rawData.filter(p => p.classificacaoRisco === "Provável").length;
+    const faseRecursal = rawData.filter(p => p.faseProcessual === "Recursal").length;
 
     return {
       totalProcessos,
@@ -556,36 +555,36 @@ export class MemStorage implements IStorage {
     };
   }
 
-  async getAllTRTs(): Promise<TRT[]> {
-    return await db.select().from(trts).orderBy(trts.numero);
+  async getAllTRTs(tenantId: string): Promise<TRT[]> {
+    return await db.select().from(trts).where(eq(trts.tenantId, tenantId)).orderBy(trts.numero);
   }
 
-  async getTRT(id: string): Promise<TRT | undefined> {
-    const [trt] = await db.select().from(trts).where(eq(trts.id, id));
+  async getTRT(id: string, tenantId: string): Promise<TRT | undefined> {
+    const [trt] = await db.select().from(trts).where(and(eq(trts.id, id), eq(trts.tenantId, tenantId)));
     return trt;
   }
 
-  async createTRT(trt: InsertTRT): Promise<TRT> {
-    const [created] = await db.insert(trts).values(trt).returning();
+  async createTRT(tenantId: string, trt: InsertTRT): Promise<TRT> {
+    const [created] = await db.insert(trts).values({ ...trt, tenantId }).returning();
     return created;
   }
 
-  async updateTRT(id: string, data: Partial<InsertTRT>): Promise<TRT | undefined> {
-    const [updated] = await db.update(trts).set(data).where(eq(trts.id, id)).returning();
+  async updateTRT(id: string, data: Partial<InsertTRT>, tenantId: string): Promise<TRT | undefined> {
+    const [updated] = await db.update(trts).set(data).where(and(eq(trts.id, id), eq(trts.tenantId, tenantId))).returning();
     return updated;
   }
 
-  async deleteTRT(id: string): Promise<boolean> {
-    const result = await db.delete(trts).where(eq(trts.id, id));
+  async deleteTRT(id: string, tenantId: string): Promise<boolean> {
+    await db.delete(trts).where(and(eq(trts.id, id), eq(trts.tenantId, tenantId)));
     return true;
   }
 
-  async getVarasByTRT(trtId: string): Promise<Vara[]> {
-    return await db.select().from(varas).where(eq(varas.trtId, trtId));
+  async getVarasByTRT(trtId: string, tenantId: string): Promise<Vara[]> {
+    return await db.select().from(varas).where(and(eq(varas.trtId, trtId), eq(varas.tenantId, tenantId)));
   }
 
-  async getVara(id: string): Promise<Vara | undefined> {
-    const [vara] = await db.select().from(varas).where(eq(varas.id, id));
+  async getVara(id: string, tenantId: string): Promise<Vara | undefined> {
+    const [vara] = await db.select().from(varas).where(and(eq(varas.id, id), eq(varas.tenantId, tenantId)));
     return vara;
   }
 
@@ -594,22 +593,22 @@ export class MemStorage implements IStorage {
     return created;
   }
 
-  async updateVara(id: string, data: Partial<InsertVara>): Promise<Vara | undefined> {
-    const [updated] = await db.update(varas).set(data).where(eq(varas.id, id)).returning();
+  async updateVara(id: string, data: Partial<InsertVara>, tenantId: string): Promise<Vara | undefined> {
+    const [updated] = await db.update(varas).set(data).where(and(eq(varas.id, id), eq(varas.tenantId, tenantId))).returning();
     return updated;
   }
 
-  async deleteVara(id: string): Promise<boolean> {
-    await db.delete(varas).where(eq(varas.id, id));
+  async deleteVara(id: string, tenantId: string): Promise<boolean> {
+    await db.delete(varas).where(and(eq(varas.id, id), eq(varas.tenantId, tenantId)));
     return true;
   }
 
-  async getJuizesByVara(varaId: string): Promise<Juiz[]> {
-    return await db.select().from(juizes).where(eq(juizes.varaId, varaId));
+  async getJuizesByVara(varaId: string, tenantId: string): Promise<Juiz[]> {
+    return await db.select().from(juizes).where(and(eq(juizes.varaId, varaId), eq(juizes.tenantId, tenantId)));
   }
 
-  async getJuiz(id: string): Promise<Juiz | undefined> {
-    const [juiz] = await db.select().from(juizes).where(eq(juizes.id, id));
+  async getJuiz(id: string, tenantId: string): Promise<Juiz | undefined> {
+    const [juiz] = await db.select().from(juizes).where(and(eq(juizes.id, id), eq(juizes.tenantId, tenantId)));
     return juiz;
   }
 
@@ -618,22 +617,22 @@ export class MemStorage implements IStorage {
     return created;
   }
 
-  async updateJuiz(id: string, data: Partial<InsertJuiz>): Promise<Juiz | undefined> {
-    const [updated] = await db.update(juizes).set(data).where(eq(juizes.id, id)).returning();
+  async updateJuiz(id: string, data: Partial<InsertJuiz>, tenantId: string): Promise<Juiz | undefined> {
+    const [updated] = await db.update(juizes).set(data).where(and(eq(juizes.id, id), eq(juizes.tenantId, tenantId))).returning();
     return updated;
   }
 
-  async deleteJuiz(id: string): Promise<boolean> {
-    await db.delete(juizes).where(eq(juizes.id, id));
+  async deleteJuiz(id: string, tenantId: string): Promise<boolean> {
+    await db.delete(juizes).where(and(eq(juizes.id, id), eq(juizes.tenantId, tenantId)));
     return true;
   }
 
-  async getJulgamentosByJuiz(juizId: string): Promise<Julgamento[]> {
-    return await db.select().from(julgamentos).where(eq(julgamentos.juizId, juizId));
+  async getJulgamentosByJuiz(juizId: string, tenantId: string): Promise<Julgamento[]> {
+    return await db.select().from(julgamentos).where(and(eq(julgamentos.juizId, juizId), eq(julgamentos.tenantId, tenantId)));
   }
 
-  async getJulgamento(id: string): Promise<Julgamento | undefined> {
-    const [julgamento] = await db.select().from(julgamentos).where(eq(julgamentos.id, id));
+  async getJulgamento(id: string, tenantId: string): Promise<Julgamento | undefined> {
+    const [julgamento] = await db.select().from(julgamentos).where(and(eq(julgamentos.id, id), eq(julgamentos.tenantId, tenantId)));
     return julgamento;
   }
 
@@ -642,13 +641,13 @@ export class MemStorage implements IStorage {
     return created;
   }
 
-  async updateJulgamento(id: string, data: Partial<InsertJulgamento>): Promise<Julgamento | undefined> {
-    const [updated] = await db.update(julgamentos).set(data).where(eq(julgamentos.id, id)).returning();
+  async updateJulgamento(id: string, data: Partial<InsertJulgamento>, tenantId: string): Promise<Julgamento | undefined> {
+    const [updated] = await db.update(julgamentos).set(data).where(and(eq(julgamentos.id, id), eq(julgamentos.tenantId, tenantId))).returning();
     return updated;
   }
 
-  async deleteJulgamento(id: string): Promise<boolean> {
-    await db.delete(julgamentos).where(eq(julgamentos.id, id));
+  async deleteJulgamento(id: string, tenantId: string): Promise<boolean> {
+    await db.delete(julgamentos).where(and(eq(julgamentos.id, id), eq(julgamentos.tenantId, tenantId)));
     return true;
   }
 
@@ -670,21 +669,21 @@ export class MemStorage implements IStorage {
     };
   }
 
-  async getJuizFavorabilidade(juizId: string): Promise<Favorabilidade> {
-    const julgamentosData = await this.getJulgamentosByJuiz(juizId);
+  async getJuizFavorabilidade(juizId: string, tenantId: string): Promise<Favorabilidade> {
+    const julgamentosData = await this.getJulgamentosByJuiz(juizId, tenantId);
     return this.calculateFavorabilidade(julgamentosData);
   }
 
-  async getAllJuizesComFavorabilidade(): Promise<JuizComFavorabilidade[]> {
-    const allTrts = await this.getAllTRTs();
+  async getAllJuizesComFavorabilidade(tenantId: string): Promise<JuizComFavorabilidade[]> {
+    const allTrts = await this.getAllTRTs(tenantId);
     const result: JuizComFavorabilidade[] = [];
 
     for (const trt of allTrts) {
-      const trtVaras = await this.getVarasByTRT(trt.id);
+      const trtVaras = await this.getVarasByTRT(trt.id, tenantId);
       for (const vara of trtVaras) {
-        const varaJuizes = await this.getJuizesByVara(vara.id);
+        const varaJuizes = await this.getJuizesByVara(vara.id, tenantId);
         for (const juiz of varaJuizes) {
-          const favorabilidade = await this.getJuizFavorabilidade(juiz.id);
+          const favorabilidade = await this.getJuizFavorabilidade(juiz.id, tenantId);
           result.push({
             id: juiz.id,
             nome: juiz.nome,
@@ -703,22 +702,22 @@ export class MemStorage implements IStorage {
     return result;
   }
 
-  async getAllTRTsComFavorabilidade(): Promise<TRTComFavorabilidade[]> {
-    const allTrts = await this.getAllTRTs();
+  async getAllTRTsComFavorabilidade(tenantId: string): Promise<TRTComFavorabilidade[]> {
+    const allTrts = await this.getAllTRTs(tenantId);
     const result: TRTComFavorabilidade[] = [];
 
     for (const trt of allTrts) {
-      const trtVaras = await this.getVarasByTRT(trt.id);
+      const trtVaras = await this.getVarasByTRT(trt.id, tenantId);
       const varasComFavorabilidade: VaraComFavorabilidade[] = [];
       let trtJulgamentos: Julgamento[] = [];
 
       for (const vara of trtVaras) {
-        const varaJuizes = await this.getJuizesByVara(vara.id);
+        const varaJuizes = await this.getJuizesByVara(vara.id, tenantId);
         const juizesComFavorabilidade: JuizComFavorabilidade[] = [];
         let varaJulgamentos: Julgamento[] = [];
 
         for (const juiz of varaJuizes) {
-          const julgamentosJuiz = await this.getJulgamentosByJuiz(juiz.id);
+          const julgamentosJuiz = await this.getJulgamentosByJuiz(juiz.id, tenantId);
           varaJulgamentos = [...varaJulgamentos, ...julgamentosJuiz];
           trtJulgamentos = [...trtJulgamentos, ...julgamentosJuiz];
           
@@ -758,55 +757,55 @@ export class MemStorage implements IStorage {
     return result;
   }
 
-  async getAllAudiencias(): Promise<Audiencia[]> {
-    return await db.select().from(audiencias);
+  async getAllAudiencias(tenantId: string): Promise<Audiencia[]> {
+    return await db.select().from(audiencias).where(eq(audiencias.tenantId, tenantId));
   }
 
-  async getAudienciasByVara(varaId: string): Promise<Audiencia[]> {
-    return await db.select().from(audiencias).where(eq(audiencias.varaId, varaId));
+  async getAudienciasByVara(varaId: string, tenantId: string): Promise<Audiencia[]> {
+    return await db.select().from(audiencias).where(and(eq(audiencias.varaId, varaId), eq(audiencias.tenantId, tenantId)));
   }
 
-  async getAudiencia(id: string): Promise<Audiencia | undefined> {
-    const [audiencia] = await db.select().from(audiencias).where(eq(audiencias.id, id));
+  async getAudiencia(id: string, tenantId: string): Promise<Audiencia | undefined> {
+    const [audiencia] = await db.select().from(audiencias).where(and(eq(audiencias.id, id), eq(audiencias.tenantId, tenantId)));
     return audiencia;
   }
 
-  async createAudiencia(audiencia: InsertAudiencia): Promise<Audiencia> {
-    const [created] = await db.insert(audiencias).values(audiencia).returning();
+  async createAudiencia(tenantId: string, audiencia: InsertAudiencia): Promise<Audiencia> {
+    const [created] = await db.insert(audiencias).values({ ...audiencia, tenantId }).returning();
     return created;
   }
 
-  async updateAudiencia(id: string, data: Partial<InsertAudiencia>): Promise<Audiencia | undefined> {
-    const [updated] = await db.update(audiencias).set(data).where(eq(audiencias.id, id)).returning();
+  async updateAudiencia(id: string, data: Partial<InsertAudiencia>, tenantId: string): Promise<Audiencia | undefined> {
+    const [updated] = await db.update(audiencias).set(data).where(and(eq(audiencias.id, id), eq(audiencias.tenantId, tenantId))).returning();
     return updated;
   }
 
-  async deleteAudiencia(id: string): Promise<boolean> {
-    await db.delete(audiencias).where(eq(audiencias.id, id));
+  async deleteAudiencia(id: string, tenantId: string): Promise<boolean> {
+    await db.delete(audiencias).where(and(eq(audiencias.id, id), eq(audiencias.tenantId, tenantId)));
     return true;
   }
 
-  async getEventosTimeline(filters: {
+  async getEventosTimeline(tenantId: string, filters: {
     dataInicio?: string;
     dataFim?: string;
     trtId?: string;
     varaId?: string;
   }): Promise<EventoTimeline[]> {
     const eventos: EventoTimeline[] = [];
-    const allTrts = await this.getAllTRTs();
+    const allTrts = await this.getAllTRTs(tenantId);
     
     for (const trt of allTrts) {
       if (filters.trtId && trt.id !== filters.trtId) continue;
       
-      const trtVaras = await this.getVarasByTRT(trt.id);
+      const trtVaras = await this.getVarasByTRT(trt.id, tenantId);
       
       for (const vara of trtVaras) {
         if (filters.varaId && vara.id !== filters.varaId) continue;
         
-        const varaJuizes = await this.getJuizesByVara(vara.id);
+        const varaJuizes = await this.getJuizesByVara(vara.id, tenantId);
         
         for (const juiz of varaJuizes) {
-          const julgamentosJuiz = await this.getJulgamentosByJuiz(juiz.id);
+          const julgamentosJuiz = await this.getJulgamentosByJuiz(juiz.id, tenantId);
           
           for (const j of julgamentosJuiz) {
             if (!j.dataJulgamento) continue;
@@ -838,7 +837,7 @@ export class MemStorage implements IStorage {
           }
         }
         
-        const audienciasVara = await this.getAudienciasByVara(vara.id);
+        const audienciasVara = await this.getAudienciasByVara(vara.id, tenantId);
         
         for (const a of audienciasVara) {
           const dataAud = new Date(a.dataAudiencia);
@@ -853,7 +852,7 @@ export class MemStorage implements IStorage {
           
           let juizNome: string | undefined;
           if (a.juizId) {
-            const juiz = await this.getJuiz(a.juizId);
+            const juiz = await this.getJuiz(a.juizId, tenantId);
             juizNome = juiz?.nome;
           }
           
@@ -893,11 +892,11 @@ export class MemStorage implements IStorage {
   */
 
   // Brainstorm methods
-  async getBrainstormStats(): Promise<BrainstormStats> {
-    const [distCount] = await db.select({ count: sql<number>`count(*)::int` }).from(distribuidos);
-    const [encCount] = await db.select({ count: sql<number>`count(*)::int` }).from(encerrados);
-    const [sentCount] = await db.select({ count: sql<number>`count(*)::int` }).from(sentencasMerito);
-    const [acordCount] = await db.select({ count: sql<number>`count(*)::int` }).from(acordaosMerito);
+  async getBrainstormStats(tenantId: string): Promise<BrainstormStats> {
+    const [distCount] = await db.select({ count: sql<number>`count(*)::int` }).from(distribuidos).where(eq(distribuidos.tenantId, tenantId));
+    const [encCount] = await db.select({ count: sql<number>`count(*)::int` }).from(encerrados).where(eq(encerrados.tenantId, tenantId));
+    const [sentCount] = await db.select({ count: sql<number>`count(*)::int` }).from(sentencasMerito).where(eq(sentencasMerito.tenantId, tenantId));
+    const [acordCount] = await db.select({ count: sql<number>`count(*)::int` }).from(acordaosMerito).where(eq(acordaosMerito.tenantId, tenantId));
     
     return {
       distribuidos: distCount?.count || 0,
@@ -907,123 +906,127 @@ export class MemStorage implements IStorage {
     };
   }
 
-  async getAllDistribuidos(): Promise<Distribuido[]> {
-    return await db.select().from(distribuidos).orderBy(distribuidos.createdAt);
+  async getAllDistribuidos(tenantId: string): Promise<Distribuido[]> {
+    return await db.select().from(distribuidos).where(eq(distribuidos.tenantId, tenantId)).orderBy(distribuidos.createdAt);
   }
 
-  async createDistribuido(data: InsertDistribuido): Promise<Distribuido> {
-    const [created] = await db.insert(distribuidos).values(data).returning();
+  async createDistribuido(tenantId: string, data: InsertDistribuido): Promise<Distribuido> {
+    const [created] = await db.insert(distribuidos).values({ ...data, tenantId }).returning();
     return created;
   }
 
-  async createDistribuidosBatch(data: InsertDistribuido[]): Promise<Distribuido[]> {
+  async createDistribuidosBatch(tenantId: string, data: InsertDistribuido[]): Promise<Distribuido[]> {
     if (data.length === 0) return [];
-    return await db.insert(distribuidos).values(data).returning();
+    const dataWithTenant = data.map(d => ({ ...d, tenantId }));
+    return await db.insert(distribuidos).values(dataWithTenant).returning();
   }
 
-  async deleteDistribuido(id: string): Promise<boolean> {
-    await db.delete(distribuidos).where(eq(distribuidos.id, id));
+  async deleteDistribuido(id: string, tenantId: string): Promise<boolean> {
+    await db.delete(distribuidos).where(and(eq(distribuidos.id, id), eq(distribuidos.tenantId, tenantId)));
     return true;
   }
 
-  async deleteDistribuidosBatch(ids: string[]): Promise<boolean> {
+  async deleteDistribuidosBatch(ids: string[], tenantId: string): Promise<boolean> {
     if (ids.length === 0) return true;
-    await db.delete(distribuidos).where(inArray(distribuidos.id, ids));
+    await db.delete(distribuidos).where(and(inArray(distribuidos.id, ids), eq(distribuidos.tenantId, tenantId)));
     return true;
   }
 
-  async deleteAllDistribuidos(): Promise<boolean> {
-    await db.delete(distribuidos);
+  async deleteAllDistribuidos(tenantId: string): Promise<boolean> {
+    await db.delete(distribuidos).where(eq(distribuidos.tenantId, tenantId));
     return true;
   }
 
-  async getAllEncerrados(): Promise<Encerrado[]> {
-    return await db.select().from(encerrados).orderBy(encerrados.createdAt);
+  async getAllEncerrados(tenantId: string): Promise<Encerrado[]> {
+    return await db.select().from(encerrados).where(eq(encerrados.tenantId, tenantId)).orderBy(encerrados.createdAt);
   }
 
-  async createEncerrado(data: InsertEncerrado): Promise<Encerrado> {
-    const [created] = await db.insert(encerrados).values(data).returning();
+  async createEncerrado(tenantId: string, data: InsertEncerrado): Promise<Encerrado> {
+    const [created] = await db.insert(encerrados).values({ ...data, tenantId }).returning();
     return created;
   }
 
-  async createEncerradosBatch(data: InsertEncerrado[]): Promise<Encerrado[]> {
+  async createEncerradosBatch(tenantId: string, data: InsertEncerrado[]): Promise<Encerrado[]> {
     if (data.length === 0) return [];
-    return await db.insert(encerrados).values(data).returning();
+    const dataWithTenant = data.map(d => ({ ...d, tenantId }));
+    return await db.insert(encerrados).values(dataWithTenant).returning();
   }
 
-  async deleteEncerrado(id: string): Promise<boolean> {
-    await db.delete(encerrados).where(eq(encerrados.id, id));
+  async deleteEncerrado(id: string, tenantId: string): Promise<boolean> {
+    await db.delete(encerrados).where(and(eq(encerrados.id, id), eq(encerrados.tenantId, tenantId)));
     return true;
   }
 
-  async deleteEncerradosBatch(ids: string[]): Promise<boolean> {
+  async deleteEncerradosBatch(ids: string[], tenantId: string): Promise<boolean> {
     if (ids.length === 0) return true;
-    await db.delete(encerrados).where(inArray(encerrados.id, ids));
+    await db.delete(encerrados).where(and(inArray(encerrados.id, ids), eq(encerrados.tenantId, tenantId)));
     return true;
   }
 
-  async deleteAllEncerrados(): Promise<boolean> {
-    await db.delete(encerrados);
+  async deleteAllEncerrados(tenantId: string): Promise<boolean> {
+    await db.delete(encerrados).where(eq(encerrados.tenantId, tenantId));
     return true;
   }
 
-  async getAllSentencasMerito(): Promise<SentencaMerito[]> {
-    return await db.select().from(sentencasMerito).orderBy(sentencasMerito.createdAt);
+  async getAllSentencasMerito(tenantId: string): Promise<SentencaMerito[]> {
+    return await db.select().from(sentencasMerito).where(eq(sentencasMerito.tenantId, tenantId)).orderBy(sentencasMerito.createdAt);
   }
 
-  async createSentencaMerito(data: InsertSentencaMerito): Promise<SentencaMerito> {
-    const [created] = await db.insert(sentencasMerito).values(data).returning();
+  async createSentencaMerito(tenantId: string, data: InsertSentencaMerito): Promise<SentencaMerito> {
+    const [created] = await db.insert(sentencasMerito).values({ ...data, tenantId }).returning();
     return created;
   }
 
-  async createSentencasMeritoBatch(data: InsertSentencaMerito[]): Promise<SentencaMerito[]> {
+  async createSentencasMeritoBatch(tenantId: string, data: InsertSentencaMerito[]): Promise<SentencaMerito[]> {
     if (data.length === 0) return [];
-    return await db.insert(sentencasMerito).values(data).returning();
+    const dataWithTenant = data.map(d => ({ ...d, tenantId }));
+    return await db.insert(sentencasMerito).values(dataWithTenant).returning();
   }
 
-  async deleteSentencaMerito(id: string): Promise<boolean> {
-    await db.delete(sentencasMerito).where(eq(sentencasMerito.id, id));
+  async deleteSentencaMerito(id: string, tenantId: string): Promise<boolean> {
+    await db.delete(sentencasMerito).where(and(eq(sentencasMerito.id, id), eq(sentencasMerito.tenantId, tenantId)));
     return true;
   }
 
-  async deleteSentencasMeritoBatch(ids: string[]): Promise<boolean> {
+  async deleteSentencasMeritoBatch(ids: string[], tenantId: string): Promise<boolean> {
     if (ids.length === 0) return true;
-    await db.delete(sentencasMerito).where(inArray(sentencasMerito.id, ids));
+    await db.delete(sentencasMerito).where(and(inArray(sentencasMerito.id, ids), eq(sentencasMerito.tenantId, tenantId)));
     return true;
   }
 
-  async deleteAllSentencasMerito(): Promise<boolean> {
-    await db.delete(sentencasMerito);
+  async deleteAllSentencasMerito(tenantId: string): Promise<boolean> {
+    await db.delete(sentencasMerito).where(eq(sentencasMerito.tenantId, tenantId));
     return true;
   }
 
-  async getAllAcordaosMerito(): Promise<AcordaoMerito[]> {
-    return await db.select().from(acordaosMerito).orderBy(acordaosMerito.createdAt);
+  async getAllAcordaosMerito(tenantId: string): Promise<AcordaoMerito[]> {
+    return await db.select().from(acordaosMerito).where(eq(acordaosMerito.tenantId, tenantId)).orderBy(acordaosMerito.createdAt);
   }
 
-  async createAcordaoMerito(data: InsertAcordaoMerito): Promise<AcordaoMerito> {
-    const [created] = await db.insert(acordaosMerito).values(data).returning();
+  async createAcordaoMerito(tenantId: string, data: InsertAcordaoMerito): Promise<AcordaoMerito> {
+    const [created] = await db.insert(acordaosMerito).values({ ...data, tenantId }).returning();
     return created;
   }
 
-  async createAcordaosMeritoBatch(data: InsertAcordaoMerito[]): Promise<AcordaoMerito[]> {
+  async createAcordaosMeritoBatch(tenantId: string, data: InsertAcordaoMerito[]): Promise<AcordaoMerito[]> {
     if (data.length === 0) return [];
-    return await db.insert(acordaosMerito).values(data).returning();
+    const dataWithTenant = data.map(d => ({ ...d, tenantId }));
+    return await db.insert(acordaosMerito).values(dataWithTenant).returning();
   }
 
-  async deleteAcordaoMerito(id: string): Promise<boolean> {
-    await db.delete(acordaosMerito).where(eq(acordaosMerito.id, id));
+  async deleteAcordaoMerito(id: string, tenantId: string): Promise<boolean> {
+    await db.delete(acordaosMerito).where(and(eq(acordaosMerito.id, id), eq(acordaosMerito.tenantId, tenantId)));
     return true;
   }
 
-  async deleteAcordaosMeritoBatch(ids: string[]): Promise<boolean> {
+  async deleteAcordaosMeritoBatch(ids: string[], tenantId: string): Promise<boolean> {
     if (ids.length === 0) return true;
-    await db.delete(acordaosMerito).where(inArray(acordaosMerito.id, ids));
+    await db.delete(acordaosMerito).where(and(inArray(acordaosMerito.id, ids), eq(acordaosMerito.tenantId, tenantId)));
     return true;
   }
 
-  async deleteAllAcordaosMerito(): Promise<boolean> {
-    await db.delete(acordaosMerito);
+  async deleteAllAcordaosMerito(tenantId: string): Promise<boolean> {
+    await db.delete(acordaosMerito).where(eq(acordaosMerito.tenantId, tenantId));
     return true;
   }
 
@@ -1067,8 +1070,8 @@ export class MemStorage implements IStorage {
     return this.sortTurmasNumerically(result);
   }
 
-  async getTurma(id: string): Promise<Turma | undefined> {
-    const [turma] = await db.select().from(turmas).where(eq(turmas.id, id));
+  async getTurma(id: string, tenantId: string): Promise<Turma | undefined> {
+    const [turma] = await db.select().from(turmas).where(and(eq(turmas.id, id), eq(turmas.tenantId, tenantId)));
     return turma;
   }
 
@@ -1077,13 +1080,13 @@ export class MemStorage implements IStorage {
     return created;
   }
 
-  async updateTurma(id: string, data: Partial<InsertTurma>): Promise<Turma | undefined> {
-    const [updated] = await db.update(turmas).set(data).where(eq(turmas.id, id)).returning();
+  async updateTurma(id: string, data: Partial<InsertTurma>, tenantId: string): Promise<Turma | undefined> {
+    const [updated] = await db.update(turmas).set(data).where(and(eq(turmas.id, id), eq(turmas.tenantId, tenantId))).returning();
     return updated;
   }
 
-  async deleteTurma(id: string): Promise<boolean> {
-    await db.delete(turmas).where(eq(turmas.id, id));
+  async deleteTurma(id: string, tenantId: string): Promise<boolean> {
+    await db.delete(turmas).where(and(eq(turmas.id, id), eq(turmas.tenantId, tenantId)));
     return true;
   }
 
@@ -1092,12 +1095,12 @@ export class MemStorage implements IStorage {
     return await db.select().from(desembargadores).where(eq(desembargadores.tenantId, tenantId)).orderBy(desembargadores.nome);
   }
 
-  async getDesembargadoresByTurma(turmaId: string): Promise<Desembargador[]> {
-    return await db.select().from(desembargadores).where(eq(desembargadores.turmaId, turmaId)).orderBy(desembargadores.nome);
+  async getDesembargadoresByTurma(turmaId: string, tenantId: string): Promise<Desembargador[]> {
+    return await db.select().from(desembargadores).where(and(eq(desembargadores.turmaId, turmaId), eq(desembargadores.tenantId, tenantId))).orderBy(desembargadores.nome);
   }
 
-  async getDesembargador(id: string): Promise<Desembargador | undefined> {
-    const [desembargador] = await db.select().from(desembargadores).where(eq(desembargadores.id, id));
+  async getDesembargador(id: string, tenantId: string): Promise<Desembargador | undefined> {
+    const [desembargador] = await db.select().from(desembargadores).where(and(eq(desembargadores.id, id), eq(desembargadores.tenantId, tenantId)));
     return desembargador;
   }
 
@@ -1106,13 +1109,13 @@ export class MemStorage implements IStorage {
     return created;
   }
 
-  async updateDesembargador(id: string, data: Partial<InsertDesembargador>): Promise<Desembargador | undefined> {
-    const [updated] = await db.update(desembargadores).set(data).where(eq(desembargadores.id, id)).returning();
+  async updateDesembargador(id: string, data: Partial<InsertDesembargador>, tenantId: string): Promise<Desembargador | undefined> {
+    const [updated] = await db.update(desembargadores).set(data).where(and(eq(desembargadores.id, id), eq(desembargadores.tenantId, tenantId))).returning();
     return updated;
   }
 
-  async deleteDesembargador(id: string): Promise<boolean> {
-    await db.delete(desembargadores).where(eq(desembargadores.id, id));
+  async deleteDesembargador(id: string, tenantId: string): Promise<boolean> {
+    await db.delete(desembargadores).where(and(eq(desembargadores.id, id), eq(desembargadores.tenantId, tenantId)));
     return true;
   }
 
@@ -1143,7 +1146,7 @@ export class MemStorage implements IStorage {
     let todosDesembargadores: Desembargador[] = [];
 
     for (const turma of turmasList) {
-      const desembargadoresTurma = await this.getDesembargadoresByTurma(turma.id);
+      const desembargadoresTurma = await this.getDesembargadoresByTurma(turma.id, tenantId);
       todosDesembargadores = [...todosDesembargadores, ...desembargadoresTurma];
 
       turmasComDesembargadores.push({
@@ -1180,12 +1183,12 @@ export class MemStorage implements IStorage {
     return await db.select().from(decisoesRpac).where(eq(decisoesRpac.tenantId, tenantId)).orderBy(decisoesRpac.createdAt);
   }
 
-  async getDecisoesRpacByDesembargador(desembargadorId: string): Promise<DecisaoRpac[]> {
-    return await db.select().from(decisoesRpac).where(eq(decisoesRpac.desembargadorId, desembargadorId)).orderBy(decisoesRpac.createdAt);
+  async getDecisoesRpacByDesembargador(desembargadorId: string, tenantId: string): Promise<DecisaoRpac[]> {
+    return await db.select().from(decisoesRpac).where(and(eq(decisoesRpac.desembargadorId, desembargadorId), eq(decisoesRpac.tenantId, tenantId))).orderBy(decisoesRpac.createdAt);
   }
 
-  async getDecisaoRpac(id: string): Promise<DecisaoRpac | undefined> {
-    const [decisao] = await db.select().from(decisoesRpac).where(eq(decisoesRpac.id, id));
+  async getDecisaoRpac(id: string, tenantId: string): Promise<DecisaoRpac | undefined> {
+    const [decisao] = await db.select().from(decisoesRpac).where(and(eq(decisoesRpac.id, id), eq(decisoesRpac.tenantId, tenantId)));
     return decisao;
   }
 
@@ -1194,18 +1197,18 @@ export class MemStorage implements IStorage {
     return created;
   }
 
-  async updateDecisaoRpac(id: string, data: Partial<InsertDecisaoRpac>): Promise<DecisaoRpac | undefined> {
-    const [updated] = await db.update(decisoesRpac).set(data).where(eq(decisoesRpac.id, id)).returning();
+  async updateDecisaoRpac(id: string, data: Partial<InsertDecisaoRpac>, tenantId: string): Promise<DecisaoRpac | undefined> {
+    const [updated] = await db.update(decisoesRpac).set(data).where(and(eq(decisoesRpac.id, id), eq(decisoesRpac.tenantId, tenantId))).returning();
     return updated;
   }
 
-  async deleteDecisaoRpac(id: string): Promise<boolean> {
-    await db.delete(decisoesRpac).where(eq(decisoesRpac.id, id));
+  async deleteDecisaoRpac(id: string, tenantId: string): Promise<boolean> {
+    await db.delete(decisoesRpac).where(and(eq(decisoesRpac.id, id), eq(decisoesRpac.tenantId, tenantId)));
     return true;
   }
 
   // Dados completos para admin - hierarquia TRT → Turmas → Desembargadores → Decisões
-  async getMapaDecisoesAdminData(instancia?: string): Promise<{
+  async getMapaDecisoesAdminData(tenantId: string, instancia?: string): Promise<{
     trts: Array<{
       nome: string;
       turmas: Array<{
@@ -1220,7 +1223,7 @@ export class MemStorage implements IStorage {
       }>;
     }>;
   }> {
-    const turmasList = await this.getAllTurmas(instancia || 'segunda');
+    const turmasList = await this.getAllTurmas(tenantId, instancia || 'segunda');
     
     // Agrupar turmas por região (TRT)
     const trtMap = new Map<string, typeof turmasList>();
@@ -1250,11 +1253,11 @@ export class MemStorage implements IStorage {
       const turmasComDados = [];
       
       for (const turma of this.sortTurmasNumerically(turmasDoTrt)) {
-        const desembargadoresTurma = await this.getDesembargadoresByTurma(turma.id);
+        const desembargadoresTurma = await this.getDesembargadoresByTurma(turma.id, tenantId);
         const desembargadoresComDecisoes = [];
         
         for (const desembargador of desembargadoresTurma) {
-          const decisoes = await this.getDecisoesRpacByDesembargador(desembargador.id);
+          const decisoes = await this.getDecisoesRpacByDesembargador(desembargador.id, tenantId);
           desembargadoresComDecisoes.push({
             id: desembargador.id,
             nome: desembargador.nome,
@@ -1302,7 +1305,7 @@ export class MemStorage implements IStorage {
     return regiao;
   }
 
-  async getTRTsComEstatisticas(responsabilidadeFilter?: string, empresaFilter?: string, instancia?: string, numeroProcesso?: string): Promise<Array<{
+  async getTRTsComEstatisticas(tenantId: string, responsabilidadeFilter?: string, empresaFilter?: string, instancia?: string, numeroProcesso?: string): Promise<Array<{
     nome: string;
     totalTurmas: number;
     totalDesembargadores: number;
@@ -1312,7 +1315,7 @@ export class MemStorage implements IStorage {
     emAnalise: number;
     percentualFavoravel: number;
   }>> {
-    const turmasList = await this.getAllTurmas(instancia || 'segunda');
+    const turmasList = await this.getAllTurmas(tenantId, instancia || 'segunda');
     const trtMap = new Map<string, { 
       displayName: string, 
       allTurmas: Set<string>, 
@@ -1343,12 +1346,12 @@ export class MemStorage implements IStorage {
       // Always track this turma for the TRT
       trtMap.get(trtKey)!.allTurmas.add(turma.id);
       
-      const desembargadores = await this.getDesembargadoresByTurma(turma.id);
+      const desembargadores = await this.getDesembargadoresByTurma(turma.id, tenantId);
       for (const d of desembargadores) {
         // Always track this desembargador for the TRT
         trtMap.get(trtKey)!.allDesembargadores.add(d.id);
         
-        const decisoes = await this.getDecisoesRpacByDesembargador(d.id);
+        const decisoes = await this.getDecisoesRpacByDesembargador(d.id, tenantId);
         // Filter decisoes by responsabilidade and empresa if filters are active
         let filteredDecisoes = decisoes;
         if (responsabilidadeFilter && responsabilidadeFilter !== 'todas') {
@@ -1404,7 +1407,7 @@ export class MemStorage implements IStorage {
   }
 
   // Analytics: Get Turmas by TRT with statistics
-  async getTurmasByTRT(trtNome: string, responsabilidadeFilter?: string, empresaFilter?: string, instancia?: string, numeroProcesso?: string): Promise<Array<{
+  async getTurmasByTRT(tenantId: string, trtNome: string, responsabilidadeFilter?: string, empresaFilter?: string, instancia?: string, numeroProcesso?: string): Promise<Array<{
     id: string;
     nome: string;
     totalDesembargadores: number;
@@ -1413,7 +1416,7 @@ export class MemStorage implements IStorage {
     desfavoraveis: number;
     percentualFavoravel: number;
   }>> {
-    const turmasList = await this.getAllTurmas(instancia || 'segunda');
+    const turmasList = await this.getAllTurmas(tenantId, instancia || 'segunda');
     // Normalize the input TRT name to match
     const inputKey = this.normalizeTRTKey(trtNome);
     const turmasDoTrt = turmasList.filter(t => {
@@ -1427,14 +1430,14 @@ export class MemStorage implements IStorage {
 
     const result = [];
     for (const turma of turmasDoTrt) {
-      const desembargadores = await this.getDesembargadoresByTurma(turma.id);
+      const desembargadores = await this.getDesembargadoresByTurma(turma.id, tenantId);
       let totalDecisoes = 0;
       let favoraveis = 0;
       let desfavoraveis = 0;
       let desembargadoresComDecisoes = 0;
 
       for (const d of desembargadores) {
-        const allDecisoes = await this.getDecisoesRpacByDesembargador(d.id);
+        const allDecisoes = await this.getDecisoesRpacByDesembargador(d.id, tenantId);
         // Filter decisoes by responsabilidade, empresa, and numeroProcesso if filters are active
         let decisoes = allDecisoes;
         if (responsabilidadeFilter && responsabilidadeFilter !== 'todas') {
@@ -1475,7 +1478,7 @@ export class MemStorage implements IStorage {
   }
 
   // Analytics: Get Desembargadores by Turma with decisions
-  async getDesembargadoresComDecisoesByTurma(turmaId: string): Promise<Array<{
+  async getDesembargadoresComDecisoesByTurma(turmaId: string, tenantId: string): Promise<Array<{
     id: string;
     nome: string;
     voto: string;
@@ -1484,11 +1487,11 @@ export class MemStorage implements IStorage {
     desfavoraveis: number;
     percentualFavoravel: number;
   }>> {
-    const desembargadores = await this.getDesembargadoresByTurma(turmaId);
+    const desembargadores = await this.getDesembargadoresByTurma(turmaId, tenantId);
     const result = [];
 
     for (const d of desembargadores) {
-      const decisoes = await this.getDecisoesRpacByDesembargador(d.id);
+      const decisoes = await this.getDecisoesRpacByDesembargador(d.id, tenantId);
       const favoraveis = decisoes.filter(dec => this.isFavoravel(dec.resultado)).length;
       const desfavoraveis = decisoes.filter(dec => this.isDesfavoravel(dec.resultado)).length;
 
@@ -1579,12 +1582,12 @@ export class MemStorage implements IStorage {
       // Filter by instancia
       if (turma.instancia !== instancia) continue;
       
-      const desembargadores = await this.getDesembargadoresByTurma(turma.id);
+      const desembargadores = await this.getDesembargadoresByTurma(turma.id, tenantId);
       let totalDecisoes = 0;
       let favoraveis = 0;
 
       for (const d of desembargadores) {
-        const allDecisoes = await this.getDecisoesRpacByDesembargador(d.id);
+        const allDecisoes = await this.getDecisoesRpacByDesembargador(d.id, tenantId);
         let decisoes = this.filterDecisoesByDate(allDecisoes, dataInicio, dataFim);
         if (responsabilidadeFilter && responsabilidadeFilter !== 'todas') {
           decisoes = decisoes.filter(dec => this.matchesResponsabilidade(dec.responsabilidade, responsabilidadeFilter));
@@ -1630,9 +1633,9 @@ export class MemStorage implements IStorage {
         trtMap.set(trtNome, { totalDecisoes: 0, favoraveis: 0, desfavoraveis: 0 });
       }
 
-      const desembargadores = await this.getDesembargadoresByTurma(turma.id);
+      const desembargadores = await this.getDesembargadoresByTurma(turma.id, tenantId);
       for (const d of desembargadores) {
-        const allDecisoes = await this.getDecisoesRpacByDesembargador(d.id);
+        const allDecisoes = await this.getDecisoesRpacByDesembargador(d.id, tenantId);
         let decisoes = this.filterDecisoesByDate(allDecisoes, dataInicio, dataFim);
         if (responsabilidadeFilter && responsabilidadeFilter !== 'todas') {
           decisoes = decisoes.filter(dec => this.matchesResponsabilidade(dec.responsabilidade, responsabilidadeFilter));
@@ -1681,9 +1684,9 @@ export class MemStorage implements IStorage {
       // Filter by instancia
       if (turma.instancia !== instancia) continue;
       
-      const desembargadores = await this.getDesembargadoresByTurma(turma.id);
+      const desembargadores = await this.getDesembargadoresByTurma(turma.id, tenantId);
       for (const d of desembargadores) {
-        const allDecisoes = await this.getDecisoesRpacByDesembargador(d.id);
+        const allDecisoes = await this.getDecisoesRpacByDesembargador(d.id, tenantId);
         let decisoes = this.filterDecisoesByDate(allDecisoes, dataInicio, dataFim);
         if (responsabilidadeFilter && responsabilidadeFilter !== 'todas') {
           decisoes = decisoes.filter(dec => this.matchesResponsabilidade(dec.responsabilidade, responsabilidadeFilter));
@@ -1742,11 +1745,11 @@ export class MemStorage implements IStorage {
     let subsidiarias = 0;
 
     for (const turma of turmasList) {
-      const desembargadores = await this.getDesembargadoresByTurma(turma.id);
+      const desembargadores = await this.getDesembargadoresByTurma(turma.id, tenantId);
       totalDesembargadores += desembargadores.length;
 
       for (const d of desembargadores) {
-        const allDecisoes = await this.getDecisoesRpacByDesembargador(d.id);
+        const allDecisoes = await this.getDecisoesRpacByDesembargador(d.id, tenantId);
         let decisoes = this.filterDecisoesByDate(allDecisoes, dataInicio, dataFim);
         
         // Filter by responsabilidade if specified
@@ -1813,7 +1816,7 @@ export class MemStorage implements IStorage {
     const desembargadorIds = new Set<string>();
     
     for (const turma of turmasFiltered) {
-      const desembs = await this.getDesembargadoresByTurma(turma.id);
+      const desembs = await this.getDesembargadoresByTurma(turma.id, tenantId);
       for (const d of desembs) {
         desembargadorIds.add(d.id);
       }
@@ -1895,7 +1898,7 @@ export class MemStorage implements IStorage {
     const desembargadorIds = new Set<string>();
     
     for (const turma of turmasFiltered) {
-      const desembs = await this.getDesembargadoresByTurma(turma.id);
+      const desembs = await this.getDesembargadoresByTurma(turma.id, tenantId);
       for (const d of desembs) {
         desembargadorIds.add(d.id);
       }
@@ -2025,8 +2028,8 @@ export class MemStorage implements IStorage {
     return await db.select().from(casosNovos).where(eq(casosNovos.tenantId, tenantId)).orderBy(casosNovos.dataDistribuicao);
   }
 
-  async getCasoNovo(id: string): Promise<CasoNovo | undefined> {
-    const [caso] = await db.select().from(casosNovos).where(eq(casosNovos.id, id));
+  async getCasoNovo(id: string, tenantId: string): Promise<CasoNovo | undefined> {
+    const [caso] = await db.select().from(casosNovos).where(and(eq(casosNovos.id, id), eq(casosNovos.tenantId, tenantId)));
     return caso;
   }
 
@@ -2053,14 +2056,14 @@ export class MemStorage implements IStorage {
     return created;
   }
 
-  async deleteCasoNovo(id: string): Promise<boolean> {
-    await db.delete(casosNovos).where(eq(casosNovos.id, id));
+  async deleteCasoNovo(id: string, tenantId: string): Promise<boolean> {
+    await db.delete(casosNovos).where(and(eq(casosNovos.id, id), eq(casosNovos.tenantId, tenantId)));
     return true;
   }
 
-  async deleteCasosNovosBatch(ids: string[]): Promise<boolean> {
+  async deleteCasosNovosBatch(ids: string[], tenantId: string): Promise<boolean> {
     if (ids.length === 0) return true;
-    await db.delete(casosNovos).where(inArray(casosNovos.id, ids));
+    await db.delete(casosNovos).where(and(inArray(casosNovos.id, ids), eq(casosNovos.tenantId, tenantId)));
     return true;
   }
 
@@ -2191,8 +2194,8 @@ export class MemStorage implements IStorage {
     return await db.select().from(casosEncerrados).where(eq(casosEncerrados.tenantId, tenantId)).orderBy(casosEncerrados.dataEncerramento);
   }
 
-  async getCasoEncerrado(id: string): Promise<CasoEncerrado | undefined> {
-    const [caso] = await db.select().from(casosEncerrados).where(eq(casosEncerrados.id, id));
+  async getCasoEncerrado(id: string, tenantId: string): Promise<CasoEncerrado | undefined> {
+    const [caso] = await db.select().from(casosEncerrados).where(and(eq(casosEncerrados.id, id), eq(casosEncerrados.tenantId, tenantId)));
     return caso;
   }
 
@@ -2219,14 +2222,14 @@ export class MemStorage implements IStorage {
     return created;
   }
 
-  async deleteCasoEncerrado(id: string): Promise<boolean> {
-    await db.delete(casosEncerrados).where(eq(casosEncerrados.id, id));
+  async deleteCasoEncerrado(id: string, tenantId: string): Promise<boolean> {
+    await db.delete(casosEncerrados).where(and(eq(casosEncerrados.id, id), eq(casosEncerrados.tenantId, tenantId)));
     return true;
   }
 
-  async deleteCasosEncerradosBatch(ids: string[]): Promise<boolean> {
+  async deleteCasosEncerradosBatch(ids: string[], tenantId: string): Promise<boolean> {
     if (ids.length === 0) return true;
-    await db.delete(casosEncerrados).where(inArray(casosEncerrados.id, ids));
+    await db.delete(casosEncerrados).where(and(inArray(casosEncerrados.id, ids), eq(casosEncerrados.tenantId, tenantId)));
     return true;
   }
 
