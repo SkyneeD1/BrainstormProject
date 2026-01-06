@@ -280,7 +280,10 @@ export function AppSidebar() {
                 variant="ghost"
                 size="sm"
                 className="text-sidebar-foreground/70 hover:text-sidebar-foreground"
-                onClick={() => logout()}
+                onClick={() => {
+                  logout();
+                  window.location.href = "/";
+                }}
                 disabled={isLoggingOut}
                 data-testid="button-logout"
               >
