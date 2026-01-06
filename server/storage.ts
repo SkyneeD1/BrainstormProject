@@ -156,26 +156,26 @@ export interface IStorage {
   initializeBrainstorm(): Promise<void>;
   
   // Mapas Estratégicos - Turmas e Desembargadores
-  getAllTurmas(): Promise<Turma[]>;
+  getAllTurmas(tenantId: string, instancia?: string): Promise<Turma[]>;
   getTurma(id: string): Promise<Turma | undefined>;
-  createTurma(turma: InsertTurma): Promise<Turma>;
+  createTurma(tenantId: string, turma: InsertTurma): Promise<Turma>;
   updateTurma(id: string, data: Partial<InsertTurma>): Promise<Turma | undefined>;
   deleteTurma(id: string): Promise<boolean>;
   
-  getAllDesembargadores(): Promise<Desembargador[]>;
+  getAllDesembargadores(tenantId: string): Promise<Desembargador[]>;
   getDesembargadoresByTurma(turmaId: string): Promise<Desembargador[]>;
   getDesembargador(id: string): Promise<Desembargador | undefined>;
-  createDesembargador(desembargador: InsertDesembargador): Promise<Desembargador>;
+  createDesembargador(tenantId: string, desembargador: InsertDesembargador): Promise<Desembargador>;
   updateDesembargador(id: string, data: Partial<InsertDesembargador>): Promise<Desembargador | undefined>;
   deleteDesembargador(id: string): Promise<boolean>;
   
-  getMapaDecisoesGeral(): Promise<MapaDecisoes>;
+  getMapaDecisoesGeral(tenantId: string): Promise<MapaDecisoes>;
   
   // Decisões RPAC
-  getAllDecisoesRpac(): Promise<DecisaoRpac[]>;
+  getAllDecisoesRpac(tenantId: string): Promise<DecisaoRpac[]>;
   getDecisoesRpacByDesembargador(desembargadorId: string): Promise<DecisaoRpac[]>;
   getDecisaoRpac(id: string): Promise<DecisaoRpac | undefined>;
-  createDecisaoRpac(decisao: InsertDecisaoRpac): Promise<DecisaoRpac>;
+  createDecisaoRpac(tenantId: string, decisao: InsertDecisaoRpac): Promise<DecisaoRpac>;
   updateDecisaoRpac(id: string, data: Partial<InsertDecisaoRpac>): Promise<DecisaoRpac | undefined>;
   deleteDecisaoRpac(id: string): Promise<boolean>;
   
@@ -197,20 +197,20 @@ export interface IStorage {
   }>;
   
   // Passivo Mensal
-  getPassivoMensal(mes: string, ano: string): Promise<PassivoData | null>;
-  savePassivoMensal(mes: string, ano: string, dados: PassivoData): Promise<void>;
-  getAllPassivoMensalPeriodos(): Promise<Array<{ mes: string; ano: string }>>;
-  deletePassivoMensal(mes: string, ano: string): Promise<boolean>;
+  getPassivoMensal(tenantId: string, mes: string, ano: string): Promise<PassivoData | null>;
+  savePassivoMensal(tenantId: string, mes: string, ano: string, dados: PassivoData): Promise<void>;
+  getAllPassivoMensalPeriodos(tenantId: string): Promise<Array<{ mes: string; ano: string }>>;
+  deletePassivoMensal(tenantId: string, mes: string, ano: string): Promise<boolean>;
   
   // Casos Novos - Entrada & Saídas
-  getAllCasosNovos(): Promise<CasoNovo[]>;
+  getAllCasosNovos(tenantId: string): Promise<CasoNovo[]>;
   getCasoNovo(id: string): Promise<CasoNovo | undefined>;
-  createCasoNovo(caso: InsertCasoNovo): Promise<CasoNovo>;
-  createCasosNovosBatch(casos: InsertCasoNovo[]): Promise<CasoNovo[]>;
+  createCasoNovo(tenantId: string, caso: InsertCasoNovo): Promise<CasoNovo>;
+  createCasosNovosBatch(tenantId: string, casos: InsertCasoNovo[]): Promise<CasoNovo[]>;
   deleteCasoNovo(id: string): Promise<boolean>;
   deleteCasosNovosBatch(ids: string[]): Promise<boolean>;
-  deleteAllCasosNovos(): Promise<boolean>;
-  getCasosNovosStats(mesReferencia?: string): Promise<{
+  deleteAllCasosNovos(tenantId: string): Promise<boolean>;
+  getCasosNovosStats(tenantId: string, mesReferencia?: string): Promise<{
     total: number;
     mesAtual: number;
     mesAnterior: number;
@@ -222,14 +222,14 @@ export interface IStorage {
   }>;
   
   // Casos Encerrados - Entrada & Saídas
-  getAllCasosEncerrados(): Promise<CasoEncerrado[]>;
+  getAllCasosEncerrados(tenantId: string): Promise<CasoEncerrado[]>;
   getCasoEncerrado(id: string): Promise<CasoEncerrado | undefined>;
-  createCasoEncerrado(caso: InsertCasoEncerrado): Promise<CasoEncerrado>;
-  createCasosEncerradosBatch(casos: InsertCasoEncerrado[]): Promise<CasoEncerrado[]>;
+  createCasoEncerrado(tenantId: string, caso: InsertCasoEncerrado): Promise<CasoEncerrado>;
+  createCasosEncerradosBatch(tenantId: string, casos: InsertCasoEncerrado[]): Promise<CasoEncerrado[]>;
   deleteCasoEncerrado(id: string): Promise<boolean>;
   deleteCasosEncerradosBatch(ids: string[]): Promise<boolean>;
-  deleteAllCasosEncerrados(): Promise<boolean>;
-  getCasosEncerradosStats(mesReferencia?: string): Promise<{
+  deleteAllCasosEncerrados(tenantId: string): Promise<boolean>;
+  getCasosEncerradosStats(tenantId: string, mesReferencia?: string): Promise<{
     total: number;
     mesAtual: number;
     mesAnterior: number;
@@ -883,149 +883,14 @@ export class MemStorage implements IStorage {
     return eventos;
   }
 
+  // LEGACY: seedDemoData method commented out - requires tenantId after multi-tenant migration
+  // If needed in future, this method should accept a tenantId parameter
+  /*
   async seedDemoData(): Promise<void> {
-    console.log("Inserindo dados de demonstração...");
-
-    const trtData = [
-      { numero: "1", nome: "TRT da 1ª Região", uf: "RJ" },
-      { numero: "2", nome: "TRT da 2ª Região", uf: "SP" },
-      { numero: "3", nome: "TRT da 3ª Região", uf: "MG" },
-      { numero: "4", nome: "TRT da 4ª Região", uf: "RS" },
-      { numero: "5", nome: "TRT da 5ª Região", uf: "BA" },
-      { numero: "15", nome: "TRT da 15ª Região", uf: "SP" },
-    ];
-
-    const createdTRTs: TRT[] = [];
-    for (const t of trtData) {
-      const trt = await this.createTRT(t);
-      createdTRTs.push(trt);
-    }
-
-    const varaData = [
-      { nome: "1ª Vara do Trabalho", cidade: "Rio de Janeiro", trtId: createdTRTs[0].id },
-      { nome: "2ª Vara do Trabalho", cidade: "Rio de Janeiro", trtId: createdTRTs[0].id },
-      { nome: "3ª Vara do Trabalho", cidade: "Niterói", trtId: createdTRTs[0].id },
-      { nome: "1ª Vara do Trabalho", cidade: "São Paulo", trtId: createdTRTs[1].id },
-      { nome: "2ª Vara do Trabalho", cidade: "São Paulo", trtId: createdTRTs[1].id },
-      { nome: "5ª Vara do Trabalho", cidade: "Guarulhos", trtId: createdTRTs[1].id },
-      { nome: "1ª Vara do Trabalho", cidade: "Belo Horizonte", trtId: createdTRTs[2].id },
-      { nome: "3ª Vara do Trabalho", cidade: "Belo Horizonte", trtId: createdTRTs[2].id },
-      { nome: "1ª Vara do Trabalho", cidade: "Porto Alegre", trtId: createdTRTs[3].id },
-      { nome: "2ª Vara do Trabalho", cidade: "Caxias do Sul", trtId: createdTRTs[3].id },
-      { nome: "1ª Vara do Trabalho", cidade: "Salvador", trtId: createdTRTs[4].id },
-      { nome: "2ª Vara do Trabalho", cidade: "Salvador", trtId: createdTRTs[4].id },
-      { nome: "1ª Vara do Trabalho", cidade: "Campinas", trtId: createdTRTs[5].id },
-      { nome: "2ª Vara do Trabalho", cidade: "Ribeirão Preto", trtId: createdTRTs[5].id },
-    ];
-
-    const createdVaras: Vara[] = [];
-    for (const v of varaData) {
-      const vara = await this.createVara(v);
-      createdVaras.push(vara);
-    }
-
-    const juizData = [
-      { nome: "Dr. Carlos Alberto Mendes", varaId: createdVaras[0].id, tipo: "titular" as const },
-      { nome: "Dra. Maria Helena Souza", varaId: createdVaras[0].id, tipo: "substituto" as const },
-      { nome: "Dr. João Pedro Oliveira", varaId: createdVaras[1].id, tipo: "titular" as const },
-      { nome: "Dra. Ana Beatriz Costa", varaId: createdVaras[2].id, tipo: "titular" as const },
-      { nome: "Dr. Roberto Silva Santos", varaId: createdVaras[3].id, tipo: "titular" as const },
-      { nome: "Dra. Fernanda Lima Pereira", varaId: createdVaras[3].id, tipo: "substituto" as const },
-      { nome: "Dr. Marcos Antônio Ribeiro", varaId: createdVaras[4].id, tipo: "titular" as const },
-      { nome: "Dra. Claudia Rodrigues", varaId: createdVaras[5].id, tipo: "titular" as const },
-      { nome: "Dr. Ricardo Ferreira Alves", varaId: createdVaras[6].id, tipo: "titular" as const },
-      { nome: "Dra. Patricia Gomes Dias", varaId: createdVaras[7].id, tipo: "titular" as const },
-      { nome: "Dr. Eduardo Martins Costa", varaId: createdVaras[8].id, tipo: "titular" as const },
-      { nome: "Dra. Luciana Barbosa", varaId: createdVaras[9].id, tipo: "titular" as const },
-      { nome: "Dr. Thiago Nascimento", varaId: createdVaras[10].id, tipo: "titular" as const },
-      { nome: "Dra. Camila Andrade", varaId: createdVaras[11].id, tipo: "substituto" as const },
-      { nome: "Dr. Felipe Moreira", varaId: createdVaras[12].id, tipo: "titular" as const },
-      { nome: "Dra. Juliana Carvalho", varaId: createdVaras[13].id, tipo: "titular" as const },
-    ];
-
-    const createdJuizes: Juiz[] = [];
-    for (const j of juizData) {
-      const juiz = await this.createJuiz(j);
-      createdJuizes.push(juiz);
-    }
-
-    const resultados: DecisionResult[] = ["favoravel", "desfavoravel", "parcial"];
-    const partes = ["V.tal", "OI", "Serede", "Sprink", "Empreiteira ABC", "Telecom XYZ"];
-    
-    const generateProcessNumber = (index: number, year: number) => {
-      const seq = String(index).padStart(7, '0');
-      const dig = String(Math.floor(Math.random() * 100)).padStart(2, '0');
-      const vara = String(Math.floor(Math.random() * 50) + 1).padStart(4, '0');
-      const trt = String(Math.floor(Math.random() * 24) + 1).padStart(2, '0');
-      return `${seq}-${dig}.${year}.5.${trt}.${vara}`;
-    };
-
-    const julgamentoPatterns: { juizIndex: number; favoraveis: number; desfavoraveis: number; parciais: number }[] = [
-      { juizIndex: 0, favoraveis: 8, desfavoraveis: 2, parciais: 2 },
-      { juizIndex: 1, favoraveis: 5, desfavoraveis: 4, parciais: 3 },
-      { juizIndex: 2, favoraveis: 3, desfavoraveis: 7, parciais: 2 },
-      { juizIndex: 3, favoraveis: 6, desfavoraveis: 2, parciais: 4 },
-      { juizIndex: 4, favoraveis: 9, desfavoraveis: 1, parciais: 2 },
-      { juizIndex: 5, favoraveis: 4, desfavoraveis: 5, parciais: 3 },
-      { juizIndex: 6, favoraveis: 2, desfavoraveis: 8, parciais: 2 },
-      { juizIndex: 7, favoraveis: 7, desfavoraveis: 3, parciais: 2 },
-      { juizIndex: 8, favoraveis: 5, desfavoraveis: 5, parciais: 2 },
-      { juizIndex: 9, favoraveis: 10, desfavoraveis: 1, parciais: 1 },
-      { juizIndex: 10, favoraveis: 3, desfavoraveis: 6, parciais: 3 },
-      { juizIndex: 11, favoraveis: 6, desfavoraveis: 4, parciais: 2 },
-      { juizIndex: 12, favoraveis: 8, desfavoraveis: 2, parciais: 4 },
-      { juizIndex: 13, favoraveis: 4, desfavoraveis: 6, parciais: 2 },
-      { juizIndex: 14, favoraveis: 7, desfavoraveis: 2, parciais: 3 },
-      { juizIndex: 15, favoraveis: 5, desfavoraveis: 3, parciais: 4 },
-    ];
-
-    let processIndex = 1;
-    for (const pattern of julgamentoPatterns) {
-      const juiz = createdJuizes[pattern.juizIndex];
-      if (!juiz) continue;
-
-      for (let i = 0; i < pattern.favoraveis; i++) {
-        const year = 2022 + Math.floor(Math.random() * 3);
-        const month = Math.floor(Math.random() * 12);
-        const day = Math.floor(Math.random() * 28) + 1;
-        await this.createJulgamento({
-          juizId: juiz.id,
-          numeroProcesso: generateProcessNumber(processIndex++, year),
-          resultado: "favoravel",
-          dataJulgamento: new Date(year, month, day),
-          parte: partes[Math.floor(Math.random() * partes.length)],
-        });
-      }
-
-      for (let i = 0; i < pattern.desfavoraveis; i++) {
-        const year = 2022 + Math.floor(Math.random() * 3);
-        const month = Math.floor(Math.random() * 12);
-        const day = Math.floor(Math.random() * 28) + 1;
-        await this.createJulgamento({
-          juizId: juiz.id,
-          numeroProcesso: generateProcessNumber(processIndex++, year),
-          resultado: "desfavoravel",
-          dataJulgamento: new Date(year, month, day),
-          parte: partes[Math.floor(Math.random() * partes.length)],
-        });
-      }
-
-      for (let i = 0; i < pattern.parciais; i++) {
-        const year = 2022 + Math.floor(Math.random() * 3);
-        const month = Math.floor(Math.random() * 12);
-        const day = Math.floor(Math.random() * 28) + 1;
-        await this.createJulgamento({
-          juizId: juiz.id,
-          numeroProcesso: generateProcessNumber(processIndex++, year),
-          resultado: "parcial",
-          dataJulgamento: new Date(year, month, day),
-          parte: partes[Math.floor(Math.random() * partes.length)],
-        });
-      }
-    }
-
-    console.log(`Dados de demonstração inseridos: ${createdTRTs.length} TRTs, ${createdVaras.length} Varas, ${createdJuizes.length} Juízes, ${processIndex - 1} Julgamentos`);
+    // ... legacy seeding code removed for multi-tenant compatibility
+    console.log("seedDemoData is disabled - use admin import functionality instead");
   }
+  */
 
   // Brainstorm methods
   async getBrainstormStats(): Promise<BrainstormStats> {
@@ -1162,218 +1027,42 @@ export class MemStorage implements IStorage {
     return true;
   }
 
+  // LEGACY: loadBrainstormFromExcel method commented out - requires tenantId after multi-tenant migration
+  // If needed in future, this method should accept a tenantId parameter
+  /*
   async loadBrainstormFromExcel(): Promise<void> {
-    const XLSX = await import('xlsx');
-    const fs = await import('fs');
-    const path = await import('path');
-    
-    const excelPath = path.join(process.cwd(), 'attached_assets', 'planilha_brainstorm_1765139329599.xlsx');
-    
-    if (!fs.existsSync(excelPath)) {
-      console.log('Planilha Brainstorm não encontrada');
-      return;
-    }
-
-    const stats = await this.getBrainstormStats();
-    const totalExisting = stats.distribuidos + stats.encerrados + stats.sentencasMerito + stats.acordaosMerito;
-    
-    if (totalExisting > 0) {
-      console.log('Dados Brainstorm já carregados:', totalExisting, 'registros');
-      return;
-    }
-
-    console.log('Carregando dados Brainstorm do Excel...');
-    const workbook = XLSX.default.readFile(excelPath);
-
-    const loadSheet = async (sheetName: string, insertFn: (data: any[]) => Promise<any>) => {
-      const sheet = workbook.Sheets[sheetName];
-      if (!sheet) return 0;
-      
-      const data = XLSX.default.utils.sheet_to_json(sheet, { header: 1 }) as any[][];
-      if (data.length <= 1) return 0;
-      
-      const headers = data[0] as string[];
-      const rows = data.slice(1).filter(row => row.length > 0 && row[0]);
-      
-      return { headers, rows };
-    };
-
-    const distribuidosData = await loadSheet('DISTRIBUÍDOS', async () => {});
-    if (distribuidosData && distribuidosData.rows.length > 0) {
-      const items = distribuidosData.rows.map(row => ({
-        numeroProcesso: String(row[0] || ''),
-        reclamada: String(row[1] || ''),
-        tipoEmpregado: String(row[2] || ''),
-        empregadora: String(row[3] || ''),
-      }));
-      await this.createDistribuidosBatch(items);
-      console.log(`  DISTRIBUÍDOS: ${items.length} registros`);
-    }
-
-    const encerradosData = await loadSheet('ENCERRADOS', async () => {});
-    if (encerradosData && encerradosData.rows.length > 0) {
-      const items = encerradosData.rows.map(row => ({
-        numeroProcesso: String(row[0] || ''),
-        reclamada: String(row[1] || ''),
-        tipoEmpregado: String(row[2] || ''),
-        empregadora: String(row[3] || ''),
-      }));
-      await this.createEncerradosBatch(items);
-      console.log(`  ENCERRADOS: ${items.length} registros`);
-    }
-
-    const sentencasData = await loadSheet('SENTENÇA DE MÉRITO', async () => {});
-    if (sentencasData && sentencasData.rows.length > 0) {
-      const items = sentencasData.rows.map(row => ({
-        numeroProcesso: String(row[0] || ''),
-        empresa: String(row[1] || ''),
-        tipoDecisao: String(row[2] || ''),
-        favorabilidade: String(row[3] || ''),
-        empregadora: String(row[4] || ''),
-      }));
-      await this.createSentencasMeritoBatch(items);
-      console.log(`  SENTENÇA DE MÉRITO: ${items.length} registros`);
-    }
-
-    const acordaosData = await loadSheet('ACÓRDÃO DE MÉRITO', async () => {});
-    if (acordaosData && acordaosData.rows.length > 0) {
-      const items = acordaosData.rows.map(row => ({
-        numeroProcesso: String(row[0] || ''),
-        empresa: String(row[1] || ''),
-        tipoDecisao: String(row[2] || ''),
-        sinteseDecisao: String(row[3] || ''),
-        empregadora: String(row[4] || ''),
-      }));
-      await this.createAcordaosMeritoBatch(items);
-      console.log(`  ACÓRDÃO DE MÉRITO: ${items.length} registros`);
-    }
-
-    console.log('Dados Brainstorm carregados com sucesso!');
+    // ... legacy seeding code removed for multi-tenant compatibility
+    console.log("loadBrainstormFromExcel is disabled - use admin import functionality instead");
   }
+  */
 
+  // LEGACY: loadMapaDecisoesFromExcel method commented out - requires tenantId after multi-tenant migration
+  // If needed in future, this method should accept a tenantId parameter
+  /*
   async loadMapaDecisoesFromExcel(): Promise<void> {
-    const XLSX = await import('xlsx');
-    const fs = await import('fs');
-    const path = await import('path');
-    
-    const excelPath = path.join(process.cwd(), 'attached_assets', 'MAPA_-_TRTs_-_TURMAS_-_DESEMBARGADORES_1766076928183.xlsx');
-    
-    if (!fs.existsSync(excelPath)) {
-      console.log('Planilha de Mapa de Decisões não encontrada');
-      return;
-    }
-
-    const existingTurmas = await this.getAllTurmas();
-    if (existingTurmas.length > 0) {
-      console.log('Dados Mapa de Decisões já carregados:', existingTurmas.length, 'turmas');
-      await this.seedFictionalDecisions();
-      return;
-    }
-
-    console.log('Carregando dados Mapa de Decisões do Excel...');
-    const workbook = XLSX.default.readFile(excelPath);
-
-    let totalTurmas = 0;
-    let totalDesembargadores = 0;
-
-    for (const sheetName of workbook.SheetNames) {
-      const sheet = workbook.Sheets[sheetName];
-      if (!sheet) continue;
-      
-      const data = XLSX.default.utils.sheet_to_json(sheet, { header: 1 }) as any[][];
-      if (data.length <= 1) continue;
-      
-      const trtNome = sheetName.trim();
-      
-      for (let i = 1; i < data.length; i++) {
-        const row = data[i];
-        if (!row || !row[0]) continue;
-        
-        const turmaNome = String(row[0]).trim();
-        const desembargadoresText = String(row[1] || '');
-        
-        if (!turmaNome) continue;
-        
-        const turma = await this.createTurma({
-          nome: `${turmaNome} Turma`,
-          regiao: trtNome,
-        });
-        totalTurmas++;
-        
-        const nomesSeparados = desembargadoresText
-          .split(/[\r\n,]+/)
-          .map(n => n.trim())
-          .filter(n => n.length > 2);
-        
-        for (const nomeDesembargador of nomesSeparados) {
-          const nomeClean = nomeDesembargador
-            .replace(/\(.*?\)/g, '')
-            .replace(/^\d+\.\s*/, '')
-            .trim();
-          
-          if (nomeClean.length < 3) continue;
-          
-          await this.createDesembargador({
-            turmaId: turma.id,
-            nome: nomeClean,
-            voto: 'EM ANÁLISE',
-          });
-          totalDesembargadores++;
-        }
-      }
-      
-      console.log(`  ${trtNome}: carregado`);
-    }
-
-    console.log(`Dados Mapa de Decisões carregados: ${totalTurmas} turmas, ${totalDesembargadores} desembargadores`);
-    
-    await this.seedFictionalDecisions();
+    // ... legacy seeding code removed for multi-tenant compatibility
+    console.log("loadMapaDecisoesFromExcel is disabled - use admin import functionality instead");
   }
+  */
 
+  // LEGACY: seedFictionalDecisions method commented out - requires tenantId after multi-tenant migration
+  // If needed in future, this method should accept a tenantId parameter
+  /*
   async seedFictionalDecisions(): Promise<void> {
-    const existingDecisoes = await db.select().from(decisoesRpac).limit(1);
-    if (existingDecisoes.length > 0) {
-      console.log('Decisões já existem, pulando seed');
-      return;
-    }
-
-    console.log('Gerando decisões fictícias para teste da timeline...');
-    
-    const allDesembargadores = await this.getAllDesembargadores();
-    const resultados = ['FAVORÁVEL', 'DESFAVORÁVEL'];
-    let totalDecisoes = 0;
-
-    for (const desembargador of allDesembargadores) {
-      const numDecisoes = Math.floor(Math.random() * 5) + 2;
-      
-      for (let i = 0; i < numDecisoes; i++) {
-        const daysAgo = Math.floor(Math.random() * 365);
-        const dataDecisao = new Date();
-        dataDecisao.setDate(dataDecisao.getDate() - daysAgo);
-        
-        const resultado = resultados[Math.floor(Math.random() * resultados.length)];
-        const numeroProcesso = `${String(Math.floor(Math.random() * 9000000) + 1000000).padStart(7, '0')}-${String(Math.floor(Math.random() * 90) + 10)}.${2024 - Math.floor(daysAgo / 365)}.5.${String(Math.floor(Math.random() * 24) + 1).padStart(2, '0')}.${String(Math.floor(Math.random() * 9000) + 1000)}`;
-        
-        await this.createDecisaoRpac({
-          desembargadorId: desembargador.id,
-          numeroProcesso,
-          resultado,
-          dataDecisao,
-        });
-        totalDecisoes++;
-      }
-    }
-
-    console.log(`Geradas ${totalDecisoes} decisões fictícias para ${allDesembargadores.length} desembargadores`);
+    // ... legacy seeding code removed for multi-tenant compatibility
+    console.log("seedFictionalDecisions is disabled - use admin import functionality instead");
   }
+  */
 
   // Mapas Estratégicos - Turmas
-  async getAllTurmas(instancia?: string): Promise<Turma[]> {
+  async getAllTurmas(tenantId: string, instancia?: string): Promise<Turma[]> {
     let result;
     if (instancia && instancia !== 'todas') {
-      result = await db.select().from(turmas).where(eq(turmas.instancia, instancia));
+      result = await db.select().from(turmas).where(
+        and(eq(turmas.tenantId, tenantId), eq(turmas.instancia, instancia))
+      );
     } else {
-      result = await db.select().from(turmas);
+      result = await db.select().from(turmas).where(eq(turmas.tenantId, tenantId));
     }
     return this.sortTurmasNumerically(result);
   }
@@ -1383,8 +1072,8 @@ export class MemStorage implements IStorage {
     return turma;
   }
 
-  async createTurma(turma: InsertTurma): Promise<Turma> {
-    const [created] = await db.insert(turmas).values(turma).returning();
+  async createTurma(tenantId: string, turma: InsertTurma): Promise<Turma> {
+    const [created] = await db.insert(turmas).values({ ...turma, tenantId }).returning();
     return created;
   }
 
@@ -1399,8 +1088,8 @@ export class MemStorage implements IStorage {
   }
 
   // Mapas Estratégicos - Desembargadores
-  async getAllDesembargadores(): Promise<Desembargador[]> {
-    return await db.select().from(desembargadores).orderBy(desembargadores.nome);
+  async getAllDesembargadores(tenantId: string): Promise<Desembargador[]> {
+    return await db.select().from(desembargadores).where(eq(desembargadores.tenantId, tenantId)).orderBy(desembargadores.nome);
   }
 
   async getDesembargadoresByTurma(turmaId: string): Promise<Desembargador[]> {
@@ -1412,8 +1101,8 @@ export class MemStorage implements IStorage {
     return desembargador;
   }
 
-  async createDesembargador(desembargador: InsertDesembargador): Promise<Desembargador> {
-    const [created] = await db.insert(desembargadores).values(desembargador).returning();
+  async createDesembargador(tenantId: string, desembargador: InsertDesembargador): Promise<Desembargador> {
+    const [created] = await db.insert(desembargadores).values({ ...desembargador, tenantId }).returning();
     return created;
   }
 
@@ -1448,8 +1137,8 @@ export class MemStorage implements IStorage {
     };
   }
 
-  async getMapaDecisoesGeral(): Promise<MapaDecisoes> {
-    const turmasList = await this.getAllTurmas();
+  async getMapaDecisoesGeral(tenantId: string): Promise<MapaDecisoes> {
+    const turmasList = await this.getAllTurmas(tenantId);
     const turmasComDesembargadores: TurmaComDesembargadores[] = [];
     let todosDesembargadores: Desembargador[] = [];
 
@@ -1487,8 +1176,8 @@ export class MemStorage implements IStorage {
   }
 
   // Decisões RPAC CRUD
-  async getAllDecisoesRpac(): Promise<DecisaoRpac[]> {
-    return await db.select().from(decisoesRpac).orderBy(decisoesRpac.createdAt);
+  async getAllDecisoesRpac(tenantId: string): Promise<DecisaoRpac[]> {
+    return await db.select().from(decisoesRpac).where(eq(decisoesRpac.tenantId, tenantId)).orderBy(decisoesRpac.createdAt);
   }
 
   async getDecisoesRpacByDesembargador(desembargadorId: string): Promise<DecisaoRpac[]> {
@@ -1500,8 +1189,8 @@ export class MemStorage implements IStorage {
     return decisao;
   }
 
-  async createDecisaoRpac(decisao: InsertDecisaoRpac): Promise<DecisaoRpac> {
-    const [created] = await db.insert(decisoesRpac).values(decisao).returning();
+  async createDecisaoRpac(tenantId: string, decisao: InsertDecisaoRpac): Promise<DecisaoRpac> {
+    const [created] = await db.insert(decisoesRpac).values({ ...decisao, tenantId }).returning();
     return created;
   }
 
@@ -1875,7 +1564,7 @@ export class MemStorage implements IStorage {
   }
 
   // Analytics: Top 5 Turmas by favorability
-  async getTopTurmasFavorabilidade(limit: number = 5, dataInicio?: Date, dataFim?: Date, responsabilidadeFilter?: string, instancia: string = 'segunda'): Promise<Array<{
+  async getTopTurmasFavorabilidade(tenantId: string, limit: number = 5, dataInicio?: Date, dataFim?: Date, responsabilidadeFilter?: string, instancia: string = 'segunda'): Promise<Array<{
     id: string;
     nome: string;
     trt: string;
@@ -1883,7 +1572,7 @@ export class MemStorage implements IStorage {
     favoraveis: number;
     percentualFavoravel: number;
   }>> {
-    const turmasList = await this.getAllTurmas();
+    const turmasList = await this.getAllTurmas(tenantId);
     const turmasComStats = [];
 
     for (const turma of turmasList) {
@@ -1922,14 +1611,14 @@ export class MemStorage implements IStorage {
   }
 
   // Analytics: Top 5 Regiões (TRTs) by favorability
-  async getTopRegioes(limit: number = 5, dataInicio?: Date, dataFim?: Date, responsabilidadeFilter?: string, instancia: string = 'segunda'): Promise<Array<{
+  async getTopRegioes(tenantId: string, limit: number = 5, dataInicio?: Date, dataFim?: Date, responsabilidadeFilter?: string, instancia: string = 'segunda'): Promise<Array<{
     nome: string;
     totalDecisoes: number;
     favoraveis: number;
     desfavoraveis: number;
     percentualFavoravel: number;
   }>> {
-    const turmasList = await this.getAllTurmas();
+    const turmasList = await this.getAllTurmas(tenantId);
     const trtMap = new Map<string, { totalDecisoes: number; favoraveis: number; desfavoraveis: number }>();
 
     for (const turma of turmasList) {
@@ -1975,7 +1664,7 @@ export class MemStorage implements IStorage {
   }
 
   // Analytics: Top 5 Desembargadores by favorability
-  async getTopDesembargadores(limit: number = 5, dataInicio?: Date, dataFim?: Date, responsabilidadeFilter?: string, instancia: string = 'segunda'): Promise<Array<{
+  async getTopDesembargadores(tenantId: string, limit: number = 5, dataInicio?: Date, dataFim?: Date, responsabilidadeFilter?: string, instancia: string = 'segunda'): Promise<Array<{
     id: string;
     nome: string;
     turma: string;
@@ -1985,7 +1674,7 @@ export class MemStorage implements IStorage {
     desfavoraveis: number;
     percentualFavoravel: number;
   }>> {
-    const turmasList = await this.getAllTurmas();
+    const turmasList = await this.getAllTurmas(tenantId);
     const desembargadoresStats = [];
 
     for (const turma of turmasList) {
@@ -2023,7 +1712,7 @@ export class MemStorage implements IStorage {
   }
 
   // Analytics: General favorability statistics
-  async getEstatisticasGerais(dataInicio?: Date, dataFim?: Date, responsabilidadeFilter?: string, instancia: string = 'segunda'): Promise<{
+  async getEstatisticasGerais(tenantId: string, dataInicio?: Date, dataFim?: Date, responsabilidadeFilter?: string, instancia: string = 'segunda'): Promise<{
     totalTRTs: number;
     totalTurmas: number;
     totalDesembargadores: number;
@@ -2038,7 +1727,7 @@ export class MemStorage implements IStorage {
     solidarias: number;
     subsidiarias: number;
   }> {
-    const allTurmas = await this.getAllTurmas();
+    const allTurmas = await this.getAllTurmas(tenantId);
     // Filter turmas by instancia
     const turmasList = allTurmas.filter(t => t.instancia === instancia);
     const trtSet = new Set(turmasList.map(t => t.regiao || 'Sem Região'));
@@ -2109,7 +1798,7 @@ export class MemStorage implements IStorage {
   }
 
   // Analytics: Timeline data by month
-  async getTimelineData(dataInicio?: Date, dataFim?: Date, responsabilidadeFilter?: string, instancia: string = 'segunda'): Promise<Array<{
+  async getTimelineData(tenantId: string, dataInicio?: Date, dataFim?: Date, responsabilidadeFilter?: string, instancia: string = 'segunda'): Promise<Array<{
     mes: string;
     ano: number;
     totalDecisoes: number;
@@ -2119,7 +1808,7 @@ export class MemStorage implements IStorage {
     percentualDesfavoravel: number;
   }>> {
     // Get all turmas and filter by instancia to get desembargador IDs
-    const allTurmas = await this.getAllTurmas();
+    const allTurmas = await this.getAllTurmas(tenantId);
     const turmasFiltered = allTurmas.filter(t => t.instancia === instancia);
     const desembargadorIds = new Set<string>();
     
@@ -2130,7 +1819,7 @@ export class MemStorage implements IStorage {
       }
     }
     
-    const allDecisoes = await this.getAllDecisoesRpac();
+    const allDecisoes = await this.getAllDecisoesRpac(tenantId);
     const monthlyData = new Map<string, { total: number; favoraveis: number; desfavoraveis: number }>();
 
     for (const decisao of allDecisoes) {
@@ -2191,7 +1880,7 @@ export class MemStorage implements IStorage {
   }
 
   // Analytics: Statistics by empresa
-  async getEstatisticasPorEmpresa(dataInicio?: Date, dataFim?: Date, responsabilidadeFilter?: string, instancia: string = 'segunda'): Promise<Array<{
+  async getEstatisticasPorEmpresa(tenantId: string, dataInicio?: Date, dataFim?: Date, responsabilidadeFilter?: string, instancia: string = 'segunda'): Promise<Array<{
     empresa: string;
     totalDecisoes: number;
     favoraveis: number;
@@ -2201,7 +1890,7 @@ export class MemStorage implements IStorage {
     percentualDesfavoravel: number;
   }>> {
     // Get all turmas and filter by instancia to get desembargador IDs
-    const allTurmas = await this.getAllTurmas();
+    const allTurmas = await this.getAllTurmas(tenantId);
     const turmasFiltered = allTurmas.filter(t => t.instancia === instancia);
     const desembargadorIds = new Set<string>();
     
@@ -2212,7 +1901,7 @@ export class MemStorage implements IStorage {
       }
     }
     
-    const allDecisoes = await this.getAllDecisoesRpac();
+    const allDecisoes = await this.getAllDecisoesRpac(tenantId);
     const empresaMap = new Map<string, { total: number; favoraveis: number; desfavoraveis: number; emAnalise: number }>();
 
     for (const decisao of allDecisoes) {
@@ -2269,9 +1958,10 @@ export class MemStorage implements IStorage {
     return result.sort((a, b) => b.totalDecisoes - a.totalDecisoes);
   }
 
-  async getPassivoMensal(mes: string, ano: string): Promise<PassivoData | null> {
+  async getPassivoMensal(tenantId: string, mes: string, ano: string): Promise<PassivoData | null> {
     const result = await db.select().from(passivoMensal).where(
       and(
+        eq(passivoMensal.tenantId, tenantId),
         eq(passivoMensal.mes, mes),
         eq(passivoMensal.ano, ano)
       )
@@ -2281,9 +1971,10 @@ export class MemStorage implements IStorage {
     return result[0].dados as PassivoData;
   }
 
-  async savePassivoMensal(mes: string, ano: string, dados: PassivoData): Promise<void> {
+  async savePassivoMensal(tenantId: string, mes: string, ano: string, dados: PassivoData): Promise<void> {
     const existing = await db.select().from(passivoMensal).where(
       and(
+        eq(passivoMensal.tenantId, tenantId),
         eq(passivoMensal.mes, mes),
         eq(passivoMensal.ano, ano)
       )
@@ -2294,12 +1985,14 @@ export class MemStorage implements IStorage {
         .set({ dados, updatedAt: new Date() })
         .where(
           and(
+            eq(passivoMensal.tenantId, tenantId),
             eq(passivoMensal.mes, mes),
             eq(passivoMensal.ano, ano)
           )
         );
     } else {
       await db.insert(passivoMensal).values({
+        tenantId,
         mes,
         ano,
         dados
@@ -2307,18 +2000,19 @@ export class MemStorage implements IStorage {
     }
   }
 
-  async getAllPassivoMensalPeriodos(): Promise<Array<{ mes: string; ano: string }>> {
+  async getAllPassivoMensalPeriodos(tenantId: string): Promise<Array<{ mes: string; ano: string }>> {
     const results = await db.select({
       mes: passivoMensal.mes,
       ano: passivoMensal.ano
-    }).from(passivoMensal).orderBy(passivoMensal.ano, passivoMensal.mes);
+    }).from(passivoMensal).where(eq(passivoMensal.tenantId, tenantId)).orderBy(passivoMensal.ano, passivoMensal.mes);
     
     return results;
   }
 
-  async deletePassivoMensal(mes: string, ano: string): Promise<boolean> {
+  async deletePassivoMensal(tenantId: string, mes: string, ano: string): Promise<boolean> {
     const result = await db.delete(passivoMensal).where(
       and(
+        eq(passivoMensal.tenantId, tenantId),
         eq(passivoMensal.mes, mes),
         eq(passivoMensal.ano, ano)
       )
@@ -2327,8 +2021,8 @@ export class MemStorage implements IStorage {
   }
 
   // Casos Novos - Entrada & Saídas
-  async getAllCasosNovos(): Promise<CasoNovo[]> {
-    return await db.select().from(casosNovos).orderBy(casosNovos.dataDistribuicao);
+  async getAllCasosNovos(tenantId: string): Promise<CasoNovo[]> {
+    return await db.select().from(casosNovos).where(eq(casosNovos.tenantId, tenantId)).orderBy(casosNovos.dataDistribuicao);
   }
 
   async getCasoNovo(id: string): Promise<CasoNovo | undefined> {
@@ -2336,20 +2030,22 @@ export class MemStorage implements IStorage {
     return caso;
   }
 
-  async createCasoNovo(caso: InsertCasoNovo): Promise<CasoNovo> {
+  async createCasoNovo(tenantId: string, caso: InsertCasoNovo): Promise<CasoNovo> {
     const dataDistribuicao = caso.dataDistribuicao ? new Date(caso.dataDistribuicao) : undefined;
     const [created] = await db.insert(casosNovos).values({
       ...caso,
+      tenantId,
       dataDistribuicao: dataDistribuicao
     }).returning();
     return created;
   }
 
-  async createCasosNovosBatch(casos: InsertCasoNovo[]): Promise<CasoNovo[]> {
+  async createCasosNovosBatch(tenantId: string, casos: InsertCasoNovo[]): Promise<CasoNovo[]> {
     if (casos.length === 0) return [];
     
     const casosWithDates = casos.map(c => ({
       ...c,
+      tenantId,
       dataDistribuicao: c.dataDistribuicao ? new Date(c.dataDistribuicao) : undefined
     }));
     
@@ -2368,12 +2064,12 @@ export class MemStorage implements IStorage {
     return true;
   }
 
-  async deleteAllCasosNovos(): Promise<boolean> {
-    await db.delete(casosNovos);
+  async deleteAllCasosNovos(tenantId: string): Promise<boolean> {
+    await db.delete(casosNovos).where(eq(casosNovos.tenantId, tenantId));
     return true;
   }
 
-  async getCasosNovosStats(mesReferencia?: string): Promise<{
+  async getCasosNovosStats(tenantId: string, mesReferencia?: string): Promise<{
     total: number;
     mesAtual: number;
     mesAnterior: number;
@@ -2383,7 +2079,7 @@ export class MemStorage implements IStorage {
     porMes: Array<{ mes: string; ano: string; quantidade: number }>;
     valorTotalContingencia: number;
   }> {
-    const allCasos = await this.getAllCasosNovos();
+    const allCasos = await this.getAllCasosNovos(tenantId);
     const total = allCasos.length;
 
     // Parse mesReferencia (format: YYYY-MM) or default to current month
@@ -2491,8 +2187,8 @@ export class MemStorage implements IStorage {
   }
 
   // Casos Encerrados - Entrada & Saídas
-  async getAllCasosEncerrados(): Promise<CasoEncerrado[]> {
-    return await db.select().from(casosEncerrados).orderBy(casosEncerrados.dataEncerramento);
+  async getAllCasosEncerrados(tenantId: string): Promise<CasoEncerrado[]> {
+    return await db.select().from(casosEncerrados).where(eq(casosEncerrados.tenantId, tenantId)).orderBy(casosEncerrados.dataEncerramento);
   }
 
   async getCasoEncerrado(id: string): Promise<CasoEncerrado | undefined> {
@@ -2500,20 +2196,22 @@ export class MemStorage implements IStorage {
     return caso;
   }
 
-  async createCasoEncerrado(caso: InsertCasoEncerrado): Promise<CasoEncerrado> {
+  async createCasoEncerrado(tenantId: string, caso: InsertCasoEncerrado): Promise<CasoEncerrado> {
     const dataEncerramento = caso.dataEncerramento ? new Date(caso.dataEncerramento) : undefined;
     const [created] = await db.insert(casosEncerrados).values({
       ...caso,
+      tenantId,
       dataEncerramento: dataEncerramento
     }).returning();
     return created;
   }
 
-  async createCasosEncerradosBatch(casos: InsertCasoEncerrado[]): Promise<CasoEncerrado[]> {
+  async createCasosEncerradosBatch(tenantId: string, casos: InsertCasoEncerrado[]): Promise<CasoEncerrado[]> {
     if (casos.length === 0) return [];
     
     const casosWithDates = casos.map(c => ({
       ...c,
+      tenantId,
       dataEncerramento: c.dataEncerramento ? new Date(c.dataEncerramento) : undefined
     }));
     
@@ -2532,12 +2230,12 @@ export class MemStorage implements IStorage {
     return true;
   }
 
-  async deleteAllCasosEncerrados(): Promise<boolean> {
-    await db.delete(casosEncerrados);
+  async deleteAllCasosEncerrados(tenantId: string): Promise<boolean> {
+    await db.delete(casosEncerrados).where(eq(casosEncerrados.tenantId, tenantId));
     return true;
   }
 
-  async getCasosEncerradosStats(mesReferencia?: string): Promise<{
+  async getCasosEncerradosStats(tenantId: string, mesReferencia?: string): Promise<{
     total: number;
     mesAtual: number;
     mesAnterior: number;
@@ -2547,7 +2245,7 @@ export class MemStorage implements IStorage {
     porMes: Array<{ mes: string; ano: string; quantidade: number }>;
     valorTotalContingencia: number;
   }> {
-    const allCasos = await this.getAllCasosEncerrados();
+    const allCasos = await this.getAllCasosEncerrados(tenantId);
     const total = allCasos.length;
 
     // Parse mesReferencia (format: YYYY-MM) or default to current month
