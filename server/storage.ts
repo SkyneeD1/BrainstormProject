@@ -244,23 +244,17 @@ export class MemStorage implements IStorage {
   private initialized = false;
 
   constructor() {
-    this.initializeFromExcel();
-  }
-
-  private initializeFromExcel(): void {
-    const excelPath = "attached_assets/planilha brainstorm_1764343188095.xlsx";
-    this.rawData = parseExcelFile(excelPath);
-    
-    if (this.rawData.length === 0) {
-      console.warn("Nenhum dado carregado do Excel, usando fallback");
-    }
+    // Don't auto-load data from Excel - system should start clean
+    // Data will be imported by admin through the import functionality
   }
 
   async initializeBrainstorm(): Promise<void> {
     if (this.initialized) return;
     this.initialized = true;
-    await this.loadBrainstormFromExcel();
-    await this.loadMapaDecisoesFromExcel();
+    // Don't auto-load data - system should start clean
+    // await this.loadBrainstormFromExcel();
+    // await this.loadMapaDecisoesFromExcel();
+    console.log('Sistema iniciado sem dados pré-carregados');
   }
 
   async setRawData(data: ProcessoRaw[]): Promise<void> {
