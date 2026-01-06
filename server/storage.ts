@@ -75,6 +75,8 @@ export interface IStorage {
   createUser(user: InsertUser): Promise<User>;
   updateUserRole(id: string, role: string): Promise<User | undefined>;
   updateUserPassword(id: string, passwordHash: string): Promise<User | undefined>;
+  updateUser(id: string, data: { role?: string; modulePermissions?: string[] }): Promise<User | undefined>;
+  deleteUser(id: string): Promise<boolean>;
   getAllUsers(): Promise<User[]>;
   getUsersByTenant(tenantId: string): Promise<User[]>;
   
@@ -303,6 +305,27 @@ export class MemStorage implements IStorage {
       .where(eq(users.id, id))
       .returning();
     return user;
+  }
+
+  async updateUser(id: string, data: { role?: string; modulePermissions?: string[] }): Promise<User | undefined> {
+    const updateData: Record<string, unknown> = { updatedAt: new Date() };
+    if (data.role !== undefined) {
+      updateData.role = data.role;
+    }
+    if (data.modulePermissions !== undefined) {
+      updateData.modulePermissions = data.modulePermissions;
+    }
+    const [user] = await db
+      .update(users)
+      .set(updateData)
+      .where(eq(users.id, id))
+      .returning();
+    return user;
+  }
+
+  async deleteUser(id: string): Promise<boolean> {
+    const result = await db.delete(users).where(eq(users.id, id));
+    return true;
   }
 
   async getAllUsers(): Promise<User[]> {
