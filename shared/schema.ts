@@ -147,6 +147,16 @@ export type PassivoData = z.infer<typeof passivoDataSchema>;
 export const roleEnum = z.enum(["admin", "viewer"]);
 export type Role = z.infer<typeof roleEnum>;
 
+export const AVAILABLE_MODULES = [
+  { id: "passivo", name: "Passivo Sob Gestão" },
+  { id: "entradas", name: "Entrada & Saídas - Entradas" },
+  { id: "encerrados", name: "Entrada & Saídas - Encerrados" },
+  { id: "mapas", name: "Mapas Estratégicos" },
+] as const;
+
+export const moduleIdEnum = z.enum(["passivo", "entradas", "encerrados", "mapas"]);
+export type ModuleId = z.infer<typeof moduleIdEnum>;
+
 export const sessions = pgTable(
   "sessions",
   {
@@ -165,6 +175,7 @@ export const users = pgTable("users", {
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   role: varchar("role").default("viewer").notNull(),
+  modulePermissions: varchar("module_permissions").array().default(sql`ARRAY[]::varchar[]`),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
@@ -188,6 +199,7 @@ export const sessionUserSchema = z.object({
   id: z.string(),
   username: z.string(),
   role: z.string(),
+  modulePermissions: z.array(z.string()).default([]),
   tenantId: z.string(),
   tenantCode: z.string(),
   tenantName: z.string(),
@@ -203,10 +215,18 @@ export const createUserSchema = z.object({
   firstName: z.string().optional(),
   lastName: z.string().optional(),
   role: roleEnum.default("viewer"),
+  modulePermissions: z.array(z.string()).default([]),
   tenantId: z.string().optional(),
 });
 
 export type CreateUserInput = z.infer<typeof createUserSchema>;
+
+export const updateUserSchema = z.object({
+  role: roleEnum.optional(),
+  modulePermissions: z.array(z.string()).optional(),
+});
+
+export type UpdateUserInput = z.infer<typeof updateUserSchema>;
 
 export const updatePasswordSchema = z.object({
   newPassword: z.string().min(4, "Senha deve ter pelo menos 4 caracteres"),
