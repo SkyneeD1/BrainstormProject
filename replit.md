@@ -11,13 +11,16 @@ A Power BI-style litigation management dashboard with multi-tenant support for V
 - **Complete Data Isolation**: All data tables have tenantId columns, all queries filter by tenant
 - **Row-Level Security**: Storage layer enforces tenant scoping on every CRUD operation
 - **Session-Based Tenant Context**: User's tenantId stored in session, extracted by routes
+- **Multi-Tenant User Access**: Users can access multiple tenants via user_tenants many-to-many relationship
 
 ## Authentication & Authorization
 - PostgreSQL-backed sessions with bcrypt password hashing
-- Default admin credentials: username "admin", password "123456" (V.tal tenant)
+- Default admin credentials: username "admin", password "123456" (both V.tal and NIO access)
 - Role-based access: Admin (full CRUD) vs Viewer (read-only)
 - Module-level permissions: Admins can configure which modules each viewer can access
 - Server-side middleware enforces both role and module permissions
+- **Two-step login flow**: authenticate → select tenant (auto-login if user has only one tenant)
+- **Tenant switching**: Logged-in users with multiple tenants can switch via sidebar dropdown
 
 ## Current State
 - Module 1 (Passivo Sob Gestão) is fully implemented with:
@@ -106,6 +109,12 @@ A Power BI-style litigation management dashboard with multi-tenant support for V
   - Updated storage layer with tenant-scoped CRUD operations
   - All API routes now extract tenantId from session and pass to storage
   - In-memory Passivo data stored per tenant using Map structure
+- January 2026: Implemented multi-tenant user access
+  - Added user_tenants many-to-many relationship table
+  - Two-step login flow: authenticate → select tenant
+  - Tenant switching for logged-in users via sidebar dropdown
+  - New users automatically added to all tenants
+  - React Query cache handling uses setQueryData for seamless tenant switching
 
 ## Running the Project
 ```bash
