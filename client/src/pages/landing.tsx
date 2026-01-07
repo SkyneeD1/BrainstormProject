@@ -200,15 +200,28 @@ export default function Landing() {
                   data-testid={`card-tenant-${tenant.code}`}
                 >
                   <CardHeader className="text-center pb-2">
-                    <div 
-                      className="w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center"
-                      style={{ backgroundColor: tenant.backgroundColor }}
-                    >
-                      <Building2 
-                        className="w-8 h-8" 
-                        style={{ color: tenant.primaryColor }}
-                      />
-                    </div>
+                    {tenant.logoUrl ? (
+                      <div 
+                        className="w-20 h-20 rounded-lg mx-auto mb-4 flex items-center justify-center p-3"
+                        style={{ backgroundColor: tenant.backgroundColor }}
+                      >
+                        <img 
+                          src={tenant.logoUrl} 
+                          alt={`${tenant.name} Logo`}
+                          className="max-w-full max-h-full object-contain"
+                        />
+                      </div>
+                    ) : (
+                      <div 
+                        className="w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center"
+                        style={{ backgroundColor: tenant.backgroundColor }}
+                      >
+                        <Building2 
+                          className="w-8 h-8" 
+                          style={{ color: tenant.primaryColor }}
+                        />
+                      </div>
+                    )}
                     <CardTitle className="text-2xl">{tenant.name}</CardTitle>
                   </CardHeader>
                   <CardContent className="text-center">
