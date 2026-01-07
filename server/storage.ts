@@ -82,8 +82,8 @@ export interface IStorage {
   
   getAllTRTs(tenantId: string): Promise<TRT[]>;
   getTRT(id: string, tenantId: string): Promise<TRT | undefined>;
-  createTRT(tenantId: string, trt: InsertTRT): Promise<TRT>;
-  updateTRT(id: string, data: Partial<InsertTRT>, tenantId: string): Promise<TRT | undefined>;
+  createTRT(tenantId: string, trt: Omit<InsertTRT, 'tenantId'>): Promise<TRT>;
+  updateTRT(id: string, data: Partial<Omit<InsertTRT, 'tenantId'>>, tenantId: string): Promise<TRT | undefined>;
   deleteTRT(id: string, tenantId: string): Promise<boolean>;
   
   getVarasByTRT(trtId: string, tenantId: string): Promise<Vara[]>;
@@ -111,8 +111,8 @@ export interface IStorage {
   getAllAudiencias(tenantId: string): Promise<Audiencia[]>;
   getAudienciasByVara(varaId: string, tenantId: string): Promise<Audiencia[]>;
   getAudiencia(id: string, tenantId: string): Promise<Audiencia | undefined>;
-  createAudiencia(tenantId: string, audiencia: InsertAudiencia): Promise<Audiencia>;
-  updateAudiencia(id: string, data: Partial<InsertAudiencia>, tenantId: string): Promise<Audiencia | undefined>;
+  createAudiencia(tenantId: string, audiencia: Omit<InsertAudiencia, 'tenantId'>): Promise<Audiencia>;
+  updateAudiencia(id: string, data: Partial<Omit<InsertAudiencia, 'tenantId'>>, tenantId: string): Promise<Audiencia | undefined>;
   deleteAudiencia(id: string, tenantId: string): Promise<boolean>;
   
   getEventosTimeline(tenantId: string, filters: {
@@ -126,29 +126,29 @@ export interface IStorage {
   getBrainstormStats(tenantId: string): Promise<BrainstormStats>;
   
   getAllDistribuidos(tenantId: string): Promise<Distribuido[]>;
-  createDistribuido(tenantId: string, data: InsertDistribuido): Promise<Distribuido>;
-  createDistribuidosBatch(tenantId: string, data: InsertDistribuido[]): Promise<Distribuido[]>;
+  createDistribuido(tenantId: string, data: Omit<InsertDistribuido, 'tenantId'>): Promise<Distribuido>;
+  createDistribuidosBatch(tenantId: string, data: Omit<InsertDistribuido, 'tenantId'>[]): Promise<Distribuido[]>;
   deleteDistribuido(id: string, tenantId: string): Promise<boolean>;
   deleteDistribuidosBatch(ids: string[], tenantId: string): Promise<boolean>;
   deleteAllDistribuidos(tenantId: string): Promise<boolean>;
   
   getAllEncerrados(tenantId: string): Promise<Encerrado[]>;
-  createEncerrado(tenantId: string, data: InsertEncerrado): Promise<Encerrado>;
-  createEncerradosBatch(tenantId: string, data: InsertEncerrado[]): Promise<Encerrado[]>;
+  createEncerrado(tenantId: string, data: Omit<InsertEncerrado, 'tenantId'>): Promise<Encerrado>;
+  createEncerradosBatch(tenantId: string, data: Omit<InsertEncerrado, 'tenantId'>[]): Promise<Encerrado[]>;
   deleteEncerrado(id: string, tenantId: string): Promise<boolean>;
   deleteEncerradosBatch(ids: string[], tenantId: string): Promise<boolean>;
   deleteAllEncerrados(tenantId: string): Promise<boolean>;
   
   getAllSentencasMerito(tenantId: string): Promise<SentencaMerito[]>;
-  createSentencaMerito(tenantId: string, data: InsertSentencaMerito): Promise<SentencaMerito>;
-  createSentencasMeritoBatch(tenantId: string, data: InsertSentencaMerito[]): Promise<SentencaMerito[]>;
+  createSentencaMerito(tenantId: string, data: Omit<InsertSentencaMerito, 'tenantId'>): Promise<SentencaMerito>;
+  createSentencasMeritoBatch(tenantId: string, data: Omit<InsertSentencaMerito, 'tenantId'>[]): Promise<SentencaMerito[]>;
   deleteSentencaMerito(id: string, tenantId: string): Promise<boolean>;
   deleteSentencasMeritoBatch(ids: string[], tenantId: string): Promise<boolean>;
   deleteAllSentencasMerito(tenantId: string): Promise<boolean>;
   
   getAllAcordaosMerito(tenantId: string): Promise<AcordaoMerito[]>;
-  createAcordaoMerito(tenantId: string, data: InsertAcordaoMerito): Promise<AcordaoMerito>;
-  createAcordaosMeritoBatch(tenantId: string, data: InsertAcordaoMerito[]): Promise<AcordaoMerito[]>;
+  createAcordaoMerito(tenantId: string, data: Omit<InsertAcordaoMerito, 'tenantId'>): Promise<AcordaoMerito>;
+  createAcordaosMeritoBatch(tenantId: string, data: Omit<InsertAcordaoMerito, 'tenantId'>[]): Promise<AcordaoMerito[]>;
   deleteAcordaoMerito(id: string, tenantId: string): Promise<boolean>;
   deleteAcordaosMeritoBatch(ids: string[], tenantId: string): Promise<boolean>;
   deleteAllAcordaosMerito(tenantId: string): Promise<boolean>;
@@ -564,12 +564,12 @@ export class MemStorage implements IStorage {
     return trt;
   }
 
-  async createTRT(tenantId: string, trt: InsertTRT): Promise<TRT> {
+  async createTRT(tenantId: string, trt: Omit<InsertTRT, 'tenantId'>): Promise<TRT> {
     const [created] = await db.insert(trts).values({ ...trt, tenantId }).returning();
     return created;
   }
 
-  async updateTRT(id: string, data: Partial<InsertTRT>, tenantId: string): Promise<TRT | undefined> {
+  async updateTRT(id: string, data: Partial<Omit<InsertTRT, 'tenantId'>>, tenantId: string): Promise<TRT | undefined> {
     const [updated] = await db.update(trts).set(data).where(and(eq(trts.id, id), eq(trts.tenantId, tenantId))).returning();
     return updated;
   }
@@ -770,12 +770,12 @@ export class MemStorage implements IStorage {
     return audiencia;
   }
 
-  async createAudiencia(tenantId: string, audiencia: InsertAudiencia): Promise<Audiencia> {
+  async createAudiencia(tenantId: string, audiencia: Omit<InsertAudiencia, 'tenantId'>): Promise<Audiencia> {
     const [created] = await db.insert(audiencias).values({ ...audiencia, tenantId }).returning();
     return created;
   }
 
-  async updateAudiencia(id: string, data: Partial<InsertAudiencia>, tenantId: string): Promise<Audiencia | undefined> {
+  async updateAudiencia(id: string, data: Partial<Omit<InsertAudiencia, 'tenantId'>>, tenantId: string): Promise<Audiencia | undefined> {
     const [updated] = await db.update(audiencias).set(data).where(and(eq(audiencias.id, id), eq(audiencias.tenantId, tenantId))).returning();
     return updated;
   }
@@ -910,12 +910,12 @@ export class MemStorage implements IStorage {
     return await db.select().from(distribuidos).where(eq(distribuidos.tenantId, tenantId)).orderBy(distribuidos.createdAt);
   }
 
-  async createDistribuido(tenantId: string, data: InsertDistribuido): Promise<Distribuido> {
+  async createDistribuido(tenantId: string, data: Omit<InsertDistribuido, 'tenantId'>): Promise<Distribuido> {
     const [created] = await db.insert(distribuidos).values({ ...data, tenantId }).returning();
     return created;
   }
 
-  async createDistribuidosBatch(tenantId: string, data: InsertDistribuido[]): Promise<Distribuido[]> {
+  async createDistribuidosBatch(tenantId: string, data: Omit<InsertDistribuido, 'tenantId'>[]): Promise<Distribuido[]> {
     if (data.length === 0) return [];
     const dataWithTenant = data.map(d => ({ ...d, tenantId }));
     return await db.insert(distribuidos).values(dataWithTenant).returning();
@@ -941,12 +941,12 @@ export class MemStorage implements IStorage {
     return await db.select().from(encerrados).where(eq(encerrados.tenantId, tenantId)).orderBy(encerrados.createdAt);
   }
 
-  async createEncerrado(tenantId: string, data: InsertEncerrado): Promise<Encerrado> {
+  async createEncerrado(tenantId: string, data: Omit<InsertEncerrado, 'tenantId'>): Promise<Encerrado> {
     const [created] = await db.insert(encerrados).values({ ...data, tenantId }).returning();
     return created;
   }
 
-  async createEncerradosBatch(tenantId: string, data: InsertEncerrado[]): Promise<Encerrado[]> {
+  async createEncerradosBatch(tenantId: string, data: Omit<InsertEncerrado, 'tenantId'>[]): Promise<Encerrado[]> {
     if (data.length === 0) return [];
     const dataWithTenant = data.map(d => ({ ...d, tenantId }));
     return await db.insert(encerrados).values(dataWithTenant).returning();
@@ -972,12 +972,12 @@ export class MemStorage implements IStorage {
     return await db.select().from(sentencasMerito).where(eq(sentencasMerito.tenantId, tenantId)).orderBy(sentencasMerito.createdAt);
   }
 
-  async createSentencaMerito(tenantId: string, data: InsertSentencaMerito): Promise<SentencaMerito> {
+  async createSentencaMerito(tenantId: string, data: Omit<InsertSentencaMerito, 'tenantId'>): Promise<SentencaMerito> {
     const [created] = await db.insert(sentencasMerito).values({ ...data, tenantId }).returning();
     return created;
   }
 
-  async createSentencasMeritoBatch(tenantId: string, data: InsertSentencaMerito[]): Promise<SentencaMerito[]> {
+  async createSentencasMeritoBatch(tenantId: string, data: Omit<InsertSentencaMerito, 'tenantId'>[]): Promise<SentencaMerito[]> {
     if (data.length === 0) return [];
     const dataWithTenant = data.map(d => ({ ...d, tenantId }));
     return await db.insert(sentencasMerito).values(dataWithTenant).returning();
@@ -1003,12 +1003,12 @@ export class MemStorage implements IStorage {
     return await db.select().from(acordaosMerito).where(eq(acordaosMerito.tenantId, tenantId)).orderBy(acordaosMerito.createdAt);
   }
 
-  async createAcordaoMerito(tenantId: string, data: InsertAcordaoMerito): Promise<AcordaoMerito> {
+  async createAcordaoMerito(tenantId: string, data: Omit<InsertAcordaoMerito, 'tenantId'>): Promise<AcordaoMerito> {
     const [created] = await db.insert(acordaosMerito).values({ ...data, tenantId }).returning();
     return created;
   }
 
-  async createAcordaosMeritoBatch(tenantId: string, data: InsertAcordaoMerito[]): Promise<AcordaoMerito[]> {
+  async createAcordaosMeritoBatch(tenantId: string, data: Omit<InsertAcordaoMerito, 'tenantId'>[]): Promise<AcordaoMerito[]> {
     if (data.length === 0) return [];
     const dataWithTenant = data.map(d => ({ ...d, tenantId }));
     return await db.insert(acordaosMerito).values(dataWithTenant).returning();

@@ -263,6 +263,11 @@ export async function registerRoutes(
   // Create user (admin only)
   app.post("/api/users", isAuthenticated, isAdmin, async (req, res) => {
     try {
+      const tenantId = req.session.user?.tenantId;
+      if (!tenantId) {
+        return res.status(401).json({ error: "Tenant não identificado" });
+      }
+
       const parsed = createUserSchema.safeParse(req.body);
       if (!parsed.success) {
         return res.status(400).json({ error: parsed.error.errors[0]?.message || "Dados inválidos" });
@@ -270,8 +275,8 @@ export async function registerRoutes(
 
       const { username, password, firstName, lastName, role, modulePermissions } = parsed.data;
 
-      // Check if username already exists
-      const existingUser = await storage.getUserByUsername(username);
+      // Check if username already exists for this tenant
+      const existingUser = await storage.getUserByUsernameAndTenant(username, tenantId);
       if (existingUser) {
         return res.status(400).json({ error: "Nome de usuário já existe" });
       }
@@ -287,6 +292,7 @@ export async function registerRoutes(
         lastName: lastName || null,
         role: role || "viewer",
         modulePermissions: permissions,
+        tenantId,
       });
 
       res.json({
