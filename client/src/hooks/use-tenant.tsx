@@ -7,6 +7,7 @@ interface TenantContextType {
   backgroundColor: string;
   tenantCode: string;
   tenantName: string;
+  logoUrl: string | null;
 }
 
 const TenantContext = createContext<TenantContextType>({
@@ -15,6 +16,7 @@ const TenantContext = createContext<TenantContextType>({
   backgroundColor: "#0a1628",
   tenantCode: "vtal",
   tenantName: "V.tal",
+  logoUrl: null,
 });
 
 export function TenantProvider({ children }: { children: ReactNode }) {
@@ -51,6 +53,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
     backgroundColor: tenant?.backgroundColor || "#0a1628",
     tenantCode: tenant?.code || "vtal",
     tenantName: tenant?.name || "V.tal",
+    logoUrl: tenant?.logoUrl || null,
   };
 
   return (

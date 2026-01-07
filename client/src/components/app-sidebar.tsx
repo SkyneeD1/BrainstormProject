@@ -105,7 +105,7 @@ const menuItems: MenuItem[] = [
 export function AppSidebar() {
   const [location] = useLocation();
   const { user, isAdmin, logout, isLoggingOut, availableTenants, hasMultipleTenants, switchTenantAsync, isSwitchingTenant, tenant } = useAuth();
-  const { tenantName, primaryColor } = useTenant();
+  const { tenantName, primaryColor, logoUrl } = useTenant();
 
   const handleSwitchTenant = async (tenantId: string) => {
     if (tenantId !== tenant?.id) {
@@ -152,10 +152,19 @@ export function AppSidebar() {
   return (
     <Sidebar className="border-r-0">
       <SidebarHeader className="p-6 pb-4">
-        <div className="flex flex-col gap-1">
-          <h1 className="text-lg font-bold text-sidebar-foreground tracking-tight leading-tight">
-            CONTENCIOSO
-          </h1>
+        <div className="flex flex-col gap-3">
+          {logoUrl ? (
+            <img 
+              src={logoUrl} 
+              alt={`${tenantName} Logo`} 
+              className="h-8 w-auto object-contain"
+              data-testid="img-tenant-logo"
+            />
+          ) : (
+            <h1 className="text-lg font-bold text-sidebar-foreground tracking-tight leading-tight">
+              {tenantName.toUpperCase()}
+            </h1>
+          )}
           {hasMultipleTenants ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -171,14 +180,14 @@ export function AppSidebar() {
                     </>
                   ) : (
                     <>
-                      <Building2 className="h-3 w-3" />
-                      <span>{tenantName.toUpperCase()}</span>
+                      <RefreshCw className="h-3 w-3" />
+                      <span>Trocar Empresa</span>
                       <ChevronDown className="h-3 w-3" />
                     </>
                   )}
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-48">
+              <DropdownMenuContent align="start" className="w-56">
                 {availableTenants.map((t) => (
                   <DropdownMenuItem
                     key={t.id}
@@ -186,11 +195,19 @@ export function AppSidebar() {
                     className={t.id === tenant?.id ? "bg-accent" : ""}
                     data-testid={`menu-tenant-${t.code}`}
                   >
-                    <div className="flex items-center gap-2">
-                      <div 
-                        className="w-3 h-3 rounded-full"
-                        style={{ backgroundColor: t.primaryColor }}
-                      />
+                    <div className="flex items-center gap-3">
+                      {t.logoUrl ? (
+                        <img 
+                          src={t.logoUrl} 
+                          alt={`${t.name} Logo`} 
+                          className="h-5 w-auto max-w-[80px] object-contain"
+                        />
+                      ) : (
+                        <div 
+                          className="w-4 h-4 rounded-full"
+                          style={{ backgroundColor: t.primaryColor }}
+                        />
+                      )}
                       <span>{t.name}</span>
                     </div>
                   </DropdownMenuItem>
@@ -199,7 +216,7 @@ export function AppSidebar() {
             </DropdownMenu>
           ) : (
             <p className="text-xs text-sidebar-foreground/70 font-medium tracking-wide uppercase">
-              Gerenciamento {tenantName.toUpperCase()}
+              Gestão Contencioso
             </p>
           )}
         </div>

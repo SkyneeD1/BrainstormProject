@@ -1,12 +1,13 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest, getQueryFn } from "@/lib/queryClient";
 
-interface Tenant {
+export interface Tenant {
   id: string;
   code: string;
   name: string;
   primaryColor: string;
   backgroundColor: string;
+  logoUrl?: string | null;
 }
 
 interface User {

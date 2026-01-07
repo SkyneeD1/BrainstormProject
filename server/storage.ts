@@ -461,8 +461,14 @@ export class MemStorage implements IStorage {
           name: "V.tal",
           primaryColor: "#ffd700",
           backgroundColor: "#0a1628",
+          logoUrl: "https://vtal.com/wp-content/uploads/2025/02/logo-vtal-footer.png",
         });
         console.log("Default tenant V.tal created");
+      } else if (!existingVtal.logoUrl) {
+        await db.update(tenants)
+          .set({ logoUrl: "https://vtal.com/wp-content/uploads/2025/02/logo-vtal-footer.png" })
+          .where(eq(tenants.id, existingVtal.id));
+        console.log("V.tal tenant logo updated");
       }
 
       // Check if NIO tenant exists
@@ -473,8 +479,14 @@ export class MemStorage implements IStorage {
           name: "NIO",
           primaryColor: "#01DA01",
           backgroundColor: "#182B1B",
+          logoUrl: "/nio-logo.svg",
         });
         console.log("Default tenant NIO created");
+      } else if (!existingNio.logoUrl) {
+        await db.update(tenants)
+          .set({ logoUrl: "/nio-logo.svg" })
+          .where(eq(tenants.id, existingNio.id));
+        console.log("NIO tenant logo updated");
       }
     } catch (error) {
       console.error("Error seeding default tenants:", error);

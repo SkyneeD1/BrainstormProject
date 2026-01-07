@@ -180,6 +180,7 @@ export async function registerRoutes(
             name: tenant.name,
             primaryColor: tenant.primaryColor,
             backgroundColor: tenant.backgroundColor,
+            logoUrl: tenant.logoUrl,
           },
           availableTenants: userTenants.map(t => ({
             id: t.id,
@@ -187,6 +188,7 @@ export async function registerRoutes(
             name: t.name,
             primaryColor: t.primaryColor,
             backgroundColor: t.backgroundColor,
+            logoUrl: t.logoUrl,
           })),
         });
       }
@@ -220,8 +222,9 @@ export async function registerRoutes(
             name: tenant.name,
             primaryColor: tenant.primaryColor,
             backgroundColor: tenant.backgroundColor,
+            logoUrl: tenant.logoUrl,
           },
-          availableTenants: [{ id: tenant.id, code: tenant.code, name: tenant.name, primaryColor: tenant.primaryColor, backgroundColor: tenant.backgroundColor }],
+          availableTenants: [{ id: tenant.id, code: tenant.code, name: tenant.name, primaryColor: tenant.primaryColor, backgroundColor: tenant.backgroundColor, logoUrl: tenant.logoUrl }],
         });
       }
 
@@ -245,6 +248,7 @@ export async function registerRoutes(
           name: t.name,
           primaryColor: t.primaryColor,
           backgroundColor: t.backgroundColor,
+          logoUrl: t.logoUrl,
         })),
       });
     } catch (error) {
@@ -317,6 +321,7 @@ export async function registerRoutes(
           name: tenant.name,
           primaryColor: tenant.primaryColor,
           backgroundColor: tenant.backgroundColor,
+          logoUrl: tenant.logoUrl,
         },
         availableTenants: userTenants.map(t => ({
           id: t.id,
@@ -324,6 +329,7 @@ export async function registerRoutes(
           name: t.name,
           primaryColor: t.primaryColor,
           backgroundColor: t.backgroundColor,
+          logoUrl: t.logoUrl,
         })),
       });
     } catch (error) {
@@ -387,6 +393,7 @@ export async function registerRoutes(
           name: tenant.name,
           primaryColor: tenant.primaryColor,
           backgroundColor: tenant.backgroundColor,
+          logoUrl: tenant.logoUrl,
         },
         availableTenants: userTenants.map(t => ({
           id: t.id,
@@ -394,6 +401,7 @@ export async function registerRoutes(
           name: t.name,
           primaryColor: t.primaryColor,
           backgroundColor: t.backgroundColor,
+          logoUrl: t.logoUrl,
         })),
       });
     } catch (error) {
@@ -421,8 +429,9 @@ export async function registerRoutes(
         return res.status(404).json({ error: "Usuário não encontrado" });
       }
       
-      // Get tenant info from session
+      // Get tenant info from session and database (for logoUrl)
       const sessionUser = req.session.user!;
+      const tenant = await storage.getTenant(sessionUser.tenantId);
       
       // Get all available tenants for this user
       const userTenants = await storage.getUserTenants(userId);
@@ -440,6 +449,7 @@ export async function registerRoutes(
           name: sessionUser.tenantName,
           primaryColor: sessionUser.tenantPrimaryColor,
           backgroundColor: sessionUser.tenantBackgroundColor,
+          logoUrl: tenant?.logoUrl,
         },
         availableTenants: userTenants.map(t => ({
           id: t.id,
@@ -447,6 +457,7 @@ export async function registerRoutes(
           name: t.name,
           primaryColor: t.primaryColor,
           backgroundColor: t.backgroundColor,
+          logoUrl: t.logoUrl,
         })),
       });
     } catch (error) {
