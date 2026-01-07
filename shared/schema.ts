@@ -186,13 +186,41 @@ export const users = pgTable("users", {
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
+// ============================================
+// USER-TENANT MANY-TO-MANY RELATIONSHIP
+// ============================================
+
+export const userTenants = pgTable("user_tenants", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  tenantId: varchar("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  isDefault: varchar("is_default").default("false"), // User's default tenant
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_user_tenants_user").on(table.userId),
+  index("IDX_user_tenants_tenant").on(table.tenantId),
+]);
+
+export type UserTenant = typeof userTenants.$inferSelect;
+export type InsertUserTenant = typeof userTenants.$inferInsert;
+
+// ============================================
+// LOGIN SCHEMAS - Two-step auth flow
+// ============================================
+
 export const loginSchema = z.object({
   username: z.string().min(1, "Nome de usuário obrigatório"),
   password: z.string().min(1, "Senha obrigatória"),
-  tenantCode: z.string().min(1, "Empresa é obrigatória"),
+  tenantCode: z.string().optional(), // Optional - if not provided, returns user's tenants
 });
 
 export type LoginInput = z.infer<typeof loginSchema>;
+
+export const selectTenantSchema = z.object({
+  tenantId: z.string().min(1, "Tenant é obrigatório"),
+});
+
+export type SelectTenantInput = z.infer<typeof selectTenantSchema>;
 
 // Session user with tenant info
 export const sessionUserSchema = z.object({
