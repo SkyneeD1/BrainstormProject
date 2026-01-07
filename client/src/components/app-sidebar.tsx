@@ -157,7 +157,7 @@ export function AppSidebar() {
             <img 
               src={logoUrl} 
               alt={`${tenantName} Logo`} 
-              className="h-8 w-auto object-contain"
+              className="h-10 w-auto object-contain"
               data-testid="img-tenant-logo"
             />
           ) : (

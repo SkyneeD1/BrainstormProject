@@ -201,14 +201,12 @@ export default function Landing() {
                 >
                   <CardHeader className="text-center pb-2">
                     {tenant.logoUrl ? (
-                      <div 
-                        className="w-20 h-20 rounded-lg mx-auto mb-4 flex items-center justify-center p-3"
-                        style={{ backgroundColor: tenant.backgroundColor }}
-                      >
+                      <div className="h-24 mx-auto mb-4 flex items-center justify-center">
                         <img 
                           src={tenant.logoUrl} 
                           alt={`${tenant.name} Logo`}
-                          className="max-w-full max-h-full object-contain"
+                          className="max-h-full w-auto object-contain"
+                          style={{ maxWidth: tenant.code === 'nio' ? '120px' : '100px' }}
                         />
                       </div>
                     ) : (
