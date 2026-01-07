@@ -17,7 +17,7 @@ export function DataTableFase({ data, totals }: DataTableFaseProps) {
         <thead>
           <tr className="bg-secondary text-secondary-foreground">
             <th className="px-4 py-3 text-left font-semibold text-xs uppercase tracking-wider">
-              Base<br />Dez/24
+              Base
             </th>
             <th className="px-4 py-3 text-center font-semibold text-xs uppercase tracking-wider">
               # de<br />processos ativos
