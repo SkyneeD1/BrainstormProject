@@ -309,12 +309,9 @@ export default function Dashboard() {
             )}
             Exportar PDF
           </Button>
-          <span className="px-3 py-1 text-xs font-medium bg-primary/10 text-primary rounded-full">
-            V.tal
-          </span>
+          <span className="px-3 py-1 text-xs font-medium bg-primary/10 text-primary rounded-full">NIO</span>
         </div>
       </div>
-
       <div ref={kpisRef} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <KPICard
           title="Total de Processos"
@@ -341,7 +338,6 @@ export default function Dashboard() {
           accentColor="green"
         />
       </div>
-
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList className="bg-muted/50 p-1">
           <TabsTrigger value="visao-geral" data-testid="tab-visao-geral" className="data-[state=active]:bg-card">
