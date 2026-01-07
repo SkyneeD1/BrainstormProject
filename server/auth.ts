@@ -11,6 +11,12 @@ const PgSession = connectPgSimple(session);
 declare module "express-session" {
   interface SessionData {
     user: SessionUser;
+    pendingUser?: {
+      id: string;
+      username: string;
+      role: string;
+      modulePermissions: string[];
+    };
   }
 }
 

@@ -10,6 +10,8 @@ import type {
   Empresa,
   User,
   InsertUser,
+  UserTenant,
+  InsertUserTenant,
   TRT,
   InsertTRT,
   Vara,
@@ -50,7 +52,7 @@ import type {
   Tenant,
   InsertTenant
 } from "@shared/schema";
-import { users, trts, varas, juizes, julgamentos, audiencias, distribuidos, encerrados, sentencasMerito, acordaosMerito, turmas, desembargadores, decisoesRpac, passivoMensal, casosNovos, casosEncerrados, tenants } from "@shared/schema";
+import { users, userTenants, trts, varas, juizes, julgamentos, audiencias, distribuidos, encerrados, sentencasMerito, acordaosMerito, turmas, desembargadores, decisoesRpac, passivoMensal, casosNovos, casosEncerrados, tenants } from "@shared/schema";
 import { and, gte, lte, inArray, sql } from "drizzle-orm";
 import { parseExcelFile } from "./excel-parser";
 import { db } from "./db";
@@ -79,6 +81,13 @@ export interface IStorage {
   deleteUser(id: string): Promise<boolean>;
   getAllUsers(): Promise<User[]>;
   getUsersByTenant(tenantId: string): Promise<User[]>;
+  
+  // User-Tenant many-to-many methods
+  getUserTenants(userId: string): Promise<Tenant[]>;
+  addUserToTenant(userId: string, tenantId: string, isDefault?: boolean): Promise<UserTenant>;
+  removeUserFromTenant(userId: string, tenantId: string): Promise<boolean>;
+  setUserDefaultTenant(userId: string, tenantId: string): Promise<boolean>;
+  isUserInTenant(userId: string, tenantId: string): Promise<boolean>;
   
   getAllTRTs(tenantId: string): Promise<TRT[]>;
   getTRT(id: string, tenantId: string): Promise<TRT | undefined>;
@@ -340,6 +349,74 @@ export class MemStorage implements IStorage {
       .from(users)
       .where(and(eq(users.username, username), eq(users.tenantId, tenantId)));
     return user;
+  }
+
+  // User-Tenant many-to-many methods
+  async getUserTenants(userId: string): Promise<Tenant[]> {
+    const results = await db
+      .select({
+        id: tenants.id,
+        code: tenants.code,
+        name: tenants.name,
+        primaryColor: tenants.primaryColor,
+        backgroundColor: tenants.backgroundColor,
+        logoUrl: tenants.logoUrl,
+        isActive: tenants.isActive,
+        createdAt: tenants.createdAt,
+      })
+      .from(userTenants)
+      .innerJoin(tenants, eq(userTenants.tenantId, tenants.id))
+      .where(eq(userTenants.userId, userId));
+    return results;
+  }
+
+  async addUserToTenant(userId: string, tenantId: string, isDefault: boolean = false): Promise<UserTenant> {
+    // Check if already exists
+    const existing = await db
+      .select()
+      .from(userTenants)
+      .where(and(eq(userTenants.userId, userId), eq(userTenants.tenantId, tenantId)));
+    
+    if (existing.length > 0) {
+      return existing[0];
+    }
+    
+    const [created] = await db
+      .insert(userTenants)
+      .values({ userId, tenantId, isDefault: isDefault ? "true" : "false" })
+      .returning();
+    return created;
+  }
+
+  async removeUserFromTenant(userId: string, tenantId: string): Promise<boolean> {
+    await db
+      .delete(userTenants)
+      .where(and(eq(userTenants.userId, userId), eq(userTenants.tenantId, tenantId)));
+    return true;
+  }
+
+  async setUserDefaultTenant(userId: string, tenantId: string): Promise<boolean> {
+    // First, set all to non-default
+    await db
+      .update(userTenants)
+      .set({ isDefault: "false" })
+      .where(eq(userTenants.userId, userId));
+    
+    // Then set the specified one as default
+    await db
+      .update(userTenants)
+      .set({ isDefault: "true" })
+      .where(and(eq(userTenants.userId, userId), eq(userTenants.tenantId, tenantId)));
+    
+    return true;
+  }
+
+  async isUserInTenant(userId: string, tenantId: string): Promise<boolean> {
+    const results = await db
+      .select()
+      .from(userTenants)
+      .where(and(eq(userTenants.userId, userId), eq(userTenants.tenantId, tenantId)));
+    return results.length > 0;
   }
 
   // Tenant methods

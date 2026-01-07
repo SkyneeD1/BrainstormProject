@@ -1,22 +1,22 @@
 import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Scale, LogIn, Loader2, AlertCircle, Building2, ArrowLeft, ChevronRight } from "lucide-react";
-import { useAuth, type Tenant } from "@/hooks/useAuth";
+import { Scale, LogIn, Loader2, AlertCircle, Building2, ChevronRight } from "lucide-react";
+import { useAuth, type Tenant, type LoginResponse } from "@/hooks/useAuth";
+
+type Step = "login" | "select-tenant";
 
 export default function Landing() {
-  const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null);
+  const [step, setStep] = useState<Step>("login");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const { loginAsync, isLoggingIn } = useAuth();
-
-  const { data: tenants, isLoading: isLoadingTenants } = useQuery<Tenant[]>({
-    queryKey: ["/api/tenants"],
-  });
+  const [availableTenants, setAvailableTenants] = useState<Tenant[]>([]);
+  const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null);
+  
+  const { loginAsync, isLoggingIn, selectTenantAsync, isSelectingTenant } = useAuth();
 
   useEffect(() => {
     if (selectedTenant) {
@@ -25,44 +25,48 @@ export default function Landing() {
     }
   }, [selectedTenant]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     
-    if (!selectedTenant) {
-      setError("Selecione uma empresa primeiro");
-      return;
-    }
-    
     try {
-      await loginAsync({ username, password, tenantCode: selectedTenant.code });
+      const result: LoginResponse = await loginAsync({ username, password });
+      
+      if (result.requiresTenantSelection && result.availableTenants) {
+        setAvailableTenants(result.availableTenants);
+        setStep("select-tenant");
+      }
     } catch (err: any) {
       const message = err?.message || "Erro ao fazer login";
       if (message.includes("401") || message.includes("Unauthorized")) {
         setError("Usuário ou senha incorretos");
+      } else if (message.includes("403")) {
+        setError("Usuário não tem acesso a nenhuma empresa");
       } else {
         setError(message);
       }
     }
   };
 
-  const handleBackToTenantSelection = () => {
-    setSelectedTenant(null);
+  const handleSelectTenant = async (tenant: Tenant) => {
+    setSelectedTenant(tenant);
+    setError("");
+    
+    try {
+      await selectTenantAsync(tenant.id);
+    } catch (err: any) {
+      setError(err?.message || "Erro ao selecionar empresa");
+    }
+  };
+
+  const handleBackToLogin = () => {
+    setStep("login");
     setUsername("");
     setPassword("");
     setError("");
+    setAvailableTenants([]);
+    setSelectedTenant(null);
   };
-
-  if (isLoadingTenants) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <Loader2 className="w-12 h-12 animate-spin mx-auto text-primary" />
-          <p className="text-muted-foreground">Carregando...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div 
@@ -88,101 +92,36 @@ export default function Landing() {
               <Scale className="w-5 h-5 text-black" />
             </div>
             <span className="text-xl font-bold text-white">
-              {selectedTenant ? `Contencioso ${selectedTenant.name}` : 'Contencioso'}
+              Contencioso
             </span>
           </div>
-          {selectedTenant && (
-            <Button 
-              variant="ghost" 
-              size="sm"
-              onClick={handleBackToTenantSelection}
-              className="text-white hover:bg-white/10"
-              data-testid="button-back-tenant"
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Trocar empresa
-            </Button>
-          )}
         </div>
       </header>
 
       <main className="flex-1 flex flex-col items-center justify-center p-8 bg-background">
-        {!selectedTenant ? (
-          <div className="max-w-4xl mx-auto text-center space-y-8">
-            <div className="space-y-4">
-              <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">
+        {step === "login" && (
+          <div className="max-w-md mx-auto w-full">
+            <div className="text-center mb-8">
+              <h1 className="text-3xl font-bold tracking-tight">
                 Gestão de Contencioso
               </h1>
-              <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-                Selecione a empresa para acessar o sistema
+              <p className="text-muted-foreground mt-2">
+                Entre com suas credenciais para acessar o sistema
               </p>
             </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto">
-              {tenants?.map((tenant) => (
-                <Card 
-                  key={tenant.id}
-                  className="cursor-pointer transition-all hover:scale-105 hover:shadow-lg border-2 hover:border-primary"
-                  onClick={() => setSelectedTenant(tenant)}
-                  data-testid={`card-tenant-${tenant.code}`}
-                >
-                  <CardHeader className="text-center pb-2">
-                    <div 
-                      className="w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center"
-                      style={{ backgroundColor: tenant.backgroundColor }}
-                    >
-                      <Building2 
-                        className="w-8 h-8" 
-                        style={{ color: tenant.primaryColor }}
-                      />
-                    </div>
-                    <CardTitle className="text-2xl">{tenant.name}</CardTitle>
-                  </CardHeader>
-                  <CardContent className="text-center">
-                    <div className="flex items-center justify-center gap-2 text-muted-foreground">
-                      <span>Acessar sistema</span>
-                      <ChevronRight className="w-4 h-4" />
-                    </div>
-                    <div 
-                      className="mt-4 h-2 rounded-full"
-                      style={{ backgroundColor: tenant.primaryColor }}
-                    />
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <div className="max-w-md mx-auto w-full">
+            
             <Card>
               <CardHeader>
-                <div className="flex items-center justify-center gap-3 mb-2">
-                  <div 
-                    className="w-10 h-10 rounded-full flex items-center justify-center"
-                    style={{ backgroundColor: selectedTenant.backgroundColor }}
-                  >
-                    <Building2 
-                      className="w-5 h-5" 
-                      style={{ color: selectedTenant.primaryColor }}
-                    />
-                  </div>
-                  <span 
-                    className="text-lg font-semibold"
-                    style={{ color: selectedTenant.primaryColor }}
-                  >
-                    {selectedTenant.name}
-                  </span>
-                </div>
                 <CardTitle className="flex items-center gap-2 justify-center">
                   <LogIn className="w-5 h-5" />
                   Entrar no Sistema
                 </CardTitle>
                 <CardDescription>
-                  Digite suas credenciais para acessar
+                  Digite seu usuário e senha
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleLoginSubmit} className="space-y-4">
                   {error && (
                     <div className="flex items-center gap-2 text-destructive text-sm bg-destructive/10 p-3 rounded-md">
                       <AlertCircle className="w-4 h-4" />
@@ -217,10 +156,6 @@ export default function Landing() {
                     type="submit" 
                     className="w-full" 
                     disabled={isLoggingIn}
-                    style={{
-                      backgroundColor: selectedTenant.primaryColor,
-                      color: selectedTenant.code === 'nio' ? '#000' : '#000',
-                    }}
                     data-testid="button-login"
                   >
                     {isLoggingIn ? (
@@ -235,6 +170,78 @@ export default function Landing() {
                 </form>
               </CardContent>
             </Card>
+          </div>
+        )}
+
+        {step === "select-tenant" && (
+          <div className="max-w-4xl mx-auto text-center space-y-8">
+            <div className="space-y-4">
+              <h1 className="text-3xl font-bold tracking-tight">
+                Olá, {username}!
+              </h1>
+              <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+                Selecione a empresa que deseja acessar
+              </p>
+            </div>
+
+            {error && (
+              <div className="flex items-center justify-center gap-2 text-destructive text-sm bg-destructive/10 p-3 rounded-md max-w-md mx-auto">
+                <AlertCircle className="w-4 h-4" />
+                {error}
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto">
+              {availableTenants.map((tenant) => (
+                <Card 
+                  key={tenant.id}
+                  className="cursor-pointer transition-all hover:scale-105 hover:shadow-lg border-2 hover:border-primary"
+                  onClick={() => handleSelectTenant(tenant)}
+                  data-testid={`card-tenant-${tenant.code}`}
+                >
+                  <CardHeader className="text-center pb-2">
+                    <div 
+                      className="w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center"
+                      style={{ backgroundColor: tenant.backgroundColor }}
+                    >
+                      <Building2 
+                        className="w-8 h-8" 
+                        style={{ color: tenant.primaryColor }}
+                      />
+                    </div>
+                    <CardTitle className="text-2xl">{tenant.name}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="text-center">
+                    <div className="flex items-center justify-center gap-2 text-muted-foreground">
+                      {isSelectingTenant && selectedTenant?.id === tenant.id ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span>Carregando...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>Acessar sistema</span>
+                          <ChevronRight className="w-4 h-4" />
+                        </>
+                      )}
+                    </div>
+                    <div 
+                      className="mt-4 h-2 rounded-full"
+                      style={{ backgroundColor: tenant.primaryColor }}
+                    />
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            <Button 
+              variant="ghost" 
+              onClick={handleBackToLogin}
+              className="text-muted-foreground"
+              data-testid="button-back-login"
+            >
+              Voltar para login
+            </Button>
           </div>
         )}
       </main>

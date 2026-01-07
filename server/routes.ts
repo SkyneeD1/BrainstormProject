@@ -105,7 +105,9 @@ export async function registerRoutes(
     }
   });
 
-  // Login route with tenant support
+  // Login route with tenant support - two modes:
+  // 1. With tenantCode: login directly to that tenant
+  // 2. Without tenantCode: authenticate and return available tenants
   app.post('/api/login', async (req, res) => {
     try {
       const parsed = loginSchema.safeParse(req.body);
@@ -115,14 +117,8 @@ export async function registerRoutes(
 
       const { username, password, tenantCode } = parsed.data;
       
-      // First get the tenant
-      const tenant = await storage.getTenantByCode(tenantCode);
-      if (!tenant) {
-        return res.status(401).json({ error: "Empresa não encontrada" });
-      }
-      
-      // Get user by username and tenant
-      const user = await storage.getUserByUsernameAndTenant(username, tenant.id);
+      // First, find user by username only (for authentication)
+      const user = await storage.getUserByUsername(username);
       
       if (!user) {
         return res.status(401).json({ error: "Usuário ou senha incorretos" });
@@ -133,7 +129,163 @@ export async function registerRoutes(
         return res.status(401).json({ error: "Usuário ou senha incorretos" });
       }
 
-      // Set session with tenant info
+      // Get user's available tenants from user_tenants table
+      let userTenants = await storage.getUserTenants(user.id);
+      
+      // If user has no entries in user_tenants, add them based on their legacy tenantId
+      if (userTenants.length === 0 && user.tenantId) {
+        const legacyTenant = await storage.getTenant(user.tenantId);
+        if (legacyTenant) {
+          await storage.addUserToTenant(user.id, legacyTenant.id, true);
+          userTenants = [legacyTenant];
+        }
+      }
+
+      // If tenantCode is provided, login directly to that tenant
+      if (tenantCode) {
+        const tenant = await storage.getTenantByCode(tenantCode);
+        if (!tenant) {
+          return res.status(401).json({ error: "Empresa não encontrada" });
+        }
+        
+        // Check if user has access to this tenant
+        const hasAccess = await storage.isUserInTenant(user.id, tenant.id);
+        if (!hasAccess) {
+          return res.status(403).json({ error: "Usuário não tem acesso a esta empresa" });
+        }
+
+        // Set session with tenant info
+        req.session.user = {
+          id: user.id,
+          username: user.username,
+          role: user.role,
+          modulePermissions: user.modulePermissions || [],
+          tenantId: tenant.id,
+          tenantCode: tenant.code,
+          tenantName: tenant.name,
+          tenantPrimaryColor: tenant.primaryColor,
+          tenantBackgroundColor: tenant.backgroundColor,
+        };
+
+        return res.json({
+          id: user.id,
+          username: user.username,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          role: user.role,
+          modulePermissions: user.modulePermissions || [],
+          tenant: {
+            id: tenant.id,
+            code: tenant.code,
+            name: tenant.name,
+            primaryColor: tenant.primaryColor,
+            backgroundColor: tenant.backgroundColor,
+          },
+          availableTenants: userTenants.map(t => ({
+            id: t.id,
+            code: t.code,
+            name: t.name,
+            primaryColor: t.primaryColor,
+            backgroundColor: t.backgroundColor,
+          })),
+        });
+      }
+
+      // No tenantCode provided - return user info with available tenants for selection
+      // If user has only one tenant, auto-login to it
+      if (userTenants.length === 1) {
+        const tenant = userTenants[0];
+        req.session.user = {
+          id: user.id,
+          username: user.username,
+          role: user.role,
+          modulePermissions: user.modulePermissions || [],
+          tenantId: tenant.id,
+          tenantCode: tenant.code,
+          tenantName: tenant.name,
+          tenantPrimaryColor: tenant.primaryColor,
+          tenantBackgroundColor: tenant.backgroundColor,
+        };
+
+        return res.json({
+          id: user.id,
+          username: user.username,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          role: user.role,
+          modulePermissions: user.modulePermissions || [],
+          tenant: {
+            id: tenant.id,
+            code: tenant.code,
+            name: tenant.name,
+            primaryColor: tenant.primaryColor,
+            backgroundColor: tenant.backgroundColor,
+          },
+          availableTenants: [{ id: tenant.id, code: tenant.code, name: tenant.name, primaryColor: tenant.primaryColor, backgroundColor: tenant.backgroundColor }],
+        });
+      }
+
+      // User has multiple tenants - store partial auth and return tenant list
+      req.session.pendingUser = {
+        id: user.id,
+        username: user.username,
+        role: user.role,
+        modulePermissions: user.modulePermissions || [],
+      };
+
+      return res.json({
+        requiresTenantSelection: true,
+        userId: user.id,
+        username: user.username,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        availableTenants: userTenants.map(t => ({
+          id: t.id,
+          code: t.code,
+          name: t.name,
+          primaryColor: t.primaryColor,
+          backgroundColor: t.backgroundColor,
+        })),
+      });
+    } catch (error) {
+      console.error("Login error:", error);
+      res.status(500).json({ error: "Erro no servidor" });
+    }
+  });
+
+  // Select tenant after authentication (for users with multiple tenants)
+  app.post('/api/auth/select-tenant', async (req, res) => {
+    try {
+      const { tenantId } = req.body;
+      
+      if (!tenantId) {
+        return res.status(400).json({ error: "Tenant é obrigatório" });
+      }
+
+      const pendingUser = req.session.pendingUser;
+      if (!pendingUser) {
+        return res.status(401).json({ error: "Sessão expirada. Faça login novamente." });
+      }
+
+      // Get the tenant
+      const tenant = await storage.getTenant(tenantId);
+      if (!tenant) {
+        return res.status(404).json({ error: "Empresa não encontrada" });
+      }
+
+      // Verify user has access to this tenant
+      const hasAccess = await storage.isUserInTenant(pendingUser.id, tenantId);
+      if (!hasAccess) {
+        return res.status(403).json({ error: "Usuário não tem acesso a esta empresa" });
+      }
+
+      // Get full user data
+      const user = await storage.getUser(pendingUser.id);
+      if (!user) {
+        return res.status(404).json({ error: "Usuário não encontrado" });
+      }
+
+      // Set full session
       req.session.user = {
         id: user.id,
         username: user.username,
@@ -145,6 +297,12 @@ export async function registerRoutes(
         tenantPrimaryColor: tenant.primaryColor,
         tenantBackgroundColor: tenant.backgroundColor,
       };
+      
+      // Clear pending user
+      delete req.session.pendingUser;
+
+      // Get all user tenants
+      const userTenants = await storage.getUserTenants(user.id);
 
       res.json({
         id: user.id,
@@ -159,10 +317,87 @@ export async function registerRoutes(
           name: tenant.name,
           primaryColor: tenant.primaryColor,
           backgroundColor: tenant.backgroundColor,
-        }
+        },
+        availableTenants: userTenants.map(t => ({
+          id: t.id,
+          code: t.code,
+          name: t.name,
+          primaryColor: t.primaryColor,
+          backgroundColor: t.backgroundColor,
+        })),
       });
     } catch (error) {
-      console.error("Login error:", error);
+      console.error("Select tenant error:", error);
+      res.status(500).json({ error: "Erro no servidor" });
+    }
+  });
+
+  // Switch tenant (for logged-in users with multiple tenants)
+  app.post('/api/auth/switch-tenant', isAuthenticated, async (req, res) => {
+    try {
+      const { tenantId } = req.body;
+      
+      if (!tenantId) {
+        return res.status(400).json({ error: "Tenant é obrigatório" });
+      }
+
+      const userId = req.session.user!.id;
+
+      // Get the tenant
+      const tenant = await storage.getTenant(tenantId);
+      if (!tenant) {
+        return res.status(404).json({ error: "Empresa não encontrada" });
+      }
+
+      // Verify user has access to this tenant
+      const hasAccess = await storage.isUserInTenant(userId, tenantId);
+      if (!hasAccess) {
+        return res.status(403).json({ error: "Usuário não tem acesso a esta empresa" });
+      }
+
+      // Get full user data
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ error: "Usuário não encontrado" });
+      }
+
+      // Update session with new tenant
+      req.session.user = {
+        ...req.session.user!,
+        tenantId: tenant.id,
+        tenantCode: tenant.code,
+        tenantName: tenant.name,
+        tenantPrimaryColor: tenant.primaryColor,
+        tenantBackgroundColor: tenant.backgroundColor,
+      };
+
+      // Get all user tenants
+      const userTenants = await storage.getUserTenants(userId);
+
+      res.json({
+        id: user.id,
+        username: user.username,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+        modulePermissions: user.modulePermissions || [],
+        tenant: {
+          id: tenant.id,
+          code: tenant.code,
+          name: tenant.name,
+          primaryColor: tenant.primaryColor,
+          backgroundColor: tenant.backgroundColor,
+        },
+        availableTenants: userTenants.map(t => ({
+          id: t.id,
+          code: t.code,
+          name: t.name,
+          primaryColor: t.primaryColor,
+          backgroundColor: t.backgroundColor,
+        })),
+      });
+    } catch (error) {
+      console.error("Switch tenant error:", error);
       res.status(500).json({ error: "Erro no servidor" });
     }
   });
@@ -189,6 +424,9 @@ export async function registerRoutes(
       // Get tenant info from session
       const sessionUser = req.session.user!;
       
+      // Get all available tenants for this user
+      const userTenants = await storage.getUserTenants(userId);
+      
       res.json({
         id: user.id,
         username: user.username,
@@ -202,7 +440,14 @@ export async function registerRoutes(
           name: sessionUser.tenantName,
           primaryColor: sessionUser.tenantPrimaryColor,
           backgroundColor: sessionUser.tenantBackgroundColor,
-        }
+        },
+        availableTenants: userTenants.map(t => ({
+          id: t.id,
+          code: t.code,
+          name: t.name,
+          primaryColor: t.primaryColor,
+          backgroundColor: t.backgroundColor,
+        })),
       });
     } catch (error) {
       console.error("Error fetching user:", error);
@@ -263,8 +508,8 @@ export async function registerRoutes(
   // Create user (admin only)
   app.post("/api/users", isAuthenticated, isAdmin, async (req, res) => {
     try {
-      const tenantId = req.session.user?.tenantId;
-      if (!tenantId) {
+      const adminTenantId = req.session.user?.tenantId;
+      if (!adminTenantId) {
         return res.status(401).json({ error: "Tenant não identificado" });
       }
 
@@ -273,10 +518,10 @@ export async function registerRoutes(
         return res.status(400).json({ error: parsed.error.errors[0]?.message || "Dados inválidos" });
       }
 
-      const { username, password, firstName, lastName, role, modulePermissions } = parsed.data;
+      const { username, password, firstName, lastName, role, modulePermissions, tenantIds } = parsed.data as any;
 
-      // Check if username already exists for this tenant
-      const existingUser = await storage.getUserByUsernameAndTenant(username, tenantId);
+      // Check if username already exists globally (now using just username)
+      const existingUser = await storage.getUserByUsername(username);
       if (existingUser) {
         return res.status(400).json({ error: "Nome de usuário já existe" });
       }
@@ -285,6 +530,7 @@ export async function registerRoutes(
       // Admins have full access, so clear permissions for admin role
       const permissions = role === "admin" ? [] : (modulePermissions || []);
       
+      // Create user with admin's tenant as default
       const user = await storage.createUser({
         username,
         passwordHash,
@@ -292,8 +538,20 @@ export async function registerRoutes(
         lastName: lastName || null,
         role: role || "viewer",
         modulePermissions: permissions,
-        tenantId,
+        tenantId: adminTenantId,
       });
+
+      // Add user to specified tenants or all tenants
+      const tenantsToAdd: string[] = tenantIds && tenantIds.length > 0 
+        ? tenantIds 
+        : (await storage.getAllTenants()).map(t => t.id);
+      
+      for (const tid of tenantsToAdd) {
+        await storage.addUserToTenant(user.id, tid, tid === adminTenantId);
+      }
+
+      // Get user's tenants for response
+      const userTenants = await storage.getUserTenants(user.id);
 
       res.json({
         id: user.id,
@@ -302,6 +560,7 @@ export async function registerRoutes(
         lastName: user.lastName,
         role: user.role,
         modulePermissions: user.modulePermissions || [],
+        tenants: userTenants.map(t => ({ id: t.id, code: t.code, name: t.name })),
       });
     } catch (error) {
       console.error("Error creating user:", error);

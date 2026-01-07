@@ -1,9 +1,15 @@
 import { Link, useLocation } from "wouter";
-import { BarChart3, Database, ChevronDown, Building2, Scale, Users, LogOut, Shield, Eye, Loader2, Map, Gavel, User, TrendingUp, Calendar, Lightbulb, FileSpreadsheet, Table2, ArrowUpDown, FileUp, Key } from "lucide-react";
+import { BarChart3, Database, ChevronDown, Building2, Scale, Users, LogOut, Shield, Eye, Loader2, Map, Gavel, User, TrendingUp, Calendar, Lightbulb, FileSpreadsheet, Table2, ArrowUpDown, FileUp, Key, RefreshCw } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/use-tenant";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import {
   Sidebar,
@@ -98,8 +104,14 @@ const menuItems: MenuItem[] = [
 
 export function AppSidebar() {
   const [location] = useLocation();
-  const { user, isAdmin, logout, isLoggingOut } = useAuth();
+  const { user, isAdmin, logout, isLoggingOut, availableTenants, hasMultipleTenants, switchTenantAsync, isSwitchingTenant, tenant } = useAuth();
   const { tenantName, primaryColor } = useTenant();
+
+  const handleSwitchTenant = async (tenantId: string) => {
+    if (tenantId !== tenant?.id) {
+      await switchTenantAsync(tenantId);
+    }
+  };
 
   const getInitials = () => {
     if (user?.firstName && user?.lastName) {
@@ -144,9 +156,52 @@ export function AppSidebar() {
           <h1 className="text-lg font-bold text-sidebar-foreground tracking-tight leading-tight">
             CONTENCIOSO
           </h1>
-          <p className="text-xs text-sidebar-foreground/70 font-medium tracking-wide uppercase">
-            Gerenciamento {tenantName.toUpperCase()}
-          </p>
+          {hasMultipleTenants ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button 
+                  className="flex items-center gap-2 text-xs text-sidebar-foreground/70 font-medium tracking-wide uppercase cursor-pointer hover:text-sidebar-foreground transition-colors"
+                  data-testid="button-switch-tenant"
+                  disabled={isSwitchingTenant}
+                >
+                  {isSwitchingTenant ? (
+                    <>
+                      <RefreshCw className="h-3 w-3 animate-spin" />
+                      <span>Trocando...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Building2 className="h-3 w-3" />
+                      <span>{tenantName.toUpperCase()}</span>
+                      <ChevronDown className="h-3 w-3" />
+                    </>
+                  )}
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-48">
+                {availableTenants.map((t) => (
+                  <DropdownMenuItem
+                    key={t.id}
+                    onClick={() => handleSwitchTenant(t.id)}
+                    className={t.id === tenant?.id ? "bg-accent" : ""}
+                    data-testid={`menu-tenant-${t.code}`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <div 
+                        className="w-3 h-3 rounded-full"
+                        style={{ backgroundColor: t.primaryColor }}
+                      />
+                      <span>{t.name}</span>
+                    </div>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <p className="text-xs text-sidebar-foreground/70 font-medium tracking-wide uppercase">
+              Gerenciamento {tenantName.toUpperCase()}
+            </p>
+          )}
         </div>
         <div 
           className="mt-4 h-1 w-12 rounded-full" 
