@@ -309,7 +309,6 @@ export default function Dashboard() {
             )}
             Exportar PDF
           </Button>
-          <span className="px-3 py-1 text-xs font-medium bg-primary/10 text-primary rounded-full">NIO</span>
         </div>
       </div>
       <div ref={kpisRef} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
