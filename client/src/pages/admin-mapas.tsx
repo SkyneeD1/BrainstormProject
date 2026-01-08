@@ -412,7 +412,7 @@ function DesembargadorCard({ desembargador, onRefresh, labels }: { desembargador
 
 type Labels = ReturnType<typeof getLabels>;
 
-function TurmaSection({ turma, onRefresh, labels }: { turma: TurmaComDesembargadores; onRefresh: () => void; labels: Labels }) {
+function TurmaSection({ turma, onRefresh, labels, instancia }: { turma: TurmaComDesembargadores; onRefresh: () => void; labels: Labels; instancia: string }) {
   const { toast } = useToast();
   const [expanded, setExpanded] = useState(false);
   const [showAddDesemb, setShowAddDesemb] = useState(false);
@@ -524,7 +524,7 @@ function TurmaSection({ turma, onRefresh, labels }: { turma: TurmaComDesembargad
   );
 }
 
-function SpreadsheetView({ data, onRefresh, labels }: { data: AdminData | undefined; onRefresh: () => void; labels: Labels }) {
+function SpreadsheetView({ data, onRefresh, labels, instancia }: { data: AdminData | undefined; onRefresh: () => void; labels: Labels; instancia: string }) {
   const { toast } = useToast();
   const [empresaFilter, setEmpresaFilter] = useState<string>("todas");
   const [responsabilidadeFilter, setResponsabilidadeFilter] = useState<string>("todas");
@@ -593,8 +593,8 @@ function SpreadsheetView({ data, onRefresh, labels }: { data: AdminData | undefi
   });
 
   const smartImportMutation = useMutation({
-    mutationFn: async (decisoes: Array<{ dataDecisao: string; numeroProcesso: string; local: string; turma: string; relator: string; resultado: string; responsabilidade: string; upi: string; empresa: string }>) => {
-      const response = await apiRequest("POST", "/api/decisoes/smart-import", { decisoes });
+    mutationFn: async (payload: { decisoes: Array<{ dataDecisao: string; numeroProcesso: string; local: string; turma: string; relator: string; resultado: string; responsabilidade: string; upi: string; empresa: string }>; instancia: string }) => {
+      const response = await apiRequest("POST", "/api/decisoes/smart-import", payload);
       return response.json() as Promise<{ success: number; errors: number; turmasCreated: number; desembargadoresCreated: number; errorDetails: Array<{ index: number; error: string }> }>;
     },
     onSuccess: (data) => {
@@ -716,7 +716,7 @@ function SpreadsheetView({ data, onRefresh, labels }: { data: AdminData | undefi
 
         if (decisoesToImport.length > 0) {
           // Use smart import endpoint - auto-creates turmas and desembargadores
-          smartImportMutation.mutate(decisoesToImport);
+          smartImportMutation.mutate({ decisoes: decisoesToImport, instancia });
         } else {
           toast({ 
             title: "Nenhuma linha válida encontrada", 
@@ -1097,7 +1097,7 @@ function TRTSection({ trt, onRefresh, labels, instancia }: { trt: TRTData; onRef
             </div>
           )}
           {sortedTurmas.map(turma => (
-            <TurmaSection key={turma.id} turma={turma} onRefresh={onRefresh} labels={labels} />
+            <TurmaSection key={turma.id} turma={turma} onRefresh={onRefresh} labels={labels} instancia={instancia} />
           ))}
         </div>
       )}
@@ -1269,7 +1269,7 @@ export default function AdminMapasPage() {
         </TabsContent>
         
         <TabsContent value="planilha">
-          <SpreadsheetView data={data} onRefresh={() => refetch()} labels={labels} />
+          <SpreadsheetView data={data} onRefresh={() => refetch()} labels={labels} instancia={instanciaTab} />
         </TabsContent>
       </Tabs>
     </div>

@@ -1714,10 +1714,13 @@ export async function registerRoutes(
       const tenantId = req.session.user?.tenantId;
       if (!tenantId) return res.status(401).json({ error: "Tenant não identificado" });
       
-      const { decisoes } = req.body;
+      const { decisoes, instancia } = req.body;
       if (!Array.isArray(decisoes) || decisoes.length === 0) {
         return res.status(400).json({ error: "Lista de decisões vazia ou inválida" });
       }
+      
+      // Use instancia from payload, default to 'segunda' if not provided
+      const targetInstancia = instancia || 'segunda';
       
       const results = [];
       const errors = [];
@@ -1746,7 +1749,7 @@ export async function registerRoutes(
             responsabilidade: row.responsabilidade,
             upi: row.upi,
             empresa: row.empresa || 'V.tal',
-            instancia: row.instancia,
+            instancia: targetInstancia,
           });
           
           results.push(result.decisao);
