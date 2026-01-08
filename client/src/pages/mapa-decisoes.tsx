@@ -42,6 +42,22 @@ import {
   Legend,
 } from "recharts";
 import type { DecisaoRpac } from "@shared/schema";
+import { BrazilMap } from "@/components/brazil-map";
+import { MapPin } from "lucide-react";
+
+interface EstadoData {
+  uf: string;
+  estado: string;
+  trtCodigo: string;
+  trtNome: string;
+  regiao: string;
+  totalDecisoes: number;
+  favoraveis: number;
+  desfavoraveis: number;
+  percentualFavoravel: number;
+  totalComarcas: number;
+  totalRelatores: number;
+}
 
 // Label configuration for different instances
 function getLabels(instancia: "primeira" | "segunda") {
@@ -1062,9 +1078,10 @@ export default function MapaDecisoesPage() {
   const labels = getLabels(instancia);
   const { isAdmin, tenant } = useAuth();
   
+  const [selectedEstado, setSelectedEstado] = useState<{ uf: string; nome: string } | null>(null);
   const [selectedTRT, setSelectedTRT] = useState<string | null>(null);
   const [selectedTurma, setSelectedTurma] = useState<{ id: string; nome: string } | null>(null);
-  const [activeTab, setActiveTab] = useState<"navegacao" | "analytics">("navegacao");
+  const [activeTab, setActiveTab] = useState<"mapa" | "navegacao" | "analytics">("mapa");
   const [responsabilidadeFilter, setResponsabilidadeFilter] = useState<string>("todas");
   const [empresaNavFilter, setEmpresaNavFilter] = useState<string>("todas");
   const [numeroProcessoFilter, setNumeroProcessoFilter] = useState<string>("");
@@ -1073,9 +1090,22 @@ export default function MapaDecisoesPage() {
 
   // Reset navigation state when switching between instances
   useEffect(() => {
+    setSelectedEstado(null);
     setSelectedTRT(null);
     setSelectedTurma(null);
   }, [instancia]);
+
+  // Query for estados (map view)
+  const { data: estados, isLoading: loadingEstados } = useQuery<EstadoData[]>({
+    queryKey: ["/api/mapa-decisoes/estados", instancia],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      params.append("instancia", instancia);
+      const res = await fetch(`/api/mapa-decisoes/estados?${params.toString()}`, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch estados');
+      return res.json();
+    },
+  });
 
   const { data: trts, isLoading: loadingTRTs } = useQuery<TRTData[]>({
     queryKey: ["/api/mapa-decisoes/trts", instancia, responsabilidadeFilter, empresaNavFilter, numeroProcessoFilter],
@@ -1196,8 +1226,12 @@ export default function MapaDecisoesPage() {
         )}
       </header>
 
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "navegacao" | "analytics")} className="space-y-6">
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "mapa" | "navegacao" | "analytics")} className="space-y-6">
         <TabsList>
+          <TabsTrigger value="mapa" className="flex items-center gap-2" data-testid="tab-mapa">
+            <MapPin className="h-4 w-4" />
+            Mapa de Estados
+          </TabsTrigger>
           <TabsTrigger value="navegacao" className="flex items-center gap-2" data-testid="tab-navegacao">
             <Building2 className="h-4 w-4" />
             {labels.navButton}
@@ -1207,6 +1241,39 @@ export default function MapaDecisoesPage() {
             Análises e Gráficos
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="mapa" className="space-y-6">
+          <Card className="p-6">
+            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+              <MapPin className="h-5 w-5" style={{ color: tenant?.primaryColor || "#ffd700" }} />
+              Decisões por Estado
+            </h3>
+            <p className="text-sm text-muted-foreground mb-6">
+              Clique em um estado para ver os detalhes das decisões. Os estados são identificados automaticamente pelo número do processo.
+            </p>
+            {loadingEstados ? (
+              <div className="flex items-center justify-center h-[400px]">
+                <Skeleton className="h-[400px] w-full max-w-[800px]" />
+              </div>
+            ) : estados && estados.length > 0 ? (
+              <BrazilMap
+                estados={estados}
+                onSelectEstado={(uf, estado) => {
+                  setSelectedEstado({ uf, nome: estado });
+                  setActiveTab("navegacao");
+                }}
+                selectedUF={selectedEstado?.uf}
+                tenantColor={tenant?.primaryColor || "#ffd700"}
+              />
+            ) : (
+              <div className="flex flex-col items-center justify-center h-[400px] text-muted-foreground">
+                <MapPin className="h-12 w-12 mb-4 opacity-50" />
+                <p>Nenhuma decisão encontrada.</p>
+                <p className="text-sm">Importe decisões para visualizar o mapa.</p>
+              </div>
+            )}
+          </Card>
+        </TabsContent>
 
         <TabsContent value="navegacao" className="space-y-6">
           <div className="flex flex-wrap items-center gap-4 p-4 bg-muted/50 rounded-lg">
