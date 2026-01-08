@@ -1921,6 +1921,59 @@ export async function registerRoutes(
     }
   });
 
+  // Export hierarchy endpoint - returns full TRT → Turma → Desembargador → Decisões tree
+  app.get("/api/mapa-decisoes/export-hierarchy", isAuthenticated, isAdmin, requireModule("mapas"), async (req, res) => {
+    try {
+      const tenantId = req.session.user?.tenantId;
+      if (!tenantId) return res.status(401).json({ error: "Tenant não identificado" });
+      
+      const instancia = (req.query.instancia as string) || 'segunda';
+      const responsabilidade = req.query.responsabilidade as string | undefined;
+      const empresa = req.query.empresa as string | undefined;
+      
+      // Get all TRTs with statistics
+      const trts = await storage.getTRTsComEstatisticas(tenantId, responsabilidade, empresa, instancia);
+      
+      // For each TRT, get turmas and desembargadores
+      const hierarchy = await Promise.all(trts.map(async (trt) => {
+        const turmas = await storage.getTurmasByTRT(tenantId, trt.nome, responsabilidade, empresa, instancia);
+        
+        const turmasWithDesembargadores = await Promise.all(turmas.map(async (turma) => {
+          const desembargadores = await storage.getDesembargadoresComDecisoesByTurma(turma.id, tenantId);
+          return {
+            ...turma,
+            desembargadores: desembargadores.map(d => ({
+              id: d.id,
+              nome: d.nome,
+              totalDecisoes: d.decisoes.length,
+              favoraveis: d.favoraveis,
+              desfavoraveis: d.desfavoraveis,
+              percentualFavoravel: d.percentualFavoravel,
+              decisoes: d.decisoes.map(dec => ({
+                id: dec.id,
+                data: dec.dataDecisao ? new Date(dec.dataDecisao).toLocaleDateString('pt-BR') : '',
+                processo: dec.numeroProcesso || '',
+                resultado: dec.resultado || '',
+                responsabilidade: dec.responsabilidade || '',
+                empresa: dec.empresa || ''
+              }))
+            }))
+          };
+        }));
+        
+        return {
+          ...trt,
+          turmas: turmasWithDesembargadores
+        };
+      }));
+      
+      res.json({ trts: hierarchy, instancia });
+    } catch (error) {
+      console.error("Error fetching export hierarchy:", error);
+      res.status(500).json({ error: "Erro ao buscar hierarquia para exportação" });
+    }
+  });
+
   // ========== Demo Data Seed (disabled - method no longer exists) ==========
   // app.post("/api/seed-demo", isAuthenticated, isAdmin, async (req, res) => {
   //   try {
