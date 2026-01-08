@@ -1722,12 +1722,12 @@ export async function registerRoutes(
       // Use instancia from payload, default to 'segunda' if not provided
       const targetInstancia = instancia || 'segunda';
       
-      const results = [];
+      const newDecisions = [];
+      const updatedDecisions = [];
+      const skippedDecisions = [];
       const errors = [];
       let turmasCreated = 0;
       let desembargadoresCreated = 0;
-      let skipped = 0;
-      let updated = 0;
       
       for (let i = 0; i < decisoes.length; i++) {
         const row = decisoes[i];
@@ -1754,28 +1754,30 @@ export async function registerRoutes(
             instancia: targetInstancia,
           });
           
-          results.push(result.decisao);
+          if (result.skipped) {
+            skippedDecisions.push(result.decisao);
+          } else if (result.updated) {
+            updatedDecisions.push(result.decisao);
+          } else {
+            newDecisions.push(result.decisao);
+          }
+          
           if (result.turmaCreated) turmasCreated++;
           if (result.desembargadorCreated) desembargadoresCreated++;
-          if (result.skipped) skipped++;
-          if (result.updated) updated++;
         } catch (err: any) {
           errors.push({ index: i, error: err.message || "Erro ao importar decisão" });
         }
       }
       
-      // Calculate new imports (not skipped and not updated)
-      const newImports = results.length - skipped - updated;
-      
       res.status(201).json({ 
-        success: newImports, 
-        skipped,
-        updated,
+        success: newDecisions.length, 
+        skipped: skippedDecisions.length,
+        updated: updatedDecisions.length,
         errors: errors.length,
         turmasCreated,
         desembargadoresCreated,
         errorDetails: errors,
-        results 
+        results: [...newDecisions, ...updatedDecisions]
       });
     } catch (error) {
       console.error("Error smart importing decisoes:", error);
