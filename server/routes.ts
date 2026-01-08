@@ -1769,6 +1769,12 @@ export async function registerRoutes(
         }
       }
       
+      // Log import summary
+      console.log(`Smart import complete: ${newDecisions.length} new, ${updatedDecisions.length} updated, ${skippedDecisions.length} skipped, ${errors.length} errors`);
+      if (errors.length > 0) {
+        console.log('Import errors:', JSON.stringify(errors, null, 2));
+      }
+      
       res.status(201).json({ 
         success: newDecisions.length, 
         skipped: skippedDecisions.length,
