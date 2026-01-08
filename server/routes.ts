@@ -1792,6 +1792,23 @@ export async function registerRoutes(
   });
 
   // ========== Mapa de Decisões Analytics Routes ==========
+  
+  // Endpoint para obter estatísticas por estado/UF
+  app.get("/api/mapa-decisoes/estados", isAuthenticated, async (req, res) => {
+    try {
+      const tenantId = req.session.user?.tenantId;
+      if (!tenantId) {
+        return res.status(401).json({ error: "Não autenticado" });
+      }
+      const instancia = (req.query.instancia as string) || 'segunda';
+      const estados = await storage.getEstadosComEstatisticas(tenantId, instancia);
+      res.json(estados);
+    } catch (error) {
+      console.error("Error fetching estados:", error);
+      res.status(500).json({ error: "Erro ao buscar estados" });
+    }
+  });
+  
   app.get("/api/mapa-decisoes/trts", isAuthenticated, async (req, res) => {
     try {
       const tenantId = req.session.user?.tenantId;

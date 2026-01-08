@@ -676,9 +676,12 @@ export const decisoesRpac = pgTable("decisoes_rpac", {
   responsabilidade: varchar("responsabilidade").default("subsidiaria"),
   empresa: varchar("empresa").default("V.tal"),
   observacoes: varchar("observacoes"),
+  trtCodigo: varchar("trt_codigo"),
+  uf: varchar("uf"),
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => [
   index("IDX_decisoes_rpac_tenant").on(table.tenantId),
+  index("IDX_decisoes_rpac_uf").on(table.uf),
 ]);
 
 export type DecisaoRpac = typeof decisoesRpac.$inferSelect;

@@ -57,6 +57,7 @@ import { and, gte, lte, inArray, sql } from "drizzle-orm";
 import { parseExcelFile } from "./excel-parser";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
+import { extractTRTCode, TRT_MAPPING } from "@shared/trt-mapping";
 
 export interface IStorage {
   // Tenant methods
@@ -223,6 +224,21 @@ export interface IStorage {
       }>;
     }>;
   }>;
+  
+  // Estatísticas agrupadas por estado/UF
+  getEstadosComEstatisticas(tenantId: string, instancia?: string): Promise<Array<{
+    uf: string;
+    estado: string;
+    trtCodigo: string;
+    trtNome: string;
+    regiao: string;
+    totalDecisoes: number;
+    favoraveis: number;
+    desfavoraveis: number;
+    percentualFavoravel: number;
+    totalComarcas: number;
+    totalRelatores: number;
+  }>>;
   
   // Passivo Mensal
   getPassivoMensal(tenantId: string, mes: string, ano: string): Promise<PassivoData | null>;
@@ -1501,7 +1517,24 @@ export class MemStorage implements IStorage {
   }
 
   async createDecisaoRpac(tenantId: string, decisao: Omit<InsertDecisaoRpac, 'tenantId'>): Promise<DecisaoRpac> {
-    const [created] = await db.insert(decisoesRpac).values({ ...decisao, tenantId }).returning();
+    // Auto-extract TRT code and UF from numeroProcesso
+    let trtCodigo = decisao.trtCodigo;
+    let uf = decisao.uf;
+    
+    if (decisao.numeroProcesso && (!trtCodigo || !uf)) {
+      const code = extractTRTCode(decisao.numeroProcesso);
+      if (code && TRT_MAPPING[code]) {
+        trtCodigo = trtCodigo || code;
+        uf = uf || TRT_MAPPING[code].uf;
+      }
+    }
+    
+    const [created] = await db.insert(decisoesRpac).values({ 
+      ...decisao, 
+      tenantId,
+      trtCodigo,
+      uf 
+    }).returning();
     return created;
   }
 
@@ -1723,6 +1756,89 @@ export class MemStorage implements IStorage {
       const numB = parseInt(b.nome.match(/\d+/)?.[0] || '999');
       return numA - numB;
     });
+  }
+
+  // Estatísticas agrupadas por estado/UF
+  async getEstadosComEstatisticas(tenantId: string, instancia?: string): Promise<Array<{
+    uf: string;
+    estado: string;
+    trtCodigo: string;
+    trtNome: string;
+    regiao: string;
+    totalDecisoes: number;
+    favoraveis: number;
+    desfavoraveis: number;
+    percentualFavoravel: number;
+    totalComarcas: number;
+    totalRelatores: number;
+  }>> {
+    const turmasList = await this.getAllTurmas(tenantId, instancia || 'segunda');
+    const estadoMap = new Map<string, {
+      uf: string;
+      estado: string;
+      trtCodigo: string;
+      trtNome: string;
+      regiao: string;
+      decisoes: DecisaoRpac[];
+      comarcas: Set<string>;
+      relatores: Set<string>;
+    }>();
+
+    for (const turma of turmasList) {
+      const desembargadores = await this.getDesembargadoresByTurma(turma.id, tenantId);
+      for (const d of desembargadores) {
+        const decisoes = await this.getDecisoesRpacByDesembargador(d.id, tenantId);
+        for (const dec of decisoes) {
+          const trtCode = dec.trtCodigo || extractTRTCode(dec.numeroProcesso);
+          if (!trtCode) continue;
+          
+          const trtInfo = TRT_MAPPING[trtCode];
+          if (!trtInfo) continue;
+          
+          const key = trtInfo.uf;
+          if (!estadoMap.has(key)) {
+            estadoMap.set(key, {
+              uf: trtInfo.uf,
+              estado: trtInfo.estado,
+              trtCodigo: trtInfo.codigo,
+              trtNome: trtInfo.nome,
+              regiao: trtInfo.regiao,
+              decisoes: [],
+              comarcas: new Set(),
+              relatores: new Set(),
+            });
+          }
+          
+          const data = estadoMap.get(key)!;
+          data.decisoes.push(dec);
+          data.comarcas.add(turma.nome);
+          data.relatores.add(d.id);
+        }
+      }
+    }
+
+    const result = [];
+    for (const [_, data] of Array.from(estadoMap.entries())) {
+      const favoraveis = data.decisoes.filter(d => this.isFavoravel(d.resultado)).length;
+      const desfavoraveis = data.decisoes.filter(d => this.isDesfavoravel(d.resultado)).length;
+      const total = data.decisoes.length;
+
+      result.push({
+        uf: data.uf,
+        estado: data.estado,
+        trtCodigo: data.trtCodigo,
+        trtNome: data.trtNome,
+        regiao: data.regiao,
+        totalDecisoes: total,
+        favoraveis,
+        desfavoraveis,
+        percentualFavoravel: total > 0 ? Math.round((favoraveis / total) * 100) : 0,
+        totalComarcas: data.comarcas.size,
+        totalRelatores: data.relatores.size,
+      });
+    }
+
+    return result.sort((a, b) => b.totalDecisoes - a.totalDecisoes);
   }
 
   // Analytics: Get Turmas by TRT with statistics
