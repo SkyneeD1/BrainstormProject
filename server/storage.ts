@@ -167,8 +167,8 @@ export interface IStorage {
   getTurma(id: string, tenantId: string): Promise<Turma | undefined>;
   getTurmaByName(nome: string, tenantId: string): Promise<Turma | undefined>;
   findOrCreateTurma(tenantId: string, nome: string, regiao?: string, instancia?: string): Promise<Turma>;
-  createTurma(tenantId: string, turma: InsertTurma): Promise<Turma>;
-  updateTurma(id: string, data: Partial<InsertTurma>, tenantId: string): Promise<Turma | undefined>;
+  createTurma(tenantId: string, turma: Omit<InsertTurma, 'tenantId'>): Promise<Turma>;
+  updateTurma(id: string, data: Partial<Omit<InsertTurma, 'tenantId'>>, tenantId: string): Promise<Turma | undefined>;
   deleteTurma(id: string, tenantId: string): Promise<boolean>;
   
   getAllDesembargadores(tenantId: string): Promise<Desembargador[]>;
@@ -176,8 +176,8 @@ export interface IStorage {
   getDesembargador(id: string, tenantId: string): Promise<Desembargador | undefined>;
   getDesembargadorByName(nome: string, tenantId: string): Promise<Desembargador | undefined>;
   findOrCreateDesembargador(tenantId: string, nome: string, turmaId: string): Promise<Desembargador>;
-  createDesembargador(tenantId: string, desembargador: InsertDesembargador): Promise<Desembargador>;
-  updateDesembargador(id: string, data: Partial<InsertDesembargador>, tenantId: string): Promise<Desembargador | undefined>;
+  createDesembargador(tenantId: string, desembargador: Omit<InsertDesembargador, 'tenantId'>): Promise<Desembargador>;
+  updateDesembargador(id: string, data: Partial<Omit<InsertDesembargador, 'tenantId'>>, tenantId: string): Promise<Desembargador | undefined>;
   deleteDesembargador(id: string, tenantId: string): Promise<boolean>;
   
   // Smart import with auto-creation
@@ -200,8 +200,8 @@ export interface IStorage {
   getAllDecisoesRpac(tenantId: string): Promise<DecisaoRpac[]>;
   getDecisoesRpacByDesembargador(desembargadorId: string, tenantId: string): Promise<DecisaoRpac[]>;
   getDecisaoRpac(id: string, tenantId: string): Promise<DecisaoRpac | undefined>;
-  createDecisaoRpac(tenantId: string, decisao: InsertDecisaoRpac): Promise<DecisaoRpac>;
-  updateDecisaoRpac(id: string, data: Partial<InsertDecisaoRpac>, tenantId: string): Promise<DecisaoRpac | undefined>;
+  createDecisaoRpac(tenantId: string, decisao: Omit<InsertDecisaoRpac, 'tenantId'>): Promise<DecisaoRpac>;
+  updateDecisaoRpac(id: string, data: Partial<Omit<InsertDecisaoRpac, 'tenantId'>>, tenantId: string): Promise<DecisaoRpac | undefined>;
   deleteDecisaoRpac(id: string, tenantId: string): Promise<boolean>;
   
   // Dados completos para admin
@@ -1196,16 +1196,16 @@ export class MemStorage implements IStorage {
     return await this.createTurma(tenantId, {
       nome: nome.trim(),
       regiao: regiao?.trim() || null,
-      instancia: instancia || '2ª Instância',
+      instancia: instancia || 'segunda',
     });
   }
 
-  async createTurma(tenantId: string, turma: InsertTurma): Promise<Turma> {
+  async createTurma(tenantId: string, turma: Omit<InsertTurma, 'tenantId'>): Promise<Turma> {
     const [created] = await db.insert(turmas).values({ ...turma, tenantId }).returning();
     return created;
   }
 
-  async updateTurma(id: string, data: Partial<InsertTurma>, tenantId: string): Promise<Turma | undefined> {
+  async updateTurma(id: string, data: Partial<Omit<InsertTurma, 'tenantId'>>, tenantId: string): Promise<Turma | undefined> {
     const [updated] = await db.update(turmas).set(data).where(and(eq(turmas.id, id), eq(turmas.tenantId, tenantId))).returning();
     return updated;
   }
@@ -1247,12 +1247,12 @@ export class MemStorage implements IStorage {
     });
   }
 
-  async createDesembargador(tenantId: string, desembargador: InsertDesembargador): Promise<Desembargador> {
+  async createDesembargador(tenantId: string, desembargador: Omit<InsertDesembargador, 'tenantId'>): Promise<Desembargador> {
     const [created] = await db.insert(desembargadores).values({ ...desembargador, tenantId }).returning();
     return created;
   }
 
-  async updateDesembargador(id: string, data: Partial<InsertDesembargador>, tenantId: string): Promise<Desembargador | undefined> {
+  async updateDesembargador(id: string, data: Partial<Omit<InsertDesembargador, 'tenantId'>>, tenantId: string): Promise<Desembargador | undefined> {
     const [updated] = await db.update(desembargadores).set(data).where(and(eq(desembargadores.id, id), eq(desembargadores.tenantId, tenantId))).returning();
     return updated;
   }
@@ -1284,7 +1284,7 @@ export class MemStorage implements IStorage {
       turmaEntity = await this.createTurma(tenantId, {
         nome: data.turma.trim(),
         regiao: data.local?.trim() || null,
-        instancia: data.instancia || '2ª Instância',
+        instancia: data.instancia || 'segunda',
       });
       turmaCreated = true;
     }
@@ -1407,12 +1407,12 @@ export class MemStorage implements IStorage {
     return decisao;
   }
 
-  async createDecisaoRpac(tenantId: string, decisao: InsertDecisaoRpac): Promise<DecisaoRpac> {
+  async createDecisaoRpac(tenantId: string, decisao: Omit<InsertDecisaoRpac, 'tenantId'>): Promise<DecisaoRpac> {
     const [created] = await db.insert(decisoesRpac).values({ ...decisao, tenantId }).returning();
     return created;
   }
 
-  async updateDecisaoRpac(id: string, data: Partial<InsertDecisaoRpac>, tenantId: string): Promise<DecisaoRpac | undefined> {
+  async updateDecisaoRpac(id: string, data: Partial<Omit<InsertDecisaoRpac, 'tenantId'>>, tenantId: string): Promise<DecisaoRpac | undefined> {
     const [updated] = await db.update(decisoesRpac).set(data).where(and(eq(decisoesRpac.id, id), eq(decisoesRpac.tenantId, tenantId))).returning();
     return updated;
   }
