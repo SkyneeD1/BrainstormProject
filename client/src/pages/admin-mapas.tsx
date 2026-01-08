@@ -595,13 +595,18 @@ function SpreadsheetView({ data, onRefresh, labels, instancia }: { data: AdminDa
   const smartImportMutation = useMutation({
     mutationFn: async (payload: { decisoes: Array<{ dataDecisao: string; numeroProcesso: string; local: string; turma: string; relator: string; resultado: string; responsabilidade: string; upi: string; empresa: string }>; instancia: string }) => {
       const response = await apiRequest("POST", "/api/decisoes/smart-import", payload);
-      return response.json() as Promise<{ success: number; errors: number; turmasCreated: number; desembargadoresCreated: number; errorDetails: Array<{ index: number; error: string }> }>;
+      return response.json() as Promise<{ success: number; skipped: number; updated: number; errors: number; turmasCreated: number; desembargadoresCreated: number; errorDetails: Array<{ index: number; error: string }> }>;
     },
     onSuccess: (data) => {
-      let message = `${data.success} decisões importadas`;
-      if (data.turmasCreated > 0) message += `, ${data.turmasCreated} turmas criadas`;
-      if (data.desembargadoresCreated > 0) message += `, ${data.desembargadoresCreated} desembargadores criados`;
-      if (data.errors > 0) message += `, ${data.errors} erros`;
+      const parts = [];
+      if (data.success > 0) parts.push(`${data.success} novas decisões importadas`);
+      if (data.updated > 0) parts.push(`${data.updated} atualizadas`);
+      if (data.skipped > 0) parts.push(`${data.skipped} ignoradas (duplicatas sem alterações)`);
+      if (data.turmasCreated > 0) parts.push(`${data.turmasCreated} turmas criadas`);
+      if (data.desembargadoresCreated > 0) parts.push(`${data.desembargadoresCreated} desembargadores criados`);
+      if (data.errors > 0) parts.push(`${data.errors} erros`);
+      
+      const message = parts.length > 0 ? parts.join(", ") : "Nenhuma alteração realizada";
       toast({ title: message });
       onRefresh();
     },

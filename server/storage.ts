@@ -175,6 +175,7 @@ export interface IStorage {
   getDesembargadoresByTurma(turmaId: string, tenantId: string): Promise<Desembargador[]>;
   getDesembargador(id: string, tenantId: string): Promise<Desembargador | undefined>;
   getDesembargadorByName(nome: string, tenantId: string): Promise<Desembargador | undefined>;
+  getDesembargadorByNameAndTurma(nome: string, turmaId: string, tenantId: string): Promise<Desembargador | undefined>;
   findOrCreateDesembargador(tenantId: string, nome: string, turmaId: string): Promise<Desembargador>;
   createDesembargador(tenantId: string, desembargador: Omit<InsertDesembargador, 'tenantId'>): Promise<Desembargador>;
   updateDesembargador(id: string, data: Partial<Omit<InsertDesembargador, 'tenantId'>>, tenantId: string): Promise<Desembargador | undefined>;
@@ -192,7 +193,7 @@ export interface IStorage {
     upi?: string;
     empresa: string;
     instancia?: string;
-  }): Promise<{ decisao: DecisaoRpac; turmaCreated: boolean; desembargadorCreated: boolean }>;
+  }): Promise<{ decisao: DecisaoRpac; turmaCreated: boolean; desembargadorCreated: boolean; skipped: boolean; updated: boolean }>;
   
   getMapaDecisoesGeral(tenantId: string): Promise<MapaDecisoes>;
   
@@ -200,6 +201,7 @@ export interface IStorage {
   getAllDecisoesRpac(tenantId: string): Promise<DecisaoRpac[]>;
   getDecisoesRpacByDesembargador(desembargadorId: string, tenantId: string): Promise<DecisaoRpac[]>;
   getDecisaoRpac(id: string, tenantId: string): Promise<DecisaoRpac | undefined>;
+  getDecisaoRpacByNumeroProcesso(numeroProcesso: string, tenantId: string): Promise<DecisaoRpac | undefined>;
   createDecisaoRpac(tenantId: string, decisao: Omit<InsertDecisaoRpac, 'tenantId'>): Promise<DecisaoRpac>;
   updateDecisaoRpac(id: string, data: Partial<Omit<InsertDecisaoRpac, 'tenantId'>>, tenantId: string): Promise<DecisaoRpac | undefined>;
   deleteDecisaoRpac(id: string, tenantId: string): Promise<boolean>;
@@ -1240,8 +1242,14 @@ export class MemStorage implements IStorage {
     return allDesembargadores.find(d => d.nome.trim().toLowerCase() === normalizedNome);
   }
 
+  async getDesembargadorByNameAndTurma(nome: string, turmaId: string, tenantId: string): Promise<Desembargador | undefined> {
+    const normalizedNome = nome.trim().toLowerCase();
+    const turmaDesembargadores = await db.select().from(desembargadores).where(and(eq(desembargadores.turmaId, turmaId), eq(desembargadores.tenantId, tenantId)));
+    return turmaDesembargadores.find(d => d.nome.trim().toLowerCase() === normalizedNome);
+  }
+
   async findOrCreateDesembargador(tenantId: string, nome: string, turmaId: string): Promise<Desembargador> {
-    const existing = await this.getDesembargadorByName(nome, tenantId);
+    const existing = await this.getDesembargadorByNameAndTurma(nome, turmaId, tenantId);
     if (existing) {
       return existing;
     }
@@ -1279,11 +1287,80 @@ export class MemStorage implements IStorage {
     upi?: string;
     empresa: string;
     instancia?: string;
-  }): Promise<{ decisao: DecisaoRpac; turmaCreated: boolean; desembargadorCreated: boolean }> {
+  }): Promise<{ decisao: DecisaoRpac; turmaCreated: boolean; desembargadorCreated: boolean; skipped: boolean; updated: boolean }> {
     let turmaCreated = false;
     let desembargadorCreated = false;
+    let skipped = false;
+    let updated = false;
 
-    // 1. Find or create Turma - filter by instancia to avoid mixing 1ª and 2ª instância
+    // Helper: Parse date from various formats
+    const parseDate = (dateStr: string): Date | undefined => {
+      if (!dateStr) return undefined;
+      // Try DD/MM/YYYY format first
+      const parts = dateStr.split('/');
+      if (parts.length === 3) {
+        const [day, month, year] = parts;
+        const parsed = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+        if (!isNaN(parsed.getTime())) return parsed;
+      }
+      // Try ISO format as fallback
+      const isoDate = new Date(dateStr);
+      if (!isNaN(isoDate.getTime())) return isoDate;
+      return undefined;
+    };
+
+    // Helper: Normalize responsabilidade
+    const normalizeResponsabilidade = (val?: string): 'solidaria' | 'subsidiaria' => {
+      if (!val) return 'subsidiaria';
+      const normalized = val.toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
+      return normalized.includes('solidaria') ? 'solidaria' : 'subsidiaria';
+    };
+
+    // Parse incoming data
+    const dataDecisao = parseDate(data.dataDecisao);
+    const normalizedResultado = this.normalizeResultado(data.resultado);
+    const normalizedResponsabilidade = normalizeResponsabilidade(data.responsabilidade);
+    const normalizedUpi = data.upi?.toLowerCase() === 'sim' ? 'sim' : 'nao';
+    const normalizedEmpresa = data.empresa.trim() || 'V.tal';
+    const numeroProcesso = data.numeroProcesso.trim();
+
+    // 1. Check for existing decision by numeroProcesso (duplicate detection)
+    const existingDecisao = await this.getDecisaoRpacByNumeroProcesso(numeroProcesso, tenantId);
+    
+    if (existingDecisao) {
+      // Compare fields to see if anything changed
+      const existingDate = existingDecisao.dataDecisao ? new Date(existingDecisao.dataDecisao).toISOString().split('T')[0] : null;
+      const newDate = dataDecisao ? dataDecisao.toISOString().split('T')[0] : null;
+      
+      const hasChanges = 
+        existingDate !== newDate ||
+        existingDecisao.resultado !== normalizedResultado ||
+        existingDecisao.responsabilidade !== normalizedResponsabilidade ||
+        existingDecisao.upi !== normalizedUpi ||
+        existingDecisao.empresa !== normalizedEmpresa;
+
+      if (hasChanges) {
+        // Update existing decision
+        const updatedDecisao = await this.updateDecisaoRpac(existingDecisao.id, {
+          dataDecisao,
+          resultado: normalizedResultado,
+          responsabilidade: normalizedResponsabilidade,
+          upi: normalizedUpi,
+          empresa: normalizedEmpresa,
+        }, tenantId);
+        
+        updated = true;
+        return { decisao: updatedDecisao || existingDecisao, turmaCreated, desembargadorCreated, skipped, updated };
+      } else {
+        // No changes, skip this decision
+        skipped = true;
+        return { decisao: existingDecisao, turmaCreated, desembargadorCreated, skipped, updated };
+      }
+    }
+
+    // 2. Find or create Turma - filter by instancia to avoid mixing 1ª and 2ª instância
     const targetInstancia = data.instancia || 'segunda';
     let turmaEntity = await this.getTurmaByName(data.turma, tenantId, targetInstancia);
     if (!turmaEntity) {
@@ -1295,8 +1372,8 @@ export class MemStorage implements IStorage {
       turmaCreated = true;
     }
 
-    // 2. Find or create Desembargador
-    let desembargadorEntity = await this.getDesembargadorByName(data.relator, tenantId);
+    // 3. Find or create Desembargador - filter by turma to keep them separate per turma/instancia
+    let desembargadorEntity = await this.getDesembargadorByNameAndTurma(data.relator, turmaEntity.id, tenantId);
     if (!desembargadorEntity) {
       desembargadorEntity = await this.createDesembargador(tenantId, {
         nome: data.relator.trim(),
@@ -1306,47 +1383,18 @@ export class MemStorage implements IStorage {
       desembargadorCreated = true;
     }
 
-    // 3. Parse date
-    let dataDecisao: Date | undefined;
-    if (data.dataDecisao) {
-      // Try DD/MM/YYYY format first
-      const parts = data.dataDecisao.split('/');
-      if (parts.length === 3) {
-        const [day, month, year] = parts;
-        dataDecisao = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-      } else {
-        // Try ISO format as fallback
-        dataDecisao = new Date(data.dataDecisao);
-      }
-      if (isNaN(dataDecisao.getTime())) {
-        dataDecisao = undefined;
-      }
-    }
-
-    // 4. Normalize resultado
-    const normalizedResultado = this.normalizeResultado(data.resultado);
-
-    // 5. Normalize responsabilidade - remove accents and check for "solidaria"
-    const normalizeResponsabilidade = (val?: string): 'solidaria' | 'subsidiaria' => {
-      if (!val) return 'subsidiaria';
-      const normalized = val.toLowerCase()
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "");
-      return normalized.includes('solidaria') ? 'solidaria' : 'subsidiaria';
-    };
-
-    // 6. Create the decisao
+    // 4. Create the new decisao
     const decisao = await this.createDecisaoRpac(tenantId, {
       desembargadorId: desembargadorEntity.id,
-      numeroProcesso: data.numeroProcesso.trim(),
-      dataDecisao: dataDecisao,
+      numeroProcesso,
+      dataDecisao,
       resultado: normalizedResultado,
-      responsabilidade: normalizeResponsabilidade(data.responsabilidade),
-      upi: data.upi?.toLowerCase() === 'sim' ? 'sim' : 'nao',
-      empresa: data.empresa.trim() || 'V.tal',
+      responsabilidade: normalizedResponsabilidade,
+      upi: normalizedUpi,
+      empresa: normalizedEmpresa,
     });
 
-    return { decisao, turmaCreated, desembargadorCreated };
+    return { decisao, turmaCreated, desembargadorCreated, skipped, updated };
   }
 
   // Mapa de Decisões - agregação para visualização
@@ -1419,6 +1467,12 @@ export class MemStorage implements IStorage {
 
   async getDecisaoRpac(id: string, tenantId: string): Promise<DecisaoRpac | undefined> {
     const [decisao] = await db.select().from(decisoesRpac).where(and(eq(decisoesRpac.id, id), eq(decisoesRpac.tenantId, tenantId)));
+    return decisao;
+  }
+
+  async getDecisaoRpacByNumeroProcesso(numeroProcesso: string, tenantId: string): Promise<DecisaoRpac | undefined> {
+    const normalizedNumero = numeroProcesso.trim();
+    const [decisao] = await db.select().from(decisoesRpac).where(and(eq(decisoesRpac.numeroProcesso, normalizedNumero), eq(decisoesRpac.tenantId, tenantId)));
     return decisao;
   }
 

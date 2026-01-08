@@ -1726,6 +1726,8 @@ export async function registerRoutes(
       const errors = [];
       let turmasCreated = 0;
       let desembargadoresCreated = 0;
+      let skipped = 0;
+      let updated = 0;
       
       for (let i = 0; i < decisoes.length; i++) {
         const row = decisoes[i];
@@ -1755,13 +1757,20 @@ export async function registerRoutes(
           results.push(result.decisao);
           if (result.turmaCreated) turmasCreated++;
           if (result.desembargadorCreated) desembargadoresCreated++;
+          if (result.skipped) skipped++;
+          if (result.updated) updated++;
         } catch (err: any) {
           errors.push({ index: i, error: err.message || "Erro ao importar decisão" });
         }
       }
       
+      // Calculate new imports (not skipped and not updated)
+      const newImports = results.length - skipped - updated;
+      
       res.status(201).json({ 
-        success: results.length, 
+        success: newImports, 
+        skipped,
+        updated,
         errors: errors.length,
         turmasCreated,
         desembargadoresCreated,
