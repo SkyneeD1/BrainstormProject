@@ -115,6 +115,11 @@ A Power BI-style litigation management dashboard with multi-tenant support for V
   - Tenant switching for logged-in users via sidebar dropdown
   - New users automatically added to all tenants
   - React Query cache handling uses setQueryData for seamless tenant switching
+- January 2026: Smart Excel import for Mapas de Decisões
+  - Auto-creates Turmas and Desembargadores if they don't exist during import
+  - New endpoint POST /api/decisoes/smart-import
+  - Updated column structure: Data, Nº Processo, Local, Turma, Relator, Resultado, Responsabilidade, UPI, Empresa
+  - Brazilian date format DD/MM/YYYY throughout
 
 ## Running the Project
 ```bash
