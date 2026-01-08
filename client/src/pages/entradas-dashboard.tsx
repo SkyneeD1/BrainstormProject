@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,7 @@ import { format, subMonths, addMonths, startOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { generateHTMLExport, downloadHTML, generateKPIHTML, generateTableHTML } from "@/lib/html-export";
+import { captureAndExport } from "@/lib/screenshot-export";
 
 interface CasosNovosStats {
   total: number;
@@ -74,6 +74,7 @@ export default function EntradasDashboard() {
   const [isExportingHTML, setIsExportingHTML] = useState(false);
   const { isAdmin, tenant } = useAuth();
   const { toast } = useToast();
+  const contentRef = useRef<HTMLDivElement>(null);
 
   const mesReferenciaStr = format(mesReferencia, 'yyyy-MM');
   const mesAnterior = subMonths(mesReferencia, 1);
@@ -104,61 +105,22 @@ export default function EntradasDashboard() {
     }
   };
 
-  const exportToHTML = () => {
-    if (!stats || !tenant) return;
+  const exportToHTML = async () => {
+    if (!contentRef.current || !tenant) return;
     setIsExportingHTML(true);
 
     try {
       const tenantName = tenant.name || tenant.code;
       const tenantColor = tenant.primaryColor || "#ffd700";
-      const periodoLabel = format(mesReferencia, "MMMM yyyy", { locale: ptBR });
-
-      const kpis = [
-        { label: "Total de Casos", value: formatNumber(stats.total) },
-        { label: format(mesReferencia, "MMM/yy", { locale: ptBR }).toUpperCase(), value: formatNumber(stats.mesAtual) },
-        { label: format(mesAnterior, "MMM/yy", { locale: ptBR }).toUpperCase(), value: formatNumber(stats.mesAnterior) },
-        { label: "Valor Contingência", value: formatCurrency(stats.valorTotalContingencia) },
-        { label: "Variação vs Anterior", value: `${stats.variacaoPercentual}%` },
-      ];
-
-      const tribunalHeaders = ["Tribunal", "Quantidade", "%"];
-      const tribunalRows = stats.porTribunal.slice(0, 15).map(t => [
-        `TRT ${t.tribunal}`,
-        formatNumber(t.quantidade),
-        `${t.percentual.toFixed(1)}%`
-      ]);
-
-      const empresaHeaders = ["Empresa", "Quantidade", "%"];
-      const empresaRows = stats.porEmpresa.map(e => [
-        e.empresa,
-        formatNumber(e.quantidade),
-        `${e.percentual.toFixed(1)}%`
-      ]);
-
-      const html = generateHTMLExport({
+      const filename = `entradas-casos-novos-${format(mesReferencia, 'yyyy-MM')}`;
+      
+      await captureAndExport(contentRef.current, {
+        filename,
         title: "Entradas - Casos Novos",
-        subtitle: `Período: ${periodoLabel}`,
         tenant: tenantName,
         tenantColor,
-        generatedAt: new Date(),
-        sections: [
-          {
-            title: "Indicadores Principais",
-            content: generateKPIHTML(kpis)
-          },
-          {
-            title: "Distribuição por Tribunal",
-            content: generateTableHTML(tribunalHeaders, tribunalRows)
-          },
-          {
-            title: "Distribuição por Empresa",
-            content: generateTableHTML(empresaHeaders, empresaRows)
-          }
-        ]
+        format: 'html'
       });
-
-      const filename = `entradas-casos-novos-${format(mesReferencia, 'yyyy-MM')}.html`;
-      downloadHTML(html, filename);
 
       toast({
         title: "HTML exportado com sucesso!",
@@ -213,7 +175,7 @@ export default function EntradasDashboard() {
   const isPositiveVariation = (stats?.variacaoPercentual || 0) >= 0;
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-6" ref={contentRef}>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div className="flex items-center gap-3">
           <ArrowUpDown className="h-8 w-8 text-primary" />

@@ -18,7 +18,7 @@ import { EmpresaPieChart } from "@/components/charts/empresa-pie-chart";
 import { formatProcessos, formatCurrency, formatPercentage } from "@/lib/formatters";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { generateHTMLExport, downloadHTML, generateKPIHTML, generateTableHTML } from "@/lib/html-export";
+import { captureAndExport } from "@/lib/screenshot-export";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import type { PassivoData } from "@shared/schema";
@@ -217,80 +217,24 @@ export default function Dashboard() {
     }
   };
 
+  const contentRef = useRef<HTMLDivElement>(null);
+  
   const exportToHTML = async () => {
-    if (!passivoData || !tenant) return;
+    if (!contentRef.current || !tenant) return;
     setIsExportingHTML(true);
 
     try {
       const tenantName = tenant.name || tenant.code;
       const tenantColor = tenant.primaryColor || "#ffd700";
-      const { fases, riscos, empresas, summary } = passivoData;
-
-      const kpis = [
-        { label: "Total de Processos", value: formatProcessos(summary.totalProcessos) },
-        { label: "Total do Passivo", value: formatCurrency(summary.totalPassivo) },
-        { label: "% Risco Provável", value: formatPercentage(summary.percentualRiscoProvavel) },
-        { label: "% Fase Recursal", value: formatPercentage(summary.percentualFaseRecursal) },
-      ];
-
-      const faseHeaders = ["Fase", "Processos", "%", "Valor Total", "%", "Ticket Médio"];
-      const faseRows = fases.map(f => [
-        f.fase,
-        formatProcessos(f.processos),
-        formatPercentage(f.percentualProcessos),
-        formatCurrency(f.valorTotal),
-        formatPercentage(f.percentualValor),
-        formatCurrency(f.ticketMedio)
-      ]);
-
-      const riscoHeaders = ["Risco", "Processos", "%", "Valor Total", "%", "Ticket Médio"];
-      const riscoRows = riscos.map(r => [
-        r.risco,
-        formatProcessos(r.processos),
-        formatPercentage(r.percentualProcessos),
-        formatCurrency(r.valorTotal),
-        formatPercentage(r.percentualValor),
-        formatCurrency(r.ticketMedio)
-      ]);
-
-      const empresaHeaders = ["Empresa", "Processos", "Valor Total", "Conhecimento", "Recursal", "Execução"];
-      const empresaRows = empresas.map(e => [
-        e.empresa,
-        formatProcessos(e.total.processos),
-        formatCurrency(e.total.valor),
-        formatCurrency(e.conhecimento.valor),
-        formatCurrency(e.recursal.valor),
-        formatCurrency(e.execucao.valor)
-      ]);
-
-      const html = generateHTMLExport({
+      const filename = `passivo-sob-gestao-${new Date().toISOString().split('T')[0]}`;
+      
+      await captureAndExport(contentRef.current, {
+        filename,
         title: "Passivo sob Gestão",
-        subtitle: `Período: ${periodoLabel}`,
         tenant: tenantName,
         tenantColor,
-        generatedAt: new Date(),
-        sections: [
-          {
-            title: "Indicadores Principais",
-            content: generateKPIHTML(kpis)
-          },
-          {
-            title: "Visão por Fase Processual",
-            content: generateTableHTML(faseHeaders, faseRows)
-          },
-          {
-            title: "Visão por Classificação de Risco",
-            content: generateTableHTML(riscoHeaders, riscoRows)
-          },
-          {
-            title: "Detalhamento por Empresa",
-            content: generateTableHTML(empresaHeaders, empresaRows)
-          }
-        ]
+        format: 'html'
       });
-
-      const filename = `passivo-sob-gestao-${new Date().toISOString().split('T')[0]}.html`;
-      downloadHTML(html, filename);
 
       toast({
         title: "HTML exportado com sucesso!",
@@ -365,7 +309,7 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="p-6 space-y-6 max-w-[1600px] mx-auto">
+    <div className="p-6 space-y-6 max-w-[1600px] mx-auto" ref={contentRef}>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-foreground tracking-tight">
