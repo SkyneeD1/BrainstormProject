@@ -42,7 +42,7 @@ export type CreateTenantInput = z.infer<typeof insertTenantSchema>;
 
 export const faseProcessualEnum = z.enum(["Conhecimento", "Recursal", "Execução"]);
 export const classificacaoRiscoEnum = z.enum(["Remoto", "Possível", "Provável"]);
-export const empresaEnum = z.enum(["V.tal", "OI", "Serede", "Sprink", "Outros Terceiros"]);
+export const empresaEnum = z.enum(["V.tal", "NIO", "OI", "Serede", "Sprink", "Outros Terceiros"]);
 
 export type FaseProcessual = z.infer<typeof faseProcessualEnum>;
 export type ClassificacaoRisco = z.infer<typeof classificacaoRiscoEnum>;

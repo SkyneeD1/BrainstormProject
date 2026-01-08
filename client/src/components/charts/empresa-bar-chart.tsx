@@ -9,6 +9,7 @@ interface EmpresaBarChartProps {
 
 const COLORS: Record<string, string> = {
   "V.tal": "hsl(52, 100%, 50%)",
+  "NIO": "hsl(120, 100%, 43%)",
   "OI": "hsl(0, 70%, 50%)",
   "Serede": "hsl(30, 90%, 50%)",
   "Sprink": "hsl(270, 60%, 50%)",

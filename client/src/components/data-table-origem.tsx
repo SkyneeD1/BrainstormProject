@@ -1,5 +1,6 @@
 import type { EmpresaFaseData } from "@shared/schema";
 import { formatPercentageParens, formatCurrencyValue } from "@/lib/formatters";
+import { useTenant } from "@/hooks/use-tenant";
 
 interface DataTableOrigemProps {
   data: EmpresaFaseData[];
@@ -13,13 +14,16 @@ interface DataTableOrigemProps {
 }
 
 export function DataTableOrigem({ data, totals }: DataTableOrigemProps) {
+  const { tenantName, tenantCode } = useTenant();
+  const mainCompanyLabel = tenantCode === "nio" ? "NIO" : "V tal";
+  
   return (
     <div className="overflow-x-auto rounded-md border border-border">
       <table className="w-full text-sm min-w-[900px]">
         <thead>
           <tr className="bg-secondary text-secondary-foreground">
             <th rowSpan={2} className="px-3 py-2 text-left font-semibold text-xs uppercase tracking-wider border-r border-border/50 w-24">
-              Base<br />Dez/24
+              Base
             </th>
             <th rowSpan={2} className="px-3 py-2 text-center font-semibold text-xs uppercase tracking-wider border-r border-border/50 w-20">
               # de<br />processos
@@ -29,7 +33,7 @@ export function DataTableOrigem({ data, totals }: DataTableOrigemProps) {
             </th>
             <th colSpan={2} className="px-3 py-2 text-center font-semibold text-xs uppercase tracking-wider border-r border-border/50">
               <div className="flex items-center justify-center gap-1">
-                <span className="inline-block px-2 py-0.5 rounded bg-primary text-primary-foreground text-[10px] font-bold">V tal</span>
+                <span className="inline-block px-2 py-0.5 rounded bg-primary text-primary-foreground text-[10px] font-bold">{mainCompanyLabel}</span>
               </div>
             </th>
             <th colSpan={2} className="px-3 py-2 text-center font-semibold text-xs uppercase tracking-wider border-r border-border/50">

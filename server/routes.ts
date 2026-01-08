@@ -32,12 +32,15 @@ const upload = multer({
   limits: { fileSize: 10 * 1024 * 1024 }
 });
 
-function normalizeEmpresa(empresaOriginal: string, tipoOrigem: string): Empresa {
+function normalizeEmpresa(empresaOriginal: string, tipoOrigem: string, tenantCode?: string): Empresa {
   const emp = empresaOriginal?.toUpperCase().trim() || "";
   const tipo = tipoOrigem?.toUpperCase().trim() || "";
   
+  if (emp.includes("NIO")) {
+    return "NIO";
+  }
   if (tipo === "PRÓPRIO" || emp.includes("V.TAL") || emp.includes("VTAL")) {
-    return "V.tal";
+    return tenantCode === "nio" ? "NIO" : "V.tal";
   }
   if (tipo === "OI" || emp.includes("OI")) {
     return "OI";
@@ -785,6 +788,7 @@ export async function registerRoutes(
         const valorTotal = typeof valorRaw === "number" ? valorRaw : parseFloat(String(valorRaw).replace(/[^\d,.-]/g, "").replace(",", ".")) || 0;
         const prognostico = colPrognostico ? String(row[colPrognostico] || "").trim() : "POSSÍVEL";
 
+        const tenantCodeForNormalize = req.session.user?.tenantCode || "vtal";
         const processo: ProcessoRaw = {
           id: randomUUID(),
           numeroProcesso,
@@ -794,7 +798,7 @@ export async function registerRoutes(
           fase,
           valorTotal: Math.round(valorTotal * 100) / 100,
           prognostico,
-          empresa: normalizeEmpresa(empresaOriginal, tipoOrigem),
+          empresa: normalizeEmpresa(empresaOriginal, tipoOrigem, tenantCodeForNormalize),
           faseProcessual: normalizeFase(fase),
           classificacaoRisco: normalizeRisco(prognostico),
         };
@@ -924,6 +928,7 @@ export async function registerRoutes(
         const valorTotal = typeof valorRaw === "number" ? valorRaw : parseFloat(String(valorRaw).replace(/[^\d,.-]/g, "").replace(",", ".")) || 0;
         const prognostico = colPrognostico ? String(row[colPrognostico] || "").trim() : "POSSÍVEL";
 
+        const tenantCodeForNormalize = req.session.user?.tenantCode || "vtal";
         const processo: ProcessoRaw = {
           id: randomUUID(),
           numeroProcesso,
@@ -933,7 +938,7 @@ export async function registerRoutes(
           fase,
           valorTotal: Math.round(valorTotal * 100) / 100,
           prognostico,
-          empresa: normalizeEmpresa(empresaOriginal, tipoOrigem),
+          empresa: normalizeEmpresa(empresaOriginal, tipoOrigem, tenantCodeForNormalize),
           faseProcessual: normalizeFase(fase),
           classificacaoRisco: normalizeRisco(prognostico),
         };
