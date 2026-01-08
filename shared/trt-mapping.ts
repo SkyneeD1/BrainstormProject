@@ -43,20 +43,21 @@ export const TRT_MAPPING: Record<string, TRTInfo> = {
 export function extractTRTCode(numeroProcesso: string): string | null {
   if (!numeroProcesso) return null;
   
+  // Fallback: tenta extrair do padrão com pontos primeiro (mais confiável)
+  // Formato: NNNNNNN-DD.AAAA.J.TT.OOOO onde TT é o código do TRT
+  const match = numeroProcesso.match(/\d{7}-\d{2}\.\d{4}\.\d\.(\d{2})\.\d{4}/);
+  if (match) {
+    return match[1];
+  }
+  
   // Remove todos os caracteres não numéricos
   const cleanNumber = numeroProcesso.replace(/\D/g, '');
   
   // O número limpo tem 20 dígitos: NNNNNNNDDAAAAJTTOOOO
-  // Os dígitos 14-15 (índices 13-14) são o código do TRT
-  if (cleanNumber.length >= 18) {
-    const trtCode = cleanNumber.substring(13, 15);
+  // Índices: 0-6 (número), 7-8 (DV), 9-12 (ano), 13 (justiça=5), 14-15 (TRT), 16-19 (origem)
+  if (cleanNumber.length >= 16) {
+    const trtCode = cleanNumber.substring(14, 16);
     return trtCode;
-  }
-  
-  // Fallback: tenta extrair do padrão com pontos
-  const match = numeroProcesso.match(/\d{7}-\d{2}\.\d{4}\.\d\.(\d{2})\.\d{4}/);
-  if (match) {
-    return match[1];
   }
   
   return null;
