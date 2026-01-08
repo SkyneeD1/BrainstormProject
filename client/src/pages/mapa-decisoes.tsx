@@ -25,7 +25,7 @@ import {
   Scale,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { exportPageAsHTML } from "@/lib/dom-export";
+import { exportPageAsHTML, exportMapaDecisoesInteractiveHTML, type MapaDecisoesExportData } from "@/lib/dom-export";
 import {
   BarChart,
   Bar,
@@ -1132,14 +1132,34 @@ export default function MapaDecisoesPage() {
   };
 
   const handleExportHTML = async () => {
-    if (!contentRef.current || !tenant) return;
+    if (!trts || !tenant) return;
     setIsExporting(true);
     
     try {
       const tenantName = tenant.name || tenant.code;
       const tenantColor = tenant.primaryColor || "#ffd700";
       
-      await exportPageAsHTML(contentRef.current, {
+      // Fetch all data for export
+      const params = new URLSearchParams();
+      params.append("instancia", instancia);
+      
+      const exportDataRes = await fetch(`/api/mapa-decisoes/export-hierarchy?${params.toString()}`, { credentials: 'include' });
+      if (!exportDataRes.ok) throw new Error('Failed to fetch export data');
+      const exportData = await exportDataRes.json();
+      
+      const mapaData: MapaDecisoesExportData = {
+        trts: exportData.trts,
+        labels: {
+          pageTitle: labels.pageTitle,
+          level1: labels.level1,
+          level1Plural: labels.level1Plural,
+          level2: labels.level2,
+          level3: labels.level3,
+        },
+        instancia,
+      };
+      
+      await exportMapaDecisoesInteractiveHTML(mapaData, {
         title: `Mapa de Decisões - ${labels.pageTitle}`,
         tenant: tenantName,
         tenantColor
