@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Filter } from "lucide-react";
+import { Filter, FileDown } from "lucide-react";
 import {
   Building2,
   Users,
@@ -24,6 +24,8 @@ import {
   Award,
   Scale,
 } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { generateHTMLExport, downloadHTML, generateKPIHTML, generateTableHTML, generateCardGridHTML } from "@/lib/html-export";
 import {
   BarChart,
   Bar,
@@ -1058,6 +1060,7 @@ export default function MapaDecisoesPage() {
   const [location] = useLocation();
   const instancia = location.includes("primeira-instancia") ? "primeira" : "segunda" as const;
   const labels = getLabels(instancia);
+  const { isAdmin, tenant } = useAuth();
   
   const [selectedTRT, setSelectedTRT] = useState<string | null>(null);
   const [selectedTurma, setSelectedTurma] = useState<{ id: string; nome: string } | null>(null);
@@ -1065,6 +1068,7 @@ export default function MapaDecisoesPage() {
   const [responsabilidadeFilter, setResponsabilidadeFilter] = useState<string>("todas");
   const [empresaNavFilter, setEmpresaNavFilter] = useState<string>("todas");
   const [numeroProcessoFilter, setNumeroProcessoFilter] = useState<string>("");
+  const [isExporting, setIsExporting] = useState(false);
 
   // Reset navigation state when switching between instances
   useEffect(() => {
@@ -1126,16 +1130,103 @@ export default function MapaDecisoesPage() {
     setSelectedTurma(null);
   };
 
+  const handleExportHTML = async () => {
+    if (!trts || !tenant) return;
+    setIsExporting(true);
+    
+    try {
+      const tenantName = tenant.name || tenant.code;
+      const tenantColor = tenant.primaryColor || "#ffd700";
+      
+      const kpis = [
+        { label: labels.totalLevel1, value: trts.length },
+        { label: "Total Decisões", value: trts.reduce((acc, t) => acc + t.totalDecisoes, 0) },
+        { label: "Favoráveis", value: trts.reduce((acc, t) => acc + t.favoraveis, 0) },
+        { label: "Desfavoráveis", value: trts.reduce((acc, t) => acc + t.desfavoraveis, 0) },
+      ];
+
+      const totalDecisoes = trts.reduce((acc, t) => acc + t.totalDecisoes, 0);
+      const totalFavoraveis = trts.reduce((acc, t) => acc + t.favoraveis, 0);
+      const percentualGeral = totalDecisoes > 0 ? Math.round((totalFavoraveis / totalDecisoes) * 100) : 0;
+      kpis.push({ label: "% Favorabilidade Geral", value: `${percentualGeral}%` });
+
+      const trtCards = trts.map(trt => ({
+        title: trt.nome,
+        subtitle: `${trt.totalTurmas} ${labels.level2Plural.toLowerCase()} | ${trt.totalDesembargadores} ${labels.level3Short}`,
+        stats: [
+          { label: "Total Decisões", value: String(trt.totalDecisoes) },
+          { label: "Favoráveis", value: String(trt.favoraveis) },
+          { label: "Desfavoráveis", value: String(trt.desfavoraveis) },
+          { label: "% Favorabilidade", value: `${trt.percentualFavoravel}%` },
+        ],
+        progressBars: [
+          { label: "Favorável", percent: trt.percentualFavoravel, type: "favoravel" as const }
+        ]
+      }));
+
+      const tableHeaders = [labels.level1, labels.level2Plural, labels.level3Plural, "Decisões", "Favoráveis", "Desfavoráveis", "% Fav."];
+      const tableRows = trts.map(trt => [
+        trt.nome,
+        String(trt.totalTurmas),
+        String(trt.totalDesembargadores),
+        String(trt.totalDecisoes),
+        String(trt.favoraveis),
+        String(trt.desfavoraveis),
+        `${trt.percentualFavoravel}%`
+      ]);
+
+      const html = generateHTMLExport({
+        title: `Mapa de Decisões - ${labels.pageTitle}`,
+        subtitle: `Análise de favorabilidade por ${labels.level1}, ${labels.level2} e ${labels.level3}`,
+        tenant: tenantName,
+        tenantColor,
+        generatedAt: new Date(),
+        sections: [
+          {
+            title: "Resumo Geral",
+            content: generateKPIHTML(kpis)
+          },
+          {
+            title: `Visão por ${labels.level1}`,
+            content: generateCardGridHTML(trtCards)
+          },
+          {
+            title: "Dados Consolidados",
+            content: generateTableHTML(tableHeaders, tableRows)
+          }
+        ]
+      });
+
+      const filename = `mapa-decisoes-${instancia}-${new Date().toISOString().split('T')[0]}.html`;
+      downloadHTML(html, filename);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <div className="p-6 max-w-[1600px] mx-auto">
-      <header className="mb-6">
-        <h1 className="text-2xl font-bold flex items-center gap-3">
-          <Gavel className="h-7 w-7 text-primary" />
-          {labels.pageTitle}
-        </h1>
-        <p className="text-muted-foreground mt-1">
-          {labels.description}
-        </p>
+      <header className="mb-6 flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold flex items-center gap-3">
+            <Gavel className="h-7 w-7 text-primary" />
+            {labels.pageTitle}
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            {labels.description}
+          </p>
+        </div>
+        {isAdmin && (
+          <Button
+            variant="outline"
+            onClick={handleExportHTML}
+            disabled={isExporting || loadingTRTs || !trts}
+            data-testid="button-export-html"
+          >
+            <FileDown className="h-4 w-4 mr-2" />
+            {isExporting ? "Exportando..." : "Exportar HTML"}
+          </Button>
+        )}
       </header>
 
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "navegacao" | "analytics")} className="space-y-6">
