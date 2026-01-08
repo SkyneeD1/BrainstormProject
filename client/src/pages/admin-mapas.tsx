@@ -731,8 +731,8 @@ function SpreadsheetView({ data, onRefresh, labels }: { data: AdminData | undefi
 
   const downloadTemplate = () => {
     const templateData = [
-      ["Desembargador", "Numero Processo", "Data (YYYY-MM-DD)", "Resultado", "UPI", "Responsabilidade", "Empresa"],
-      ["Nome do Desembargador", "0000000-00.0000.0.00.0000", "2024-01-15", "FAVORÁVEL", "sim", "solidaria", "V.tal"],
+      ["Data (DD/MM/AAAA)", "Numero Processo", "Local", "Turma", "Relator", "Resultado", "Responsabilidade", "UPI", "Empresa"],
+      ["15/01/2024", "0000000-00.0000.0.00.0000", "TRT-2", "1ª Turma", "Nome do Relator", "FAVORÁVEL", "subsidiaria", "nao", "V.tal"],
     ];
     const ws = XLSX.utils.aoa_to_sheet(templateData);
     const wb = XLSX.utils.book_new();
@@ -770,12 +770,12 @@ function SpreadsheetView({ data, onRefresh, labels }: { data: AdminData | undefi
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b">
-                <th className="text-left p-2 font-medium">{labels.level3}</th>
-                <th className="text-left p-2 font-medium">Nº Processo</th>
                 <th className="text-left p-2 font-medium">Data</th>
+                <th className="text-left p-2 font-medium">Nº Processo</th>
+                <th className="text-left p-2 font-medium">{labels.level3}</th>
                 <th className="text-left p-2 font-medium">Resultado</th>
+                <th className="text-left p-2 font-medium">Responsabilidade</th>
                 <th className="text-left p-2 font-medium">UPI</th>
-                <th className="text-left p-2 font-medium">Resp.</th>
                 <th className="text-left p-2 font-medium">Empresa</th>
                 <th className="text-left p-2 font-medium w-10"></th>
               </tr>
@@ -783,6 +783,12 @@ function SpreadsheetView({ data, onRefresh, labels }: { data: AdminData | undefi
             <tbody>
               {batchRows.map((row, index) => (
                 <tr key={index} className="border-b">
+                  <td className="p-1">
+                    <Input type="date" className="h-8 text-xs w-32" value={row.dataDecisao} onChange={(e) => updateRow(index, "dataDecisao", e.target.value)} />
+                  </td>
+                  <td className="p-1">
+                    <Input className="h-8 text-xs w-40" value={row.numeroProcesso} onChange={(e) => updateRow(index, "numeroProcesso", e.target.value)} placeholder="0000000-00.0000.0.00.0000" />
+                  </td>
                   <td className="p-1">
                     <Select value={row.desembargadorId} onValueChange={(v) => updateRow(index, "desembargadorId", v)}>
                       <SelectTrigger className="h-8 text-xs w-48">
@@ -798,18 +804,21 @@ function SpreadsheetView({ data, onRefresh, labels }: { data: AdminData | undefi
                     </Select>
                   </td>
                   <td className="p-1">
-                    <Input className="h-8 text-xs w-40" value={row.numeroProcesso} onChange={(e) => updateRow(index, "numeroProcesso", e.target.value)} placeholder="0000000-00.0000.0.00.0000" />
-                  </td>
-                  <td className="p-1">
-                    <Input type="date" className="h-8 text-xs w-32" value={row.dataDecisao} onChange={(e) => updateRow(index, "dataDecisao", e.target.value)} />
-                  </td>
-                  <td className="p-1">
                     <Select value={row.resultado} onValueChange={(v) => updateRow(index, "resultado", v)}>
                       <SelectTrigger className="h-8 text-xs w-28"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="FAVORÁVEL">Favorável</SelectItem>
                         <SelectItem value="DESFAVORÁVEL">Desfavorável</SelectItem>
                         <SelectItem value="EM ANÁLISE">Em Análise</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </td>
+                  <td className="p-1">
+                    <Select value={row.responsabilidade} onValueChange={(v) => updateRow(index, "responsabilidade", v)}>
+                      <SelectTrigger className="h-8 text-xs w-28"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="solidaria">Solidária</SelectItem>
+                        <SelectItem value="subsidiaria">Subsidiária</SelectItem>
                       </SelectContent>
                     </Select>
                   </td>
@@ -823,19 +832,11 @@ function SpreadsheetView({ data, onRefresh, labels }: { data: AdminData | undefi
                     </Select>
                   </td>
                   <td className="p-1">
-                    <Select value={row.responsabilidade} onValueChange={(v) => updateRow(index, "responsabilidade", v)}>
-                      <SelectTrigger className="h-8 text-xs w-24"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="solidaria">Solidária</SelectItem>
-                        <SelectItem value="subsidiaria">Subsidiária</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </td>
-                  <td className="p-1">
                     <Select value={row.empresa} onValueChange={(v) => updateRow(index, "empresa", v)}>
                       <SelectTrigger className="h-8 text-xs w-28"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="V.tal">V.tal</SelectItem>
+                        <SelectItem value="NIO">NIO</SelectItem>
                         <SelectItem value="OI">OI</SelectItem>
                         <SelectItem value="Serede">Serede</SelectItem>
                         <SelectItem value="Sprink">Sprink</SelectItem>
@@ -875,6 +876,7 @@ function SpreadsheetView({ data, onRefresh, labels }: { data: AdminData | undefi
               <SelectContent>
                 <SelectItem value="todas">Todas</SelectItem>
                 <SelectItem value="V.tal">V.tal</SelectItem>
+                <SelectItem value="NIO">NIO</SelectItem>
                 <SelectItem value="OI">OI</SelectItem>
                 <SelectItem value="Serede">Serede</SelectItem>
                 <SelectItem value="Sprink">Sprink</SelectItem>
@@ -903,28 +905,28 @@ function SpreadsheetView({ data, onRefresh, labels }: { data: AdminData | undefi
           <table className="w-full text-sm">
             <thead className="sticky top-0 bg-background">
               <tr className="border-b">
-                <th className="text-left p-2 font-medium">{labels.level1}</th>
-                <th className="text-left p-2 font-medium">{labels.level2}</th>
-                <th className="text-left p-2 font-medium">{labels.level3}</th>
-                <th className="text-left p-2 font-medium">Nº Processo</th>
                 <th className="text-left p-2 font-medium">Data</th>
+                <th className="text-left p-2 font-medium">Nº Processo</th>
+                <th className="text-left p-2 font-medium">Local</th>
+                <th className="text-left p-2 font-medium">Turma</th>
+                <th className="text-left p-2 font-medium">Relator</th>
                 <th className="text-left p-2 font-medium">Resultado</th>
+                <th className="text-left p-2 font-medium">Responsabilidade</th>
                 <th className="text-left p-2 font-medium">UPI</th>
-                <th className="text-left p-2 font-medium">Resp.</th>
                 <th className="text-left p-2 font-medium">Empresa</th>
               </tr>
             </thead>
             <tbody>
               {filteredDecisoes.map((dec) => (
                 <tr key={dec.id} className="border-b hover:bg-muted/50">
+                  <td className="p-2">{dec.dataDecisao ? new Date(dec.dataDecisao).toLocaleDateString("pt-BR") : "-"}</td>
+                  <td className="p-2 font-mono text-xs">{dec.numeroProcesso}</td>
                   <td className="p-2">{dec.trtNome}</td>
                   <td className="p-2">{dec.turmaNome}</td>
                   <td className="p-2">{dec.desembargadorNome}</td>
-                  <td className="p-2 font-mono text-xs">{dec.numeroProcesso}</td>
-                  <td className="p-2">{dec.dataDecisao ? new Date(dec.dataDecisao).toLocaleDateString("pt-BR") : "-"}</td>
                   <td className={`p-2 font-semibold ${getResultadoColor(dec.resultado)}`}>{dec.resultado}</td>
+                  <td className="p-2">{dec.responsabilidade === "solidaria" ? "Solidária" : "Subsidiária"}</td>
                   <td className="p-2">{dec.upi === "sim" ? "Sim" : "Não"}</td>
-                  <td className="p-2">{dec.responsabilidade === "solidaria" ? "Solid." : "Subsid."}</td>
                   <td className="p-2">{dec.empresa || "-"}</td>
                 </tr>
               ))}

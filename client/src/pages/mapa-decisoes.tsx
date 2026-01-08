@@ -415,6 +415,7 @@ function DesembargadorView({ desembargadores, turmaNome, trtNome, onBack, labels
                 <SelectContent>
                   <SelectItem value="todas">Todas</SelectItem>
                   <SelectItem value="V.tal">V.tal</SelectItem>
+                  <SelectItem value="NIO">NIO</SelectItem>
                   <SelectItem value="OI">OI</SelectItem>
                   <SelectItem value="Serede">Serede</SelectItem>
                   <SelectItem value="Sprink">Sprink</SelectItem>
@@ -1177,6 +1178,7 @@ export default function MapaDecisoesPage() {
                 <SelectContent>
                   <SelectItem value="todas">Todas</SelectItem>
                   <SelectItem value="V.tal">V.tal</SelectItem>
+                  <SelectItem value="NIO">NIO</SelectItem>
                   <SelectItem value="OI">OI</SelectItem>
                   <SelectItem value="Serede">Serede</SelectItem>
                   <SelectItem value="Sprink">Sprink</SelectItem>
