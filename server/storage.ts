@@ -165,7 +165,7 @@ export interface IStorage {
   // Mapas Estratégicos - Turmas e Desembargadores
   getAllTurmas(tenantId: string, instancia?: string): Promise<Turma[]>;
   getTurma(id: string, tenantId: string): Promise<Turma | undefined>;
-  getTurmaByName(nome: string, tenantId: string, instancia?: string): Promise<Turma | undefined>;
+  getTurmaByName(nome: string, tenantId: string, instancia?: string, regiao?: string): Promise<Turma | undefined>;
   findOrCreateTurma(tenantId: string, nome: string, regiao?: string, instancia?: string): Promise<Turma>;
   createTurma(tenantId: string, turma: Omit<InsertTurma, 'tenantId'>): Promise<Turma>;
   updateTurma(id: string, data: Partial<Omit<InsertTurma, 'tenantId'>>, tenantId: string): Promise<Turma | undefined>;
@@ -1185,14 +1185,18 @@ export class MemStorage implements IStorage {
     return turma;
   }
 
-  async getTurmaByName(nome: string, tenantId: string, instancia?: string): Promise<Turma | undefined> {
+  async getTurmaByName(nome: string, tenantId: string, instancia?: string, regiao?: string): Promise<Turma | undefined> {
     const normalizedNome = nome.trim().toLowerCase();
+    const normalizedRegiao = regiao?.trim().toLowerCase();
     const allTurmas = await db.select().from(turmas).where(eq(turmas.tenantId, tenantId));
-    // If instancia is provided, filter by it; otherwise return first match
-    if (instancia) {
-      return allTurmas.find(t => t.nome.trim().toLowerCase() === normalizedNome && t.instancia === instancia);
-    }
-    return allTurmas.find(t => t.nome.trim().toLowerCase() === normalizedNome);
+    
+    // Filter by nome, instancia (if provided), and regiao (if provided)
+    return allTurmas.find(t => {
+      const nomeMatch = t.nome.trim().toLowerCase() === normalizedNome;
+      const instanciaMatch = !instancia || t.instancia === instancia;
+      const regiaoMatch = !normalizedRegiao || (t.regiao?.trim().toLowerCase() === normalizedRegiao);
+      return nomeMatch && instanciaMatch && regiaoMatch;
+    });
   }
 
   async findOrCreateTurma(tenantId: string, nome: string, regiao?: string, instancia?: string): Promise<Turma> {
@@ -1363,8 +1367,9 @@ export class MemStorage implements IStorage {
       }
     }
 
-    // 2. Find or create Turma - filter by instancia to avoid mixing 1ª and 2ª instância
-    let turmaEntity = await this.getTurmaByName(data.turma, tenantId, targetInstancia);
+    // 2. Find or create Turma - filter by instancia AND regiao to avoid mixing different locations
+    const normalizedLocal = data.local?.trim() || null;
+    let turmaEntity = await this.getTurmaByName(data.turma, tenantId, targetInstancia, normalizedLocal || undefined);
     if (!turmaEntity) {
       turmaEntity = await this.createTurma(tenantId, {
         nome: data.turma.trim(),
