@@ -201,7 +201,7 @@ export interface IStorage {
   getAllDecisoesRpac(tenantId: string): Promise<DecisaoRpac[]>;
   getDecisoesRpacByDesembargador(desembargadorId: string, tenantId: string): Promise<DecisaoRpac[]>;
   getDecisaoRpac(id: string, tenantId: string): Promise<DecisaoRpac | undefined>;
-  getDecisaoRpacByNumeroProcesso(numeroProcesso: string, tenantId: string): Promise<DecisaoRpac | undefined>;
+  getDecisaoRpacByNumeroProcesso(numeroProcesso: string, tenantId: string, instancia?: string): Promise<DecisaoRpac | undefined>;
   createDecisaoRpac(tenantId: string, decisao: Omit<InsertDecisaoRpac, 'tenantId'>): Promise<DecisaoRpac>;
   updateDecisaoRpac(id: string, data: Partial<Omit<InsertDecisaoRpac, 'tenantId'>>, tenantId: string): Promise<DecisaoRpac | undefined>;
   deleteDecisaoRpac(id: string, tenantId: string): Promise<boolean>;
@@ -1310,12 +1310,14 @@ export class MemStorage implements IStorage {
     };
 
     // Helper: Normalize responsabilidade
-    const normalizeResponsabilidade = (val?: string): 'solidaria' | 'subsidiaria' => {
+    const normalizeResponsabilidade = (val?: string): 'solidaria' | 'subsidiaria' | 'propria' => {
       if (!val) return 'subsidiaria';
       const normalized = val.toLowerCase()
         .normalize("NFD")
         .replace(/[\u0300-\u036f]/g, "");
-      return normalized.includes('solidaria') ? 'solidaria' : 'subsidiaria';
+      if (normalized.includes('solidaria')) return 'solidaria';
+      if (normalized.includes('propria') || normalized.includes('proprio')) return 'propria';
+      return 'subsidiaria';
     };
 
     // Parse incoming data
@@ -1326,8 +1328,9 @@ export class MemStorage implements IStorage {
     const normalizedEmpresa = data.empresa.trim() || 'V.tal';
     const numeroProcesso = data.numeroProcesso.trim();
 
-    // 1. Check for existing decision by numeroProcesso (duplicate detection)
-    const existingDecisao = await this.getDecisaoRpacByNumeroProcesso(numeroProcesso, tenantId);
+    // 1. Check for existing decision by numeroProcesso AND instancia (duplicate detection)
+    const targetInstancia = data.instancia || 'segunda';
+    const existingDecisao = await this.getDecisaoRpacByNumeroProcesso(numeroProcesso, tenantId, targetInstancia);
     
     if (existingDecisao) {
       // Compare fields to see if anything changed
@@ -1361,7 +1364,6 @@ export class MemStorage implements IStorage {
     }
 
     // 2. Find or create Turma - filter by instancia to avoid mixing 1ª and 2ª instância
-    const targetInstancia = data.instancia || 'segunda';
     let turmaEntity = await this.getTurmaByName(data.turma, tenantId, targetInstancia);
     if (!turmaEntity) {
       turmaEntity = await this.createTurma(tenantId, {
@@ -1470,8 +1472,25 @@ export class MemStorage implements IStorage {
     return decisao;
   }
 
-  async getDecisaoRpacByNumeroProcesso(numeroProcesso: string, tenantId: string): Promise<DecisaoRpac | undefined> {
+  async getDecisaoRpacByNumeroProcesso(numeroProcesso: string, tenantId: string, instancia?: string): Promise<DecisaoRpac | undefined> {
     const normalizedNumero = numeroProcesso.trim();
+    
+    if (instancia) {
+      // Filter by instancia through the desembargador -> turma relationship
+      const result = await db.select({ decisao: decisoesRpac })
+        .from(decisoesRpac)
+        .innerJoin(desembargadores, eq(decisoesRpac.desembargadorId, desembargadores.id))
+        .innerJoin(turmas, eq(desembargadores.turmaId, turmas.id))
+        .where(and(
+          eq(decisoesRpac.numeroProcesso, normalizedNumero),
+          eq(decisoesRpac.tenantId, tenantId),
+          eq(turmas.instancia, instancia)
+        ))
+        .limit(1);
+      return result[0]?.decisao;
+    }
+    
+    // No instancia filter - original behavior
     const [decisao] = await db.select().from(decisoesRpac).where(and(eq(decisoesRpac.numeroProcesso, normalizedNumero), eq(decisoesRpac.tenantId, tenantId)));
     return decisao;
   }
