@@ -11,7 +11,7 @@ import { format, subMonths, addMonths, startOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { captureAndExport } from "@/lib/screenshot-export";
+import { exportPageAsHTML } from "@/lib/dom-export";
 
 interface CasosEncerradosStats {
   total: number;
@@ -101,14 +101,11 @@ export default function EntradasEncerrados() {
     try {
       const tenantName = tenant.name || tenant.code;
       const tenantColor = tenant.primaryColor || "#ffd700";
-      const filename = `encerrados-${format(mesReferencia, 'yyyy-MM')}`;
       
-      await captureAndExport(contentRef.current, {
-        filename,
+      await exportPageAsHTML(contentRef.current, {
         title: "Encerrados - Casos Finalizados",
         tenant: tenantName,
-        tenantColor,
-        format: 'html'
+        tenantColor
       });
 
       toast({

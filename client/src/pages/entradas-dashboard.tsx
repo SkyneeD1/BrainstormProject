@@ -11,7 +11,7 @@ import { format, subMonths, addMonths, startOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { captureAndExport } from "@/lib/screenshot-export";
+import { exportPageAsHTML } from "@/lib/dom-export";
 
 interface CasosNovosStats {
   total: number;
@@ -112,14 +112,11 @@ export default function EntradasDashboard() {
     try {
       const tenantName = tenant.name || tenant.code;
       const tenantColor = tenant.primaryColor || "#ffd700";
-      const filename = `entradas-casos-novos-${format(mesReferencia, 'yyyy-MM')}`;
       
-      await captureAndExport(contentRef.current, {
-        filename,
+      await exportPageAsHTML(contentRef.current, {
         title: "Entradas - Casos Novos",
         tenant: tenantName,
-        tenantColor,
-        format: 'html'
+        tenantColor
       });
 
       toast({

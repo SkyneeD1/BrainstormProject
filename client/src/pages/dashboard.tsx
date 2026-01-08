@@ -18,7 +18,7 @@ import { EmpresaPieChart } from "@/components/charts/empresa-pie-chart";
 import { formatProcessos, formatCurrency, formatPercentage } from "@/lib/formatters";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { captureAndExport } from "@/lib/screenshot-export";
+import { exportPageAsHTML } from "@/lib/dom-export";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import type { PassivoData } from "@shared/schema";
@@ -226,14 +226,11 @@ export default function Dashboard() {
     try {
       const tenantName = tenant.name || tenant.code;
       const tenantColor = tenant.primaryColor || "#ffd700";
-      const filename = `passivo-sob-gestao-${new Date().toISOString().split('T')[0]}`;
       
-      await captureAndExport(contentRef.current, {
-        filename,
+      await exportPageAsHTML(contentRef.current, {
         title: "Passivo sob Gestão",
         tenant: tenantName,
-        tenantColor,
-        format: 'html'
+        tenantColor
       });
 
       toast({

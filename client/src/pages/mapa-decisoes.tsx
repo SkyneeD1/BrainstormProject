@@ -25,7 +25,7 @@ import {
   Scale,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { captureAndExport } from "@/lib/screenshot-export";
+import { exportPageAsHTML } from "@/lib/dom-export";
 import {
   BarChart,
   Bar,
@@ -1138,14 +1138,11 @@ export default function MapaDecisoesPage() {
     try {
       const tenantName = tenant.name || tenant.code;
       const tenantColor = tenant.primaryColor || "#ffd700";
-      const filename = `mapa-decisoes-${instancia}-${new Date().toISOString().split('T')[0]}`;
       
-      await captureAndExport(contentRef.current, {
-        filename,
+      await exportPageAsHTML(contentRef.current, {
         title: `Mapa de Decisões - ${labels.pageTitle}`,
         tenant: tenantName,
-        tenantColor,
-        format: 'html'
+        tenantColor
       });
     } finally {
       setIsExporting(false);
