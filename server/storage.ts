@@ -1321,13 +1321,22 @@ export class MemStorage implements IStorage {
     // 4. Normalize resultado
     const normalizedResultado = this.normalizeResultado(data.resultado);
 
-    // 5. Create the decisao
+    // 5. Normalize responsabilidade - remove accents and check for "solidaria"
+    const normalizeResponsabilidade = (val?: string): 'solidaria' | 'subsidiaria' => {
+      if (!val) return 'subsidiaria';
+      const normalized = val.toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
+      return normalized.includes('solidaria') ? 'solidaria' : 'subsidiaria';
+    };
+
+    // 6. Create the decisao
     const decisao = await this.createDecisaoRpac(tenantId, {
       desembargadorId: desembargadorEntity.id,
       numeroProcesso: data.numeroProcesso.trim(),
       dataDecisao: dataDecisao,
       resultado: normalizedResultado,
-      responsabilidade: data.responsabilidade?.toLowerCase().includes('solidár') ? 'solidaria' : 'subsidiaria',
+      responsabilidade: normalizeResponsabilidade(data.responsabilidade),
       upi: data.upi?.toLowerCase() === 'sim' ? 'sim' : 'nao',
       empresa: data.empresa.trim() || 'V.tal',
     });

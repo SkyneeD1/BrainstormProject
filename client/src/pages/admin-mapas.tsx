@@ -692,7 +692,9 @@ function SpreadsheetView({ data, onRefresh, labels }: { data: AdminData | undefi
           const turma = String(row[3] || "").trim();
           const relator = String(row[4] || "").trim();
           const resultado = normalizeResultado(String(row[5] || "EM ANÁLISE"));
-          const responsabilidade = String(row[6] || "").toLowerCase().includes("solidária") || String(row[6] || "").toLowerCase().includes("solidaria") ? "solidaria" : "subsidiaria";
+          // Normalize responsabilidade - remove accents and check for "solidaria"
+          const respRaw = String(row[6] || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+          const responsabilidade = respRaw.includes("solidaria") ? "solidaria" : "subsidiaria";
           const upi = String(row[7] || "").toLowerCase().includes("sim") ? "sim" : "nao";
           const empresa = normalizeEmpresa(String(row[8] || "V.tal"));
 
