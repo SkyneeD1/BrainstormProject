@@ -168,6 +168,7 @@ function DecisaoItem({ decisao, onRefresh }: { decisao: DecisaoRpac; onRefresh: 
           <SelectContent>
             <SelectItem value="solidaria">Solidária</SelectItem>
             <SelectItem value="subsidiaria">Subsidiária</SelectItem>
+            <SelectItem value="propria">Própria</SelectItem>
           </SelectContent>
         </Select>
         <Select value={editData.empresa} onValueChange={(v) => setEditData(prev => ({ ...prev, empresa: v }))}>
@@ -200,7 +201,7 @@ function DecisaoItem({ decisao, onRefresh }: { decisao: DecisaoRpac; onRefresh: 
         <Badge variant="outline" className="text-[10px] h-5 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300">UPI</Badge>
       )}
       <Badge variant="secondary" className="text-[10px] h-5">
-        {decisao.responsabilidade === "solidaria" ? "Solid." : "Subsid."}
+        {decisao.responsabilidade === "solidaria" ? "Solid." : decisao.responsabilidade === "propria" ? "Próp." : "Subsid."}
       </Badge>
       {decisao.empresa && (
         <Badge variant="outline" className="text-[10px] h-5 bg-slate-100 dark:bg-slate-800">{decisao.empresa}</Badge>
@@ -366,6 +367,7 @@ function DesembargadorCard({ desembargador, onRefresh, labels }: { desembargador
                 <SelectContent>
                   <SelectItem value="solidaria">Solidária</SelectItem>
                   <SelectItem value="subsidiaria">Subsidiária</SelectItem>
+                  <SelectItem value="propria">Própria</SelectItem>
                 </SelectContent>
               </Select>
               <Select value={newDecisao.empresa} onValueChange={(v) => setNewDecisao(prev => ({ ...prev, empresa: v }))}>
@@ -697,9 +699,14 @@ function SpreadsheetView({ data, onRefresh, labels, instancia }: { data: AdminDa
           const turma = String(row[3] || "").trim();
           const relator = String(row[4] || "").trim();
           const resultado = normalizeResultado(String(row[5] || "EM ANÁLISE"));
-          // Normalize responsabilidade - remove accents and check for "solidaria"
+          // Normalize responsabilidade - remove accents and check for "solidaria", "subsidiaria", or "propria"
           const respRaw = String(row[6] || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-          const responsabilidade = respRaw.includes("solidaria") ? "solidaria" : "subsidiaria";
+          let responsabilidade = "subsidiaria";
+          if (respRaw.includes("solidaria")) {
+            responsabilidade = "solidaria";
+          } else if (respRaw.includes("propria") || respRaw.includes("proprio")) {
+            responsabilidade = "propria";
+          }
           const upi = String(row[7] || "").toLowerCase().includes("sim") ? "sim" : "nao";
           const empresa = normalizeEmpresa(String(row[8] || "V.tal"));
 
@@ -860,6 +867,7 @@ function SpreadsheetView({ data, onRefresh, labels, instancia }: { data: AdminDa
                       <SelectContent>
                         <SelectItem value="solidaria">Solidária</SelectItem>
                         <SelectItem value="subsidiaria">Subsidiária</SelectItem>
+                        <SelectItem value="propria">Própria</SelectItem>
                       </SelectContent>
                     </Select>
                   </td>
@@ -960,6 +968,7 @@ function SpreadsheetView({ data, onRefresh, labels, instancia }: { data: AdminDa
                 <SelectItem value="todas">Todas</SelectItem>
                 <SelectItem value="solidaria">Solidária</SelectItem>
                 <SelectItem value="subsidiaria">Subsidiária</SelectItem>
+                <SelectItem value="propria">Própria</SelectItem>
               </SelectContent>
             </Select>
             <Select value={resultadoFilter} onValueChange={setResultadoFilter}>
@@ -1014,7 +1023,7 @@ function SpreadsheetView({ data, onRefresh, labels, instancia }: { data: AdminDa
                   <td className="p-2">{dec.turmaNome}</td>
                   <td className="p-2">{dec.desembargadorNome}</td>
                   <td className={`p-2 font-semibold ${getResultadoColor(dec.resultado)}`}>{dec.resultado}</td>
-                  <td className="p-2">{dec.responsabilidade === "solidaria" ? "Solidária" : "Subsidiária"}</td>
+                  <td className="p-2">{dec.responsabilidade === "solidaria" ? "Solidária" : dec.responsabilidade === "propria" ? "Própria" : "Subsidiária"}</td>
                   <td className="p-2">{dec.upi === "sim" ? "Sim" : "Não"}</td>
                   <td className="p-2">{dec.empresa || "-"}</td>
                 </tr>

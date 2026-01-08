@@ -661,7 +661,7 @@ export const insertDesembargadorSchema = z.object({
 export type CreateDesembargadorInput = z.infer<typeof insertDesembargadorSchema>;
 
 // Enum para responsabilidade
-export const responsabilidadeEnum = z.enum(["solidaria", "subsidiaria"]);
+export const responsabilidadeEnum = z.enum(["solidaria", "subsidiaria", "propria"]);
 export type Responsabilidade = z.infer<typeof responsabilidadeEnum>;
 
 // Decisões RPAC - para rastrear decisões específicas
