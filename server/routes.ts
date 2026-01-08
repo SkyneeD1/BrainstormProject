@@ -1413,7 +1413,7 @@ export async function registerRoutes(
       if (!parsed.success) {
         return res.status(400).json({ error: parsed.error.errors[0]?.message || "Dados inválidos" });
       }
-      const turma = await storage.createTurma(tenantId, { ...parsed.data, tenantId });
+      const turma = await storage.createTurma(tenantId, parsed.data);
       res.status(201).json(turma);
     } catch (error) {
       console.error("Error creating turma:", error);
@@ -1500,7 +1500,7 @@ export async function registerRoutes(
       if (!parsed.success) {
         return res.status(400).json({ error: parsed.error.errors[0]?.message || "Dados inválidos" });
       }
-      const desembargador = await storage.createDesembargador(tenantId, { ...parsed.data, tenantId });
+      const desembargador = await storage.createDesembargador(tenantId, parsed.data);
       res.status(201).json(desembargador);
     } catch (error) {
       console.error("Error creating desembargador:", error);
@@ -1643,6 +1643,24 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error deleting decisao:", error);
       res.status(500).json({ error: "Erro ao excluir decisão" });
+    }
+  });
+
+  app.delete("/api/decisoes/batch", isAuthenticated, isAdmin, requireModule("mapas"), async (req, res) => {
+    try {
+      const tenantId = req.session.user?.tenantId;
+      if (!tenantId) {
+        return res.status(401).json({ error: "Não autenticado" });
+      }
+      const { ids } = req.body;
+      if (!Array.isArray(ids) || ids.length === 0) {
+        return res.status(400).json({ error: "Lista de IDs vazia ou inválida" });
+      }
+      const deleted = await storage.deleteDecisoesRpacBatch(ids, tenantId);
+      res.json({ success: true, deleted });
+    } catch (error) {
+      console.error("Error batch deleting decisoes:", error);
+      res.status(500).json({ error: "Erro ao excluir decisões em lote" });
     }
   });
 

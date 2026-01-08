@@ -529,6 +529,7 @@ function SpreadsheetView({ data, onRefresh, labels }: { data: AdminData | undefi
   const [empresaFilter, setEmpresaFilter] = useState<string>("todas");
   const [responsabilidadeFilter, setResponsabilidadeFilter] = useState<string>("todas");
   const [resultadoFilter, setResultadoFilter] = useState<string>("todos");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   
   const allDesembargadores: { id: string; nome: string; turma: string; trt: string }[] = [];
   data?.trts.forEach(trt => {
@@ -609,6 +610,21 @@ function SpreadsheetView({ data, onRefresh, labels }: { data: AdminData | undefi
     },
   });
 
+  const batchDeleteMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      const response = await apiRequest("DELETE", "/api/decisoes/batch", { ids });
+      return response.json() as Promise<{ success: boolean; deleted: number }>;
+    },
+    onSuccess: (data) => {
+      toast({ title: `${data.deleted} decisões excluídas` });
+      setSelectedIds(new Set());
+      onRefresh();
+    },
+    onError: (error: Error) => {
+      toast({ title: "Erro ao excluir decisões", description: error.message, variant: "destructive" });
+    },
+  });
+
   const addRow = () => {
     setBatchRows(prev => [...prev, { desembargadorId: "", numeroProcesso: "", dataDecisao: new Date().toISOString().split('T')[0], resultado: "EM ANÁLISE", upi: "nao", responsabilidade: "subsidiaria", empresa: "V.tal" }]);
   };
@@ -626,6 +642,24 @@ function SpreadsheetView({ data, onRefresh, labels }: { data: AdminData | undefi
     if (r.includes("DESFAVORÁVEL")) return "text-red-600 dark:text-red-400";
     if (r.includes("FAVORÁVEL")) return "text-emerald-600 dark:text-emerald-400";
     return "text-slate-500";
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filteredDecisoes.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredDecisoes.map(d => d.id)));
+    }
+  };
+
+  const toggleSelect = (id: string) => {
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedIds(newSelected);
   };
 
   const validRows = batchRows.filter(r => r.desembargadorId && r.numeroProcesso.trim());
@@ -869,8 +903,38 @@ function SpreadsheetView({ data, onRefresh, labels }: { data: AdminData | undefi
           <h3 className="font-semibold flex items-center gap-2">
             <Table className="h-5 w-5" />
             Todas as Decisões ({filteredDecisoes.length})
+            {selectedIds.size > 0 && (
+              <Badge variant="secondary" className="ml-2">{selectedIds.size} selecionada(s)</Badge>
+            )}
           </h3>
           <div className="flex items-center gap-2">
+            {selectedIds.size > 0 && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive" size="sm" data-testid="button-delete-selected">
+                    <Trash2 className="h-4 w-4 mr-1" />
+                    Excluir Selecionados ({selectedIds.size})
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Excluir {selectedIds.size} decisões?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Esta ação excluirá permanentemente {selectedIds.size} decisão(ões) selecionada(s). Esta ação não pode ser desfeita.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction 
+                      onClick={() => batchDeleteMutation.mutate(Array.from(selectedIds))}
+                      disabled={batchDeleteMutation.isPending}
+                    >
+                      {batchDeleteMutation.isPending ? "Excluindo..." : "Excluir"}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
             <Select value={empresaFilter} onValueChange={setEmpresaFilter}>
               <SelectTrigger className="h-8 text-xs w-28"><SelectValue placeholder="Empresa" /></SelectTrigger>
               <SelectContent>
@@ -905,6 +969,15 @@ function SpreadsheetView({ data, onRefresh, labels }: { data: AdminData | undefi
           <table className="w-full text-sm">
             <thead className="sticky top-0 bg-background">
               <tr className="border-b">
+                <th className="text-left p-2 font-medium w-10">
+                  <input
+                    type="checkbox"
+                    checked={filteredDecisoes.length > 0 && selectedIds.size === filteredDecisoes.length}
+                    onChange={toggleSelectAll}
+                    className="h-4 w-4 rounded border-gray-300"
+                    data-testid="checkbox-select-all"
+                  />
+                </th>
                 <th className="text-left p-2 font-medium">Data</th>
                 <th className="text-left p-2 font-medium">Nº Processo</th>
                 <th className="text-left p-2 font-medium">Local</th>
@@ -918,7 +991,16 @@ function SpreadsheetView({ data, onRefresh, labels }: { data: AdminData | undefi
             </thead>
             <tbody>
               {filteredDecisoes.map((dec) => (
-                <tr key={dec.id} className="border-b hover:bg-muted/50">
+                <tr key={dec.id} className={`border-b hover:bg-muted/50 ${selectedIds.has(dec.id) ? 'bg-muted/30' : ''}`}>
+                  <td className="p-2">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(dec.id)}
+                      onChange={() => toggleSelect(dec.id)}
+                      className="h-4 w-4 rounded border-gray-300"
+                      data-testid={`checkbox-decisao-${dec.id}`}
+                    />
+                  </td>
                   <td className="p-2">{dec.dataDecisao ? new Date(dec.dataDecisao).toLocaleDateString("pt-BR") : "-"}</td>
                   <td className="p-2 font-mono text-xs">{dec.numeroProcesso}</td>
                   <td className="p-2">{dec.trtNome}</td>

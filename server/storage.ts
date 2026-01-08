@@ -203,6 +203,7 @@ export interface IStorage {
   createDecisaoRpac(tenantId: string, decisao: Omit<InsertDecisaoRpac, 'tenantId'>): Promise<DecisaoRpac>;
   updateDecisaoRpac(id: string, data: Partial<Omit<InsertDecisaoRpac, 'tenantId'>>, tenantId: string): Promise<DecisaoRpac | undefined>;
   deleteDecisaoRpac(id: string, tenantId: string): Promise<boolean>;
+  deleteDecisoesRpacBatch(ids: string[], tenantId: string): Promise<number>;
   
   // Dados completos para admin
   getMapaDecisoesAdminData(tenantId: string, instancia?: string): Promise<{
@@ -1420,6 +1421,17 @@ export class MemStorage implements IStorage {
   async deleteDecisaoRpac(id: string, tenantId: string): Promise<boolean> {
     await db.delete(decisoesRpac).where(and(eq(decisoesRpac.id, id), eq(decisoesRpac.tenantId, tenantId)));
     return true;
+  }
+
+  async deleteDecisoesRpacBatch(ids: string[], tenantId: string): Promise<number> {
+    if (ids.length === 0) return 0;
+    const result = await db.delete(decisoesRpac).where(
+      and(
+        inArray(decisoesRpac.id, ids),
+        eq(decisoesRpac.tenantId, tenantId)
+      )
+    );
+    return ids.length;
   }
 
   // Dados completos para admin - hierarquia TRT → Turmas → Desembargadores → Decisões
