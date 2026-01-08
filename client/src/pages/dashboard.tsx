@@ -18,7 +18,7 @@ import { EmpresaPieChart } from "@/components/charts/empresa-pie-chart";
 import { formatProcessos, formatCurrency, formatPercentage } from "@/lib/formatters";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { exportDashboardAsHTML, type DashboardExportData } from "@/lib/dom-export";
+import { exportPageAsHTML } from "@/lib/dom-export";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import type { PassivoData } from "@shared/schema";
@@ -220,22 +220,14 @@ export default function Dashboard() {
   const contentRef = useRef<HTMLDivElement>(null);
   
   const exportToHTML = async () => {
-    if (!passivoData || !tenant) return;
+    if (!contentRef.current || !tenant) return;
     setIsExportingHTML(true);
 
     try {
       const tenantName = tenant.name || tenant.code;
       const tenantColor = tenant.primaryColor || "#ffd700";
       
-      const exportData: DashboardExportData = {
-        summary: passivoData.summary,
-        fases: passivoData.fases,
-        riscos: passivoData.riscos,
-        empresas: passivoData.empresas,
-        periodoLabel
-      };
-      
-      await exportDashboardAsHTML(exportData, {
+      await exportPageAsHTML(contentRef.current, {
         title: "Passivo sob Gestão",
         tenant: tenantName,
         tenantColor

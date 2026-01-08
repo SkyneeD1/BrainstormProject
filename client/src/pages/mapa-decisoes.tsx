@@ -25,7 +25,7 @@ import {
   Scale,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { exportPageAsHTML, exportMapaDecisoesAsHTML, type MapaDecisoesExportData } from "@/lib/dom-export";
+import { exportPageAsHTML } from "@/lib/dom-export";
 import {
   BarChart,
   Bar,
@@ -1132,36 +1132,14 @@ export default function MapaDecisoesPage() {
   };
 
   const handleExportHTML = async () => {
-    if (!tenant) return;
+    if (!contentRef.current || !tenant) return;
     setIsExporting(true);
     
     try {
       const tenantName = tenant.name || tenant.code;
       const tenantColor = tenant.primaryColor || "#ffd700";
       
-      // Fetch complete hierarchy from backend
-      const params = new URLSearchParams();
-      params.append("instancia", instancia);
-      if (responsabilidadeFilter !== "todas") params.append("responsabilidade", responsabilidadeFilter);
-      if (empresaNavFilter !== "todas") params.append("empresa", empresaNavFilter);
-      
-      const res = await fetch(`/api/mapa-decisoes/export-hierarchy?${params.toString()}`, { credentials: 'include' });
-      if (!res.ok) throw new Error('Failed to fetch export data');
-      
-      const data = await res.json();
-      
-      const exportData: MapaDecisoesExportData = {
-        trts: data.trts,
-        labels: {
-          pageTitle: labels.pageTitle,
-          level1: labels.level1,
-          level2: labels.level2,
-          level3: labels.level3,
-        },
-        instancia
-      };
-      
-      await exportMapaDecisoesAsHTML(exportData, {
+      await exportPageAsHTML(contentRef.current, {
         title: `Mapa de Decisões - ${labels.pageTitle}`,
         tenant: tenantName,
         tenantColor
