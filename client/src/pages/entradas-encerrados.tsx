@@ -6,9 +6,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Cell } from "recharts";
-import { CheckSquare, TrendingUp, TrendingDown, Calendar as CalendarIcon, Building2, Briefcase, FileText, ChevronLeft, ChevronRight } from "lucide-react";
+import { CheckSquare, TrendingUp, TrendingDown, Calendar as CalendarIcon, Building2, Briefcase, FileText, ChevronLeft, ChevronRight, FileDown, Loader2 } from "lucide-react";
 import { format, subMonths, addMonths, startOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { useAuth } from "@/hooks/useAuth";
+import { generateHTMLExport, downloadHTML, generateKPIHTML, generateTableHTML } from "@/lib/html-export";
 
 interface CasosEncerradosStats {
   total: number;
@@ -57,6 +59,8 @@ function getMonthName(mes: string): string {
 export default function EntradasEncerrados() {
   const [mesReferencia, setMesReferencia] = useState<Date>(startOfMonth(new Date()));
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [isExportingHTML, setIsExportingHTML] = useState(false);
+  const { isAdmin, tenant } = useAuth();
 
   const mesReferenciaStr = format(mesReferencia, 'yyyy-MM');
   const mesAnterior = subMonths(mesReferencia, 1);
@@ -84,6 +88,66 @@ export default function EntradasEncerrados() {
     if (date) {
       setMesReferencia(startOfMonth(date));
       setIsCalendarOpen(false);
+    }
+  };
+
+  const exportToHTML = () => {
+    if (!stats || !tenant) return;
+    setIsExportingHTML(true);
+
+    try {
+      const tenantName = tenant.name || tenant.code;
+      const tenantColor = tenant.primaryColor || "#ffd700";
+      const periodoLabel = format(mesReferencia, "MMMM yyyy", { locale: ptBR });
+
+      const kpis = [
+        { label: "Total Encerrados", value: formatNumber(stats.total) },
+        { label: format(mesReferencia, "MMM/yy", { locale: ptBR }).toUpperCase(), value: formatNumber(stats.mesAtual) },
+        { label: format(mesAnterior, "MMM/yy", { locale: ptBR }).toUpperCase(), value: formatNumber(stats.mesAnterior) },
+        { label: "Valor Total", value: formatCurrency(stats.valorTotalContingencia) },
+        { label: "Variação vs Anterior", value: `${stats.variacaoPercentual}%` },
+      ];
+
+      const tribunalHeaders = ["Tribunal", "Quantidade", "%"];
+      const tribunalRows = stats.porTribunal.slice(0, 15).map(t => [
+        `TRT ${t.tribunal}`,
+        formatNumber(t.quantidade),
+        `${t.percentual.toFixed(1)}%`
+      ]);
+
+      const empresaHeaders = ["Empresa", "Quantidade", "%"];
+      const empresaRows = stats.porEmpresa.map(e => [
+        e.empresa,
+        formatNumber(e.quantidade),
+        `${e.percentual.toFixed(1)}%`
+      ]);
+
+      const html = generateHTMLExport({
+        title: "Encerrados - Casos Finalizados",
+        subtitle: `Período: ${periodoLabel}`,
+        tenant: tenantName,
+        tenantColor,
+        generatedAt: new Date(),
+        sections: [
+          {
+            title: "Indicadores Principais",
+            content: generateKPIHTML(kpis)
+          },
+          {
+            title: "Distribuição por Tribunal",
+            content: generateTableHTML(tribunalHeaders, tribunalRows)
+          },
+          {
+            title: "Distribuição por Empresa",
+            content: generateTableHTML(empresaHeaders, empresaRows)
+          }
+        ]
+      });
+
+      const filename = `encerrados-${format(mesReferencia, 'yyyy-MM')}.html`;
+      downloadHTML(html, filename);
+    } finally {
+      setIsExportingHTML(false);
     }
   };
 
@@ -175,6 +239,22 @@ export default function EntradasEncerrados() {
           >
             <ChevronRight className="h-4 w-4" />
           </Button>
+
+          {isAdmin && (
+            <Button
+              variant="outline"
+              onClick={exportToHTML}
+              disabled={isExportingHTML || isLoading || !stats}
+              data-testid="button-export-html-encerrados"
+            >
+              {isExportingHTML ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <FileDown className="h-4 w-4 mr-2" />
+              )}
+              Exportar HTML
+            </Button>
+          )}
         </div>
       </div>
 

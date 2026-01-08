@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { FileText, TrendingUp, AlertTriangle, Scale, Download, Loader2, Calendar } from "lucide-react";
+import { FileText, TrendingUp, AlertTriangle, Scale, Download, Loader2, Calendar, FileDown } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -17,6 +17,8 @@ import { EmpresaBarChart } from "@/components/charts/empresa-bar-chart";
 import { EmpresaPieChart } from "@/components/charts/empresa-pie-chart";
 import { formatProcessos, formatCurrency, formatPercentage } from "@/lib/formatters";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { generateHTMLExport, downloadHTML, generateKPIHTML, generateTableHTML } from "@/lib/html-export";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import type { PassivoData } from "@shared/schema";
@@ -54,9 +56,11 @@ export default function Dashboard() {
   const visaoGeralRef = useRef<HTMLDivElement>(null);
   const detalhamentoRef = useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [isExportingHTML, setIsExportingHTML] = useState(false);
   const [activeTab, setActiveTab] = useState("visao-geral");
   const [selectedPeriodo, setSelectedPeriodo] = useState<string>("atual");
   const { toast } = useToast();
+  const { isAdmin, tenant } = useAuth();
 
   const { data: periodos } = useQuery<Array<{ mes: string; ano: string }>>({
     queryKey: ["/api/passivo/periodos"],
@@ -213,6 +217,97 @@ export default function Dashboard() {
     }
   };
 
+  const exportToHTML = async () => {
+    if (!passivoData || !tenant) return;
+    setIsExportingHTML(true);
+
+    try {
+      const tenantName = tenant.name || tenant.code;
+      const tenantColor = tenant.primaryColor || "#ffd700";
+      const { fases, riscos, empresas, summary } = passivoData;
+
+      const kpis = [
+        { label: "Total de Processos", value: formatProcessos(summary.totalProcessos) },
+        { label: "Total do Passivo", value: formatCurrency(summary.totalPassivo) },
+        { label: "% Risco Provável", value: formatPercentage(summary.percentualRiscoProvavel) },
+        { label: "% Fase Recursal", value: formatPercentage(summary.percentualFaseRecursal) },
+      ];
+
+      const faseHeaders = ["Fase", "Processos", "%", "Valor Total", "%", "Ticket Médio"];
+      const faseRows = fases.map(f => [
+        f.fase,
+        formatProcessos(f.processos),
+        formatPercentage(f.percentualProcessos),
+        formatCurrency(f.valorTotal),
+        formatPercentage(f.percentualValor),
+        formatCurrency(f.ticketMedio)
+      ]);
+
+      const riscoHeaders = ["Risco", "Processos", "%", "Valor Total", "%", "Ticket Médio"];
+      const riscoRows = riscos.map(r => [
+        r.risco,
+        formatProcessos(r.processos),
+        formatPercentage(r.percentualProcessos),
+        formatCurrency(r.valorTotal),
+        formatPercentage(r.percentualValor),
+        formatCurrency(r.ticketMedio)
+      ]);
+
+      const empresaHeaders = ["Empresa", "Processos", "Valor Total", "Conhecimento", "Recursal", "Execução"];
+      const empresaRows = empresas.map(e => [
+        e.empresa,
+        formatProcessos(e.total.processos),
+        formatCurrency(e.total.valor),
+        formatCurrency(e.conhecimento.valor),
+        formatCurrency(e.recursal.valor),
+        formatCurrency(e.execucao.valor)
+      ]);
+
+      const html = generateHTMLExport({
+        title: "Passivo sob Gestão",
+        subtitle: `Período: ${periodoLabel}`,
+        tenant: tenantName,
+        tenantColor,
+        generatedAt: new Date(),
+        sections: [
+          {
+            title: "Indicadores Principais",
+            content: generateKPIHTML(kpis)
+          },
+          {
+            title: "Visão por Fase Processual",
+            content: generateTableHTML(faseHeaders, faseRows)
+          },
+          {
+            title: "Visão por Classificação de Risco",
+            content: generateTableHTML(riscoHeaders, riscoRows)
+          },
+          {
+            title: "Detalhamento por Empresa",
+            content: generateTableHTML(empresaHeaders, empresaRows)
+          }
+        ]
+      });
+
+      const filename = `passivo-sob-gestao-${new Date().toISOString().split('T')[0]}.html`;
+      downloadHTML(html, filename);
+
+      toast({
+        title: "HTML exportado com sucesso!",
+        description: "O arquivo foi baixado para seu computador",
+      });
+    } catch (err) {
+      console.error("Erro ao exportar HTML:", err);
+      toast({
+        title: "Erro ao exportar HTML",
+        description: String(err),
+        variant: "destructive",
+      });
+    } finally {
+      setIsExportingHTML(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="p-6 space-y-6">
@@ -309,6 +404,21 @@ export default function Dashboard() {
             )}
             Exportar PDF
           </Button>
+          {isAdmin && (
+            <Button
+              variant="outline"
+              onClick={exportToHTML}
+              disabled={isExportingHTML || isLoading || !passivoData}
+              data-testid="button-export-html"
+            >
+              {isExportingHTML ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <FileDown className="h-4 w-4 mr-2" />
+              )}
+              Exportar HTML
+            </Button>
+          )}
         </div>
       </div>
       <div ref={kpisRef} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

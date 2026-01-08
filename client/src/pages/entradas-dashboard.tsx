@@ -6,9 +6,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from "recharts";
-import { ArrowUpDown, TrendingUp, TrendingDown, Calendar as CalendarIcon, Building2, Briefcase, DollarSign, FileText, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowUpDown, TrendingUp, TrendingDown, Calendar as CalendarIcon, Building2, Briefcase, DollarSign, FileText, ChevronLeft, ChevronRight, FileDown, Loader2 } from "lucide-react";
 import { format, subMonths, addMonths, startOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { useAuth } from "@/hooks/useAuth";
+import { generateHTMLExport, downloadHTML, generateKPIHTML, generateTableHTML } from "@/lib/html-export";
 
 interface CasosNovosStats {
   total: number;
@@ -68,6 +70,8 @@ function getFullMonthName(date: Date): string {
 export default function EntradasDashboard() {
   const [mesReferencia, setMesReferencia] = useState<Date>(startOfMonth(new Date()));
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [isExportingHTML, setIsExportingHTML] = useState(false);
+  const { isAdmin, tenant } = useAuth();
 
   const mesReferenciaStr = format(mesReferencia, 'yyyy-MM');
   const mesAnterior = subMonths(mesReferencia, 1);
@@ -95,6 +99,66 @@ export default function EntradasDashboard() {
     if (date) {
       setMesReferencia(startOfMonth(date));
       setIsCalendarOpen(false);
+    }
+  };
+
+  const exportToHTML = () => {
+    if (!stats || !tenant) return;
+    setIsExportingHTML(true);
+
+    try {
+      const tenantName = tenant.name || tenant.code;
+      const tenantColor = tenant.primaryColor || "#ffd700";
+      const periodoLabel = format(mesReferencia, "MMMM yyyy", { locale: ptBR });
+
+      const kpis = [
+        { label: "Total de Casos", value: formatNumber(stats.total) },
+        { label: format(mesReferencia, "MMM/yy", { locale: ptBR }).toUpperCase(), value: formatNumber(stats.mesAtual) },
+        { label: format(mesAnterior, "MMM/yy", { locale: ptBR }).toUpperCase(), value: formatNumber(stats.mesAnterior) },
+        { label: "Valor Contingência", value: formatCurrency(stats.valorTotalContingencia) },
+        { label: "Variação vs Anterior", value: `${stats.variacaoPercentual}%` },
+      ];
+
+      const tribunalHeaders = ["Tribunal", "Quantidade", "%"];
+      const tribunalRows = stats.porTribunal.slice(0, 15).map(t => [
+        `TRT ${t.tribunal}`,
+        formatNumber(t.quantidade),
+        `${t.percentual.toFixed(1)}%`
+      ]);
+
+      const empresaHeaders = ["Empresa", "Quantidade", "%"];
+      const empresaRows = stats.porEmpresa.map(e => [
+        e.empresa,
+        formatNumber(e.quantidade),
+        `${e.percentual.toFixed(1)}%`
+      ]);
+
+      const html = generateHTMLExport({
+        title: "Entradas - Casos Novos",
+        subtitle: `Período: ${periodoLabel}`,
+        tenant: tenantName,
+        tenantColor,
+        generatedAt: new Date(),
+        sections: [
+          {
+            title: "Indicadores Principais",
+            content: generateKPIHTML(kpis)
+          },
+          {
+            title: "Distribuição por Tribunal",
+            content: generateTableHTML(tribunalHeaders, tribunalRows)
+          },
+          {
+            title: "Distribuição por Empresa",
+            content: generateTableHTML(empresaHeaders, empresaRows)
+          }
+        ]
+      });
+
+      const filename = `entradas-casos-novos-${format(mesReferencia, 'yyyy-MM')}.html`;
+      downloadHTML(html, filename);
+    } finally {
+      setIsExportingHTML(false);
     }
   };
 
@@ -187,6 +251,22 @@ export default function EntradasDashboard() {
           >
             <ChevronRight className="h-4 w-4" />
           </Button>
+
+          {isAdmin && (
+            <Button
+              variant="outline"
+              onClick={exportToHTML}
+              disabled={isExportingHTML || isLoading || !stats}
+              data-testid="button-export-html"
+            >
+              {isExportingHTML ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <FileDown className="h-4 w-4 mr-2" />
+              )}
+              Exportar HTML
+            </Button>
+          )}
         </div>
       </div>
 
