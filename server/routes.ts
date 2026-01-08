@@ -1632,20 +1632,6 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/decisoes/:id", isAuthenticated, isAdmin, requireModule("mapas"), async (req, res) => {
-    try {
-      const tenantId = req.session.user?.tenantId;
-      if (!tenantId) {
-        return res.status(401).json({ error: "Não autenticado" });
-      }
-      await storage.deleteDecisaoRpac(req.params.id, tenantId);
-      res.json({ success: true });
-    } catch (error) {
-      console.error("Error deleting decisao:", error);
-      res.status(500).json({ error: "Erro ao excluir decisão" });
-    }
-  });
-
   app.delete("/api/decisoes/batch", isAuthenticated, isAdmin, requireModule("mapas"), async (req, res) => {
     try {
       const tenantId = req.session.user?.tenantId;
@@ -1661,6 +1647,20 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error batch deleting decisoes:", error);
       res.status(500).json({ error: "Erro ao excluir decisões em lote" });
+    }
+  });
+
+  app.delete("/api/decisoes/:id", isAuthenticated, isAdmin, requireModule("mapas"), async (req, res) => {
+    try {
+      const tenantId = req.session.user?.tenantId;
+      if (!tenantId) {
+        return res.status(401).json({ error: "Não autenticado" });
+      }
+      await storage.deleteDecisaoRpac(req.params.id, tenantId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting decisao:", error);
+      res.status(500).json({ error: "Erro ao excluir decisão" });
     }
   });
 
