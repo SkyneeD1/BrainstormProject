@@ -10,6 +10,7 @@ import { ArrowUpDown, TrendingUp, TrendingDown, Calendar as CalendarIcon, Buildi
 import { format, subMonths, addMonths, startOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 import { generateHTMLExport, downloadHTML, generateKPIHTML, generateTableHTML } from "@/lib/html-export";
 
 interface CasosNovosStats {
@@ -72,6 +73,7 @@ export default function EntradasDashboard() {
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [isExportingHTML, setIsExportingHTML] = useState(false);
   const { isAdmin, tenant } = useAuth();
+  const { toast } = useToast();
 
   const mesReferenciaStr = format(mesReferencia, 'yyyy-MM');
   const mesAnterior = subMonths(mesReferencia, 1);
@@ -157,6 +159,18 @@ export default function EntradasDashboard() {
 
       const filename = `entradas-casos-novos-${format(mesReferencia, 'yyyy-MM')}.html`;
       downloadHTML(html, filename);
+
+      toast({
+        title: "HTML exportado com sucesso!",
+        description: "O arquivo foi baixado para seu computador",
+      });
+    } catch (err) {
+      console.error("Erro ao exportar HTML:", err);
+      toast({
+        title: "Erro ao exportar HTML",
+        description: String(err),
+        variant: "destructive",
+      });
     } finally {
       setIsExportingHTML(false);
     }
