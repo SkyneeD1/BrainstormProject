@@ -165,6 +165,8 @@ export interface IStorage {
   // Mapas Estratégicos - Turmas e Desembargadores
   getAllTurmas(tenantId: string, instancia?: string): Promise<Turma[]>;
   getTurma(id: string, tenantId: string): Promise<Turma | undefined>;
+  getTurmaByName(nome: string, tenantId: string): Promise<Turma | undefined>;
+  findOrCreateTurma(tenantId: string, nome: string, regiao?: string, instancia?: string): Promise<Turma>;
   createTurma(tenantId: string, turma: InsertTurma): Promise<Turma>;
   updateTurma(id: string, data: Partial<InsertTurma>, tenantId: string): Promise<Turma | undefined>;
   deleteTurma(id: string, tenantId: string): Promise<boolean>;
@@ -172,9 +174,25 @@ export interface IStorage {
   getAllDesembargadores(tenantId: string): Promise<Desembargador[]>;
   getDesembargadoresByTurma(turmaId: string, tenantId: string): Promise<Desembargador[]>;
   getDesembargador(id: string, tenantId: string): Promise<Desembargador | undefined>;
+  getDesembargadorByName(nome: string, tenantId: string): Promise<Desembargador | undefined>;
+  findOrCreateDesembargador(tenantId: string, nome: string, turmaId: string): Promise<Desembargador>;
   createDesembargador(tenantId: string, desembargador: InsertDesembargador): Promise<Desembargador>;
   updateDesembargador(id: string, data: Partial<InsertDesembargador>, tenantId: string): Promise<Desembargador | undefined>;
   deleteDesembargador(id: string, tenantId: string): Promise<boolean>;
+  
+  // Smart import with auto-creation
+  importDecisaoWithAutoCreate(tenantId: string, data: {
+    dataDecisao: string;
+    numeroProcesso: string;
+    local: string;
+    turma: string;
+    relator: string;
+    resultado: string;
+    responsabilidade?: string;
+    upi?: string;
+    empresa: string;
+    instancia?: string;
+  }): Promise<{ decisao: DecisaoRpac; turmaCreated: boolean; desembargadorCreated: boolean }>;
   
   getMapaDecisoesGeral(tenantId: string): Promise<MapaDecisoes>;
   
@@ -1164,6 +1182,24 @@ export class MemStorage implements IStorage {
     return turma;
   }
 
+  async getTurmaByName(nome: string, tenantId: string): Promise<Turma | undefined> {
+    const normalizedNome = nome.trim().toLowerCase();
+    const allTurmas = await db.select().from(turmas).where(eq(turmas.tenantId, tenantId));
+    return allTurmas.find(t => t.nome.trim().toLowerCase() === normalizedNome);
+  }
+
+  async findOrCreateTurma(tenantId: string, nome: string, regiao?: string, instancia?: string): Promise<Turma> {
+    const existing = await this.getTurmaByName(nome, tenantId);
+    if (existing) {
+      return existing;
+    }
+    return await this.createTurma(tenantId, {
+      nome: nome.trim(),
+      regiao: regiao?.trim() || null,
+      instancia: instancia || '2ª Instância',
+    });
+  }
+
   async createTurma(tenantId: string, turma: InsertTurma): Promise<Turma> {
     const [created] = await db.insert(turmas).values({ ...turma, tenantId }).returning();
     return created;
@@ -1193,6 +1229,24 @@ export class MemStorage implements IStorage {
     return desembargador;
   }
 
+  async getDesembargadorByName(nome: string, tenantId: string): Promise<Desembargador | undefined> {
+    const normalizedNome = nome.trim().toLowerCase();
+    const allDesembargadores = await db.select().from(desembargadores).where(eq(desembargadores.tenantId, tenantId));
+    return allDesembargadores.find(d => d.nome.trim().toLowerCase() === normalizedNome);
+  }
+
+  async findOrCreateDesembargador(tenantId: string, nome: string, turmaId: string): Promise<Desembargador> {
+    const existing = await this.getDesembargadorByName(nome, tenantId);
+    if (existing) {
+      return existing;
+    }
+    return await this.createDesembargador(tenantId, {
+      nome: nome.trim(),
+      turmaId,
+      voto: 'EM ANÁLISE',
+    });
+  }
+
   async createDesembargador(tenantId: string, desembargador: InsertDesembargador): Promise<Desembargador> {
     const [created] = await db.insert(desembargadores).values({ ...desembargador, tenantId }).returning();
     return created;
@@ -1206,6 +1260,78 @@ export class MemStorage implements IStorage {
   async deleteDesembargador(id: string, tenantId: string): Promise<boolean> {
     await db.delete(desembargadores).where(and(eq(desembargadores.id, id), eq(desembargadores.tenantId, tenantId)));
     return true;
+  }
+
+  // Smart import with auto-creation of Turma and Desembargador
+  async importDecisaoWithAutoCreate(tenantId: string, data: {
+    dataDecisao: string;
+    numeroProcesso: string;
+    local: string;
+    turma: string;
+    relator: string;
+    resultado: string;
+    responsabilidade?: string;
+    upi?: string;
+    empresa: string;
+    instancia?: string;
+  }): Promise<{ decisao: DecisaoRpac; turmaCreated: boolean; desembargadorCreated: boolean }> {
+    let turmaCreated = false;
+    let desembargadorCreated = false;
+
+    // 1. Find or create Turma
+    let turmaEntity = await this.getTurmaByName(data.turma, tenantId);
+    if (!turmaEntity) {
+      turmaEntity = await this.createTurma(tenantId, {
+        nome: data.turma.trim(),
+        regiao: data.local?.trim() || null,
+        instancia: data.instancia || '2ª Instância',
+      });
+      turmaCreated = true;
+    }
+
+    // 2. Find or create Desembargador
+    let desembargadorEntity = await this.getDesembargadorByName(data.relator, tenantId);
+    if (!desembargadorEntity) {
+      desembargadorEntity = await this.createDesembargador(tenantId, {
+        nome: data.relator.trim(),
+        turmaId: turmaEntity.id,
+        voto: 'EM ANÁLISE',
+      });
+      desembargadorCreated = true;
+    }
+
+    // 3. Parse date
+    let dataDecisao: Date | undefined;
+    if (data.dataDecisao) {
+      // Try DD/MM/YYYY format first
+      const parts = data.dataDecisao.split('/');
+      if (parts.length === 3) {
+        const [day, month, year] = parts;
+        dataDecisao = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+      } else {
+        // Try ISO format as fallback
+        dataDecisao = new Date(data.dataDecisao);
+      }
+      if (isNaN(dataDecisao.getTime())) {
+        dataDecisao = undefined;
+      }
+    }
+
+    // 4. Normalize resultado
+    const normalizedResultado = this.normalizeResultado(data.resultado);
+
+    // 5. Create the decisao
+    const decisao = await this.createDecisaoRpac(tenantId, {
+      desembargadorId: desembargadorEntity.id,
+      numeroProcesso: data.numeroProcesso.trim(),
+      dataDecisao: dataDecisao,
+      resultado: normalizedResultado,
+      responsabilidade: data.responsabilidade?.toLowerCase().includes('solidár') ? 'solidaria' : 'subsidiaria',
+      upi: data.upi?.toLowerCase() === 'sim' ? 'sim' : 'nao',
+      empresa: data.empresa.trim() || 'V.tal',
+    });
+
+    return { decisao, turmaCreated, desembargadorCreated };
   }
 
   // Mapa de Decisões - agregação para visualização

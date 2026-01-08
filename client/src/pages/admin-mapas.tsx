@@ -591,6 +591,24 @@ function SpreadsheetView({ data, onRefresh, labels }: { data: AdminData | undefi
     },
   });
 
+  const smartImportMutation = useMutation({
+    mutationFn: async (decisoes: Array<{ dataDecisao: string; numeroProcesso: string; local: string; turma: string; relator: string; resultado: string; responsabilidade: string; upi: string; empresa: string }>) => {
+      const response = await apiRequest("POST", "/api/decisoes/smart-import", { decisoes });
+      return response.json() as Promise<{ success: number; errors: number; turmasCreated: number; desembargadoresCreated: number; errorDetails: Array<{ index: number; error: string }> }>;
+    },
+    onSuccess: (data) => {
+      let message = `${data.success} decisões importadas`;
+      if (data.turmasCreated > 0) message += `, ${data.turmasCreated} turmas criadas`;
+      if (data.desembargadoresCreated > 0) message += `, ${data.desembargadoresCreated} desembargadores criados`;
+      if (data.errors > 0) message += `, ${data.errors} erros`;
+      toast({ title: message });
+      onRefresh();
+    },
+    onError: (error: Error) => {
+      toast({ title: "Erro ao importar decisões", description: error.message, variant: "destructive" });
+    },
+  });
+
   const addRow = () => {
     setBatchRows(prev => [...prev, { desembargadorId: "", numeroProcesso: "", dataDecisao: new Date().toISOString().split('T')[0], resultado: "EM ANÁLISE", upi: "nao", responsabilidade: "subsidiaria", empresa: "V.tal" }]);
   };
@@ -625,67 +643,48 @@ function SpreadsheetView({ data, onRefresh, labels }: { data: AdminData | undefi
         const workbook = XLSX.read(data, { type: "array" });
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
-        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as string[][];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as unknown[][];
 
-        // Skip header row, parse remaining rows
-        const newRows: Array<{ desembargadorId: string; numeroProcesso: string; dataDecisao: string; resultado: string; upi: string; responsabilidade: string; empresa: string }> = [];
+        // New column structure: Data, Numero Processo, Local, Turma, Relator, Resultado, Responsabilidade, UPI, Empresa
+        const decisoesToImport: Array<{ dataDecisao: string; numeroProcesso: string; local: string; turma: string; relator: string; resultado: string; responsabilidade: string; upi: string; empresa: string }> = [];
+        
         for (let i = 1; i < jsonData.length; i++) {
           const row = jsonData[i];
-          if (!row || row.length < 2) continue;
+          if (!row || row.length < 5) continue;
 
-          // Expected columns: Desembargador, NumeroProcesso, Data, Resultado, UPI, Responsabilidade, Empresa
-          const desembargadorNome = String(row[0] || "").trim();
+          const dataDecisao = row[0] ? formatExcelDate(row[0]) : "";
           const numeroProcesso = String(row[1] || "").trim();
-          const dataDecisao = row[2] ? formatExcelDate(row[2]) : new Date().toISOString().split('T')[0];
-          const resultado = normalizeResultado(String(row[3] || "EM ANÁLISE"));
-          const upi = String(row[4] || "").toLowerCase().includes("sim") ? "sim" : "nao";
-          const responsabilidade = String(row[5] || "").toLowerCase().includes("solidária") || String(row[5] || "").toLowerCase().includes("solidaria") ? "solidaria" : "subsidiaria";
-          const empresa = normalizeEmpresa(String(row[6] || "V.tal"));
+          const local = String(row[2] || "").trim();
+          const turma = String(row[3] || "").trim();
+          const relator = String(row[4] || "").trim();
+          const resultado = normalizeResultado(String(row[5] || "EM ANÁLISE"));
+          const responsabilidade = String(row[6] || "").toLowerCase().includes("solidária") || String(row[6] || "").toLowerCase().includes("solidaria") ? "solidaria" : "subsidiaria";
+          const upi = String(row[7] || "").toLowerCase().includes("sim") ? "sim" : "nao";
+          const empresa = normalizeEmpresa(String(row[8] || "V.tal"));
 
-          // Find matching desembargador by name
-          const matchingDesemb = allDesembargadores.find(d => 
-            d.nome.toLowerCase().includes(desembargadorNome.toLowerCase()) ||
-            desembargadorNome.toLowerCase().includes(d.nome.toLowerCase())
-          );
-
-          if (matchingDesemb && numeroProcesso) {
-            newRows.push({
-              desembargadorId: matchingDesemb.id,
-              numeroProcesso,
+          // Only require turma, relator and numeroProcesso
+          if (turma && relator && numeroProcesso) {
+            decisoesToImport.push({
               dataDecisao,
+              numeroProcesso,
+              local,
+              turma,
+              relator,
               resultado,
-              upi,
               responsabilidade,
+              upi,
               empresa
             });
           }
         }
 
-        const unmatchedDesemb = jsonData.slice(1)
-          .filter(row => row && row.length >= 2 && row[1])
-          .filter(row => {
-            const nome = String(row[0] || "").trim();
-            return !allDesembargadores.find(d => 
-              d.nome.toLowerCase().includes(nome.toLowerCase()) ||
-              nome.toLowerCase().includes(d.nome.toLowerCase())
-            );
-          })
-          .map(row => String(row[0] || "").trim());
-
-        if (newRows.length > 0) {
-          setBatchRows(prev => [...prev.filter(r => r.desembargadorId && r.numeroProcesso), ...newRows]);
-          if (unmatchedDesemb.length > 0) {
-            toast({ 
-              title: `${newRows.length} linhas importadas`, 
-              description: `${unmatchedDesemb.length} não encontrados: ${unmatchedDesemb.slice(0, 3).join(", ")}${unmatchedDesemb.length > 3 ? "..." : ""}` 
-            });
-          } else {
-            toast({ title: `${newRows.length} linhas importadas do Excel` });
-          }
+        if (decisoesToImport.length > 0) {
+          // Use smart import endpoint - auto-creates turmas and desembargadores
+          smartImportMutation.mutate(decisoesToImport);
         } else {
           toast({ 
             title: "Nenhuma linha válida encontrada", 
-            description: unmatchedDesemb.length > 0 ? `Desembargadores não encontrados: ${unmatchedDesemb.slice(0, 3).join(", ")}` : undefined,
+            description: "Verifique se a planilha contém as colunas: Data, Nº Processo, Local, Turma, Relator, Resultado, Responsabilidade, UPI, Empresa",
             variant: "destructive" 
           });
         }
@@ -722,6 +721,7 @@ function SpreadsheetView({ data, onRefresh, labels }: { data: AdminData | undefi
   const normalizeEmpresa = (value: string): string => {
     const lower = value.toLowerCase();
     if (lower.includes("v.tal") || lower.includes("vtal")) return "V.tal";
+    if (lower.includes("nio")) return "NIO";
     if (lower.includes("oi")) return "OI";
     if (lower.includes("serede")) return "Serede";
     if (lower.includes("sprink")) return "Sprink";

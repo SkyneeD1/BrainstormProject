@@ -1690,6 +1690,69 @@ export async function registerRoutes(
     }
   });
 
+  // Smart import endpoint - auto-creates Turma and Desembargador if they don't exist
+  app.post("/api/decisoes/smart-import", isAuthenticated, isAdmin, requireModule("mapas"), async (req, res) => {
+    try {
+      const tenantId = req.session.user?.tenantId;
+      if (!tenantId) return res.status(401).json({ error: "Tenant não identificado" });
+      
+      const { decisoes } = req.body;
+      if (!Array.isArray(decisoes) || decisoes.length === 0) {
+        return res.status(400).json({ error: "Lista de decisões vazia ou inválida" });
+      }
+      
+      const results = [];
+      const errors = [];
+      let turmasCreated = 0;
+      let desembargadoresCreated = 0;
+      
+      for (let i = 0; i < decisoes.length; i++) {
+        const row = decisoes[i];
+        try {
+          // Validate required fields
+          if (!row.turma || !row.relator || !row.numeroProcesso) {
+            errors.push({ 
+              index: i, 
+              error: `Campos obrigatórios faltando: ${!row.turma ? 'Turma' : ''} ${!row.relator ? 'Relator' : ''} ${!row.numeroProcesso ? 'Nº Processo' : ''}`.trim() 
+            });
+            continue;
+          }
+          
+          const result = await storage.importDecisaoWithAutoCreate(tenantId, {
+            dataDecisao: row.dataDecisao || '',
+            numeroProcesso: row.numeroProcesso,
+            local: row.local || '',
+            turma: row.turma,
+            relator: row.relator,
+            resultado: row.resultado || 'EM ANÁLISE',
+            responsabilidade: row.responsabilidade,
+            upi: row.upi,
+            empresa: row.empresa || 'V.tal',
+            instancia: row.instancia,
+          });
+          
+          results.push(result.decisao);
+          if (result.turmaCreated) turmasCreated++;
+          if (result.desembargadorCreated) desembargadoresCreated++;
+        } catch (err: any) {
+          errors.push({ index: i, error: err.message || "Erro ao importar decisão" });
+        }
+      }
+      
+      res.status(201).json({ 
+        success: results.length, 
+        errors: errors.length,
+        turmasCreated,
+        desembargadoresCreated,
+        errorDetails: errors,
+        results 
+      });
+    } catch (error) {
+      console.error("Error smart importing decisoes:", error);
+      res.status(500).json({ error: "Erro ao importar decisões" });
+    }
+  });
+
   // ========== Mapa de Decisões Analytics Routes ==========
   app.get("/api/mapa-decisoes/trts", isAuthenticated, async (req, res) => {
     try {
