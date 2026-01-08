@@ -165,7 +165,7 @@ export interface IStorage {
   // Mapas Estratégicos - Turmas e Desembargadores
   getAllTurmas(tenantId: string, instancia?: string): Promise<Turma[]>;
   getTurma(id: string, tenantId: string): Promise<Turma | undefined>;
-  getTurmaByName(nome: string, tenantId: string): Promise<Turma | undefined>;
+  getTurmaByName(nome: string, tenantId: string, instancia?: string): Promise<Turma | undefined>;
   findOrCreateTurma(tenantId: string, nome: string, regiao?: string, instancia?: string): Promise<Turma>;
   createTurma(tenantId: string, turma: Omit<InsertTurma, 'tenantId'>): Promise<Turma>;
   updateTurma(id: string, data: Partial<Omit<InsertTurma, 'tenantId'>>, tenantId: string): Promise<Turma | undefined>;
@@ -1183,14 +1183,18 @@ export class MemStorage implements IStorage {
     return turma;
   }
 
-  async getTurmaByName(nome: string, tenantId: string): Promise<Turma | undefined> {
+  async getTurmaByName(nome: string, tenantId: string, instancia?: string): Promise<Turma | undefined> {
     const normalizedNome = nome.trim().toLowerCase();
     const allTurmas = await db.select().from(turmas).where(eq(turmas.tenantId, tenantId));
+    // If instancia is provided, filter by it; otherwise return first match
+    if (instancia) {
+      return allTurmas.find(t => t.nome.trim().toLowerCase() === normalizedNome && t.instancia === instancia);
+    }
     return allTurmas.find(t => t.nome.trim().toLowerCase() === normalizedNome);
   }
 
   async findOrCreateTurma(tenantId: string, nome: string, regiao?: string, instancia?: string): Promise<Turma> {
-    const existing = await this.getTurmaByName(nome, tenantId);
+    const existing = await this.getTurmaByName(nome, tenantId, instancia);
     if (existing) {
       return existing;
     }
@@ -1279,13 +1283,14 @@ export class MemStorage implements IStorage {
     let turmaCreated = false;
     let desembargadorCreated = false;
 
-    // 1. Find or create Turma
-    let turmaEntity = await this.getTurmaByName(data.turma, tenantId);
+    // 1. Find or create Turma - filter by instancia to avoid mixing 1ª and 2ª instância
+    const targetInstancia = data.instancia || 'segunda';
+    let turmaEntity = await this.getTurmaByName(data.turma, tenantId, targetInstancia);
     if (!turmaEntity) {
       turmaEntity = await this.createTurma(tenantId, {
         nome: data.turma.trim(),
         regiao: data.local?.trim() || null,
-        instancia: data.instancia || 'segunda',
+        instancia: targetInstancia,
       });
       turmaCreated = true;
     }
