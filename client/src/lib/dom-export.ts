@@ -4,6 +4,41 @@ export interface DOMExportOptions {
   tenantColor: string;
 }
 
+// Dashboard export data interface
+export interface DashboardExportData {
+  summary: {
+    totalProcessos: number;
+    totalPassivo: number;
+    ticketMedioGlobal: number;
+    percentualRiscoProvavel: number;
+    percentualFaseRecursal: number;
+  };
+  fases: Array<{
+    fase: string;
+    processos: number;
+    percentualProcessos: number;
+    valorTotal: number;
+    percentualValor: number;
+    ticketMedio: number;
+  }>;
+  riscos: Array<{
+    risco: string;
+    processos: number;
+    percentualProcessos: number;
+    valorTotal: number;
+    percentualValor: number;
+    ticketMedio: number;
+  }>;
+  empresas: Array<{
+    empresa: string;
+    conhecimento: { processos: number; valor: number; percentualValor: number };
+    recursal: { processos: number; valor: number; percentualValor: number };
+    execucao: { processos: number; valor: number; percentualValor: number };
+    total: { processos: number; percentualProcessos: number; valor: number; percentualValor: number };
+  }>;
+  periodoLabel: string;
+}
+
 export interface MapaDecisoesExportData {
   trts: Array<{
     nome: string;
@@ -366,130 +401,208 @@ function downloadHTML(html: string, filename: string): void {
   URL.revokeObjectURL(url);
 }
 
-// Export Mapa de Decisões with full hierarchy
+// Export Mapa de Decisões with full hierarchy - styled like the app
 export async function exportMapaDecisoesAsHTML(
   data: MapaDecisoesExportData,
   options: DOMExportOptions
 ): Promise<void> {
   const { title, tenant, tenantColor } = options;
   const isDark = document.documentElement.classList.contains('dark');
-  const bgColor = isDark ? '#0a0a0a' : '#ffffff';
+  const bgColor = isDark ? '#0a0a0a' : '#f8fafc';
   const textColor = isDark ? '#fafafa' : '#0a0a0a';
-  const cardBg = isDark ? '#1a1a1a' : '#f9fafb';
-  const borderColor = isDark ? '#333' : '#e5e7eb';
-  const mutedColor = isDark ? '#888' : '#6b7280';
+  const cardBg = isDark ? '#1a1a1a' : '#ffffff';
+  const borderColor = isDark ? '#333' : '#e2e8f0';
+  const mutedColor = isDark ? '#888' : '#64748b';
+  const accentBg = isDark ? '#0f172a' : '#f1f5f9';
   
   const labels = data.labels;
   
+  // Calculate totals
+  const totalTRTs = data.trts.length;
+  const totalTurmas = data.trts.reduce((sum, t) => sum + t.totalTurmas, 0);
+  const totalDesemb = data.trts.reduce((sum, t) => sum + t.totalDesembargadores, 0);
+  const totalDecisoes = data.trts.reduce((sum, t) => sum + t.totalDecisoes, 0);
+  const totalFav = data.trts.reduce((sum, t) => sum + t.favoraveis, 0);
+  const overallPercent = totalDecisoes > 0 ? Math.round((totalFav / totalDecisoes) * 100) : 0;
+  
   let content = `
     <div style="max-width: 1400px; margin: 0 auto; padding: 32px;">
-      <header style="margin-bottom: 32px; padding-bottom: 16px; border-bottom: 2px solid ${tenantColor};">
-        <h1 style="font-size: 28px; font-weight: bold; margin-bottom: 8px;">
-          ${title} - ${labels.pageTitle}
-        </h1>
-        <p style="color: ${mutedColor};">
-          Exportado em ${new Date().toLocaleDateString('pt-BR')} - ${tenant}
-        </p>
+      <header style="margin-bottom: 32px; display: flex; align-items: center; gap: 16px;">
+        <div style="width: 48px; height: 48px; background: ${tenantColor}; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="${isDark ? '#000' : '#fff'}" stroke-width="2">
+            <path d="M4 7l8 4 8-4M4 7v10l8 4 8-4V7M4 7l8-4 8 4"/>
+          </svg>
+        </div>
+        <div>
+          <h1 style="font-size: 24px; font-weight: bold; margin: 0;">${labels.pageTitle}</h1>
+          <p style="color: ${mutedColor}; font-size: 14px; margin: 4px 0 0 0;">
+            Exportado em ${new Date().toLocaleDateString('pt-BR')} - ${tenant}
+          </p>
+        </div>
       </header>
       
-      <div style="margin-bottom: 24px; padding: 16px; background: ${cardBg}; border-radius: 8px; border: 1px solid ${borderColor};">
-        <strong>Resumo:</strong> ${data.trts.length} ${labels.level1}(s)
+      <!-- Summary KPIs -->
+      <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; margin-bottom: 32px;">
+        <div style="padding: 20px; background: ${cardBg}; border-radius: 12px; border: 1px solid ${borderColor}; text-align: center;">
+          <div style="font-size: 32px; font-weight: bold; color: ${tenantColor};">${totalTRTs}</div>
+          <div style="color: ${mutedColor}; font-size: 12px; text-transform: uppercase; margin-top: 4px;">${labels.level1}s</div>
+        </div>
+        <div style="padding: 20px; background: ${cardBg}; border-radius: 12px; border: 1px solid ${borderColor}; text-align: center;">
+          <div style="font-size: 32px; font-weight: bold;">${totalTurmas}</div>
+          <div style="color: ${mutedColor}; font-size: 12px; text-transform: uppercase; margin-top: 4px;">${labels.level2}s</div>
+        </div>
+        <div style="padding: 20px; background: ${cardBg}; border-radius: 12px; border: 1px solid ${borderColor}; text-align: center;">
+          <div style="font-size: 32px; font-weight: bold;">${totalDesemb}</div>
+          <div style="color: ${mutedColor}; font-size: 12px; text-transform: uppercase; margin-top: 4px;">${labels.level3}s</div>
+        </div>
+        <div style="padding: 20px; background: ${cardBg}; border-radius: 12px; border: 1px solid ${borderColor}; text-align: center;">
+          <div style="font-size: 32px; font-weight: bold;">${totalDecisoes}</div>
+          <div style="color: ${mutedColor}; font-size: 12px; text-transform: uppercase; margin-top: 4px;">Decisões</div>
+        </div>
+        <div style="padding: 20px; background: ${cardBg}; border-radius: 12px; border: 1px solid ${borderColor}; text-align: center;">
+          <div style="font-size: 32px; font-weight: bold; color: #10b981;">${overallPercent}%</div>
+          <div style="color: ${mutedColor}; font-size: 12px; text-transform: uppercase; margin-top: 4px;">Favorável</div>
+        </div>
       </div>
   `;
   
-  // Render each TRT
+  // Render each TRT as a card
   for (const trt of data.trts) {
+    const desfavPercent = 100 - trt.percentualFavoravel;
     content += `
-      <div style="margin-bottom: 32px; padding: 24px; background: ${cardBg}; border-radius: 8px; border: 1px solid ${borderColor};">
-        <h2 style="font-size: 20px; font-weight: bold; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid ${borderColor};">
-          ${labels.level1}: ${trt.nome}
-        </h2>
-        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px;">
-          <div style="text-align: center;">
-            <div style="font-size: 24px; font-weight: bold;">${trt.totalTurmas}</div>
-            <div style="color: ${mutedColor}; font-size: 12px;">${labels.level2}s</div>
+      <div style="margin-bottom: 24px; background: ${cardBg}; border-radius: 12px; border: 1px solid ${borderColor}; overflow: hidden;">
+        <!-- TRT Header -->
+        <div style="padding: 20px; background: ${accentBg}; border-bottom: 1px solid ${borderColor};">
+          <div style="display: flex; align-items: center; justify-content: space-between;">
+            <h2 style="font-size: 18px; font-weight: 600; margin: 0; display: flex; align-items: center; gap: 10px;">
+              <span style="display: inline-block; width: 8px; height: 8px; background: ${tenantColor}; border-radius: 50%;"></span>
+              ${trt.nome}
+            </h2>
+            <div style="display: flex; gap: 24px; font-size: 13px;">
+              <span><strong>${trt.totalTurmas}</strong> <span style="color: ${mutedColor};">${labels.level2}s</span></span>
+              <span><strong>${trt.totalDesembargadores}</strong> <span style="color: ${mutedColor};">${labels.level3}s</span></span>
+              <span><strong>${trt.totalDecisoes}</strong> <span style="color: ${mutedColor};">decisões</span></span>
+            </div>
           </div>
-          <div style="text-align: center;">
-            <div style="font-size: 24px; font-weight: bold;">${trt.totalDesembargadores}</div>
-            <div style="color: ${mutedColor}; font-size: 12px;">${labels.level3}s</div>
+          <!-- Progress bar -->
+          <div style="margin-top: 12px; height: 8px; background: #ef4444; border-radius: 4px; overflow: hidden;">
+            <div style="height: 100%; width: ${trt.percentualFavoravel}%; background: #10b981;"></div>
           </div>
-          <div style="text-align: center;">
-            <div style="font-size: 24px; font-weight: bold;">${trt.totalDecisoes}</div>
-            <div style="color: ${mutedColor}; font-size: 12px;">Decisoes</div>
-          </div>
-          <div style="text-align: center;">
-            <div style="font-size: 24px; font-weight: bold; color: #10b981;">${trt.percentualFavoravel}%</div>
-            <div style="color: ${mutedColor}; font-size: 12px;">Favoravel</div>
+          <div style="display: flex; justify-content: space-between; margin-top: 6px; font-size: 11px;">
+            <span style="color: #10b981;">Favorável: ${trt.percentualFavoravel}%</span>
+            <span style="color: #ef4444;">Desfavorável: ${desfavPercent}%</span>
           </div>
         </div>
+        
+        <!-- Turmas within TRT -->
+        <div style="padding: 16px;">
     `;
     
-    // Render turmas within TRT
     for (const turma of trt.turmas) {
+      const turmaDesfav = 100 - turma.percentualFavoravel;
       content += `
-        <div style="margin: 16px 0 16px 16px; padding: 16px; background: ${isDark ? '#222' : '#fff'}; border-radius: 6px; border: 1px solid ${borderColor};">
-          <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 12px;">
-            ${labels.level2}: ${turma.nome}
-            <span style="font-weight: normal; color: ${mutedColor}; margin-left: 12px;">
-              (${turma.totalDecisoes} decisoes, ${turma.percentualFavoravel}% fav)
-            </span>
-          </h3>
+          <div style="margin-bottom: 16px; padding: 16px; background: ${accentBg}; border-radius: 8px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+              <h3 style="font-size: 15px; font-weight: 600; margin: 0;">${turma.nome}</h3>
+              <div style="font-size: 12px; color: ${mutedColor};">
+                ${turma.totalDesembargadores} ${labels.level3.toLowerCase()}(s) | ${turma.totalDecisoes} decisões
+              </div>
+            </div>
+            <!-- Turma progress bar -->
+            <div style="height: 6px; background: #ef4444; border-radius: 3px; overflow: hidden; margin-bottom: 16px;">
+              <div style="height: 100%; width: ${turma.percentualFavoravel}%; background: #10b981;"></div>
+            </div>
       `;
       
-      // Render desembargadores within turma
-      for (const desemb of turma.desembargadores) {
+      // Desembargadores table
+      if (turma.desembargadores.length > 0) {
         content += `
-          <div style="margin: 12px 0 12px 16px; padding: 12px; background: ${cardBg}; border-radius: 4px; border: 1px solid ${borderColor};">
-            <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 8px;">
-              ${labels.level3}: ${desemb.nome}
-              <span style="font-weight: normal; color: #10b981; margin-left: 8px;">${desemb.percentualFavoravel}% fav</span>
-            </h4>
-        `;
-        
-        if (desemb.decisoes.length > 0) {
-          content += `
-            <table style="width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
               <thead>
-                <tr style="background: ${isDark ? '#333' : '#e5e7eb'};">
-                  <th style="padding: 6px 8px; text-align: left; border: 1px solid ${borderColor};">Data</th>
-                  <th style="padding: 6px 8px; text-align: left; border: 1px solid ${borderColor};">Processo</th>
-                  <th style="padding: 6px 8px; text-align: left; border: 1px solid ${borderColor};">Resultado</th>
-                  <th style="padding: 6px 8px; text-align: left; border: 1px solid ${borderColor};">Responsabilidade</th>
-                  <th style="padding: 6px 8px; text-align: left; border: 1px solid ${borderColor};">Empresa</th>
+                <tr style="background: ${isDark ? '#222' : '#e2e8f0'};">
+                  <th style="padding: 10px 12px; text-align: left; border-radius: 6px 0 0 0;">${labels.level3}</th>
+                  <th style="padding: 10px 12px; text-align: center; width: 100px;">Decisões</th>
+                  <th style="padding: 10px 12px; text-align: center; width: 100px;">Favorável</th>
+                  <th style="padding: 10px 12px; text-align: center; width: 120px; border-radius: 0 6px 0 0;">Status</th>
                 </tr>
               </thead>
               <tbody>
+        `;
+        
+        for (const desemb of turma.desembargadores) {
+          const statusColor = desemb.percentualFavoravel >= 60 ? '#10b981' : 
+                             desemb.percentualFavoravel >= 40 ? '#f59e0b' : '#ef4444';
+          content += `
+                <tr style="border-bottom: 1px solid ${borderColor};">
+                  <td style="padding: 12px; font-weight: 500;">${desemb.nome}</td>
+                  <td style="padding: 12px; text-align: center;">${desemb.totalDecisoes}</td>
+                  <td style="padding: 12px; text-align: center; color: ${statusColor}; font-weight: 600;">${desemb.percentualFavoravel}%</td>
+                  <td style="padding: 12px; text-align: center;">
+                    <div style="height: 6px; background: #ef4444; border-radius: 3px; overflow: hidden;">
+                      <div style="height: 100%; width: ${desemb.percentualFavoravel}%; background: #10b981;"></div>
+                    </div>
+                  </td>
+                </tr>
           `;
           
-          for (const dec of desemb.decisoes) {
-            const resultColor = dec.resultado.toLowerCase().includes('favor') ? '#10b981' : 
-                               dec.resultado.toLowerCase().includes('desfavor') ? '#ef4444' : mutedColor;
+          // Show decisions if any
+          if (desemb.decisoes.length > 0) {
             content += `
-              <tr>
-                <td style="padding: 6px 8px; border: 1px solid ${borderColor};">${dec.data}</td>
-                <td style="padding: 6px 8px; border: 1px solid ${borderColor};">${dec.processo}</td>
-                <td style="padding: 6px 8px; border: 1px solid ${borderColor}; color: ${resultColor};">${dec.resultado}</td>
-                <td style="padding: 6px 8px; border: 1px solid ${borderColor};">${dec.responsabilidade}</td>
-                <td style="padding: 6px 8px; border: 1px solid ${borderColor};">${dec.empresa}</td>
-              </tr>
+                <tr>
+                  <td colspan="4" style="padding: 0;">
+                    <div style="padding: 12px 12px 12px 32px; background: ${isDark ? '#111' : '#f8fafc'};">
+                      <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+                        <thead>
+                          <tr style="color: ${mutedColor};">
+                            <th style="padding: 6px 8px; text-align: left; font-weight: 500;">Data</th>
+                            <th style="padding: 6px 8px; text-align: left; font-weight: 500;">Processo</th>
+                            <th style="padding: 6px 8px; text-align: left; font-weight: 500;">Resultado</th>
+                            <th style="padding: 6px 8px; text-align: left; font-weight: 500;">Responsabilidade</th>
+                            <th style="padding: 6px 8px; text-align: left; font-weight: 500;">Empresa</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+            `;
+            
+            for (const dec of desemb.decisoes) {
+              const resultColor = dec.resultado.toLowerCase().includes('favor') ? '#10b981' : 
+                                 dec.resultado.toLowerCase().includes('desfavor') ? '#ef4444' : mutedColor;
+              content += `
+                          <tr>
+                            <td style="padding: 6px 8px;">${dec.data}</td>
+                            <td style="padding: 6px 8px; font-family: monospace; font-size: 11px;">${dec.processo}</td>
+                            <td style="padding: 6px 8px; color: ${resultColor}; font-weight: 500;">${dec.resultado}</td>
+                            <td style="padding: 6px 8px;">${dec.responsabilidade}</td>
+                            <td style="padding: 6px 8px;">${dec.empresa}</td>
+                          </tr>
+              `;
+            }
+            
+            content += `
+                        </tbody>
+                      </table>
+                    </div>
+                  </td>
+                </tr>
             `;
           }
-          
-          content += `
-              </tbody>
-            </table>
-          `;
-        } else {
-          content += `<p style="color: ${mutedColor}; font-size: 12px;">Nenhuma decisao registrada</p>`;
         }
         
-        content += `</div>`;
+        content += `
+              </tbody>
+            </table>
+        `;
       }
       
-      content += `</div>`;
+      content += `
+          </div>
+      `;
     }
     
-    content += `</div>`;
+    content += `
+        </div>
+      </div>
+    `;
   }
   
   content += `</div>`;
@@ -519,5 +632,242 @@ export async function exportMapaDecisoesAsHTML(
 </body>
 </html>`;
   
-  downloadHTML(html, `${title.replace(/\s+/g, '-').toLowerCase()}-${new Date().toISOString().split('T')[0]}.html`);
+  downloadHTML(html, `mapa-decisoes-${new Date().toISOString().split('T')[0]}.html`);
+}
+
+// Format currency for dashboard export
+function formatCurrencyExport(value: number): string {
+  return `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function formatPercentExport(value: number): string {
+  return `${value.toFixed(1)}%`;
+}
+
+// Export Dashboard with both sections (Visão Geral + Detalhamento por Origem)
+export async function exportDashboardAsHTML(
+  data: DashboardExportData,
+  options: DOMExportOptions
+): Promise<void> {
+  const { title, tenant, tenantColor } = options;
+  const isDark = document.documentElement.classList.contains('dark');
+  const bgColor = isDark ? '#0a0a0a' : '#ffffff';
+  const textColor = isDark ? '#fafafa' : '#0a0a0a';
+  const cardBg = isDark ? '#1a1a1a' : '#f9fafb';
+  const borderColor = isDark ? '#333' : '#e5e7eb';
+  const mutedColor = isDark ? '#888' : '#6b7280';
+  
+  const { summary, fases, riscos, empresas, periodoLabel } = data;
+  
+  let content = `
+    <div style="max-width: 1400px; margin: 0 auto; padding: 32px;">
+      <header style="margin-bottom: 32px; padding-bottom: 16px; border-bottom: 2px solid ${tenantColor};">
+        <h1 style="font-size: 28px; font-weight: bold; margin-bottom: 8px;">
+          ${title}
+        </h1>
+        <p style="color: ${mutedColor};">
+          Período: ${periodoLabel} | Exportado em ${new Date().toLocaleDateString('pt-BR')} - ${tenant}
+        </p>
+      </header>
+      
+      <!-- KPIs -->
+      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 32px;">
+        <div style="padding: 20px; background: ${cardBg}; border-radius: 8px; border: 1px solid ${borderColor};">
+          <div style="color: ${mutedColor}; font-size: 12px; text-transform: uppercase;">Total de Processos</div>
+          <div style="font-size: 28px; font-weight: bold; margin-top: 8px;">${summary.totalProcessos.toLocaleString('pt-BR')}</div>
+        </div>
+        <div style="padding: 20px; background: ${cardBg}; border-radius: 8px; border: 1px solid ${borderColor};">
+          <div style="color: ${mutedColor}; font-size: 12px; text-transform: uppercase;">Total do Passivo</div>
+          <div style="font-size: 28px; font-weight: bold; margin-top: 8px;">${formatCurrencyExport(summary.totalPassivo)}</div>
+        </div>
+        <div style="padding: 20px; background: ${cardBg}; border-radius: 8px; border: 1px solid ${borderColor};">
+          <div style="color: ${mutedColor}; font-size: 12px; text-transform: uppercase;">% Risco Provável</div>
+          <div style="font-size: 28px; font-weight: bold; margin-top: 8px; color: #ef4444;">${formatPercentExport(summary.percentualRiscoProvavel)}</div>
+        </div>
+        <div style="padding: 20px; background: ${cardBg}; border-radius: 8px; border: 1px solid ${borderColor};">
+          <div style="color: ${mutedColor}; font-size: 12px; text-transform: uppercase;">% Fase Recursal</div>
+          <div style="font-size: 28px; font-weight: bold; margin-top: 8px; color: #10b981;">${formatPercentExport(summary.percentualFaseRecursal)}</div>
+        </div>
+      </div>
+      
+      <!-- Section 1: Visão Geral -->
+      <section style="margin-bottom: 48px;">
+        <h2 style="font-size: 20px; font-weight: bold; margin-bottom: 24px; padding-bottom: 8px; border-bottom: 1px solid ${borderColor};">
+          Visão Geral
+        </h2>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
+          <!-- Tabela Fases -->
+          <div>
+            <h3 style="font-size: 14px; font-weight: 600; color: ${mutedColor}; margin-bottom: 12px; text-transform: uppercase;">
+              Visão por Fase Processual
+            </h3>
+            <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+              <thead>
+                <tr style="background: ${isDark ? '#222' : '#e5e7eb'};">
+                  <th style="padding: 10px; text-align: left; border: 1px solid ${borderColor};">Fase</th>
+                  <th style="padding: 10px; text-align: right; border: 1px solid ${borderColor};">Processos</th>
+                  <th style="padding: 10px; text-align: right; border: 1px solid ${borderColor};">%</th>
+                  <th style="padding: 10px; text-align: right; border: 1px solid ${borderColor};">Valor Total</th>
+                  <th style="padding: 10px; text-align: right; border: 1px solid ${borderColor};">Ticket Médio</th>
+                </tr>
+              </thead>
+              <tbody>
+  `;
+  
+  for (const fase of fases) {
+    content += `
+                <tr style="background: ${cardBg};">
+                  <td style="padding: 10px; border: 1px solid ${borderColor}; font-weight: 500;">${fase.fase}</td>
+                  <td style="padding: 10px; text-align: right; border: 1px solid ${borderColor};">${fase.processos.toLocaleString('pt-BR')}</td>
+                  <td style="padding: 10px; text-align: right; border: 1px solid ${borderColor};">${formatPercentExport(fase.percentualProcessos)}</td>
+                  <td style="padding: 10px; text-align: right; border: 1px solid ${borderColor};">${formatCurrencyExport(fase.valorTotal)}</td>
+                  <td style="padding: 10px; text-align: right; border: 1px solid ${borderColor};">${formatCurrencyExport(fase.ticketMedio)}</td>
+                </tr>
+    `;
+  }
+  
+  content += `
+                <tr style="background: ${isDark ? '#333' : '#d1d5db'}; font-weight: bold;">
+                  <td style="padding: 10px; border: 1px solid ${borderColor};">TOTAL</td>
+                  <td style="padding: 10px; text-align: right; border: 1px solid ${borderColor};">${summary.totalProcessos.toLocaleString('pt-BR')}</td>
+                  <td style="padding: 10px; text-align: right; border: 1px solid ${borderColor};">100%</td>
+                  <td style="padding: 10px; text-align: right; border: 1px solid ${borderColor};">${formatCurrencyExport(summary.totalPassivo)}</td>
+                  <td style="padding: 10px; text-align: right; border: 1px solid ${borderColor};">${formatCurrencyExport(summary.ticketMedioGlobal)}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          
+          <!-- Tabela Riscos -->
+          <div>
+            <h3 style="font-size: 14px; font-weight: 600; color: ${mutedColor}; margin-bottom: 12px; text-transform: uppercase;">
+              Visão por Classificação de Risco
+            </h3>
+            <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+              <thead>
+                <tr style="background: ${isDark ? '#222' : '#e5e7eb'};">
+                  <th style="padding: 10px; text-align: left; border: 1px solid ${borderColor};">Risco</th>
+                  <th style="padding: 10px; text-align: right; border: 1px solid ${borderColor};">Processos</th>
+                  <th style="padding: 10px; text-align: right; border: 1px solid ${borderColor};">%</th>
+                  <th style="padding: 10px; text-align: right; border: 1px solid ${borderColor};">Valor Total</th>
+                  <th style="padding: 10px; text-align: right; border: 1px solid ${borderColor};">Ticket Médio</th>
+                </tr>
+              </thead>
+              <tbody>
+  `;
+  
+  const riskColors: Record<string, string> = {
+    'Remoto': '#10b981',
+    'Possível': '#f59e0b',
+    'Provável': '#ef4444'
+  };
+  
+  for (const risco of riscos) {
+    const rColor = riskColors[risco.risco] || textColor;
+    content += `
+                <tr style="background: ${cardBg};">
+                  <td style="padding: 10px; border: 1px solid ${borderColor}; font-weight: 500; color: ${rColor};">${risco.risco}</td>
+                  <td style="padding: 10px; text-align: right; border: 1px solid ${borderColor};">${risco.processos.toLocaleString('pt-BR')}</td>
+                  <td style="padding: 10px; text-align: right; border: 1px solid ${borderColor};">${formatPercentExport(risco.percentualProcessos)}</td>
+                  <td style="padding: 10px; text-align: right; border: 1px solid ${borderColor};">${formatCurrencyExport(risco.valorTotal)}</td>
+                  <td style="padding: 10px; text-align: right; border: 1px solid ${borderColor};">${formatCurrencyExport(risco.ticketMedio)}</td>
+                </tr>
+    `;
+  }
+  
+  content += `
+                <tr style="background: ${isDark ? '#333' : '#d1d5db'}; font-weight: bold;">
+                  <td style="padding: 10px; border: 1px solid ${borderColor};">TOTAL</td>
+                  <td style="padding: 10px; text-align: right; border: 1px solid ${borderColor};">${summary.totalProcessos.toLocaleString('pt-BR')}</td>
+                  <td style="padding: 10px; text-align: right; border: 1px solid ${borderColor};">100%</td>
+                  <td style="padding: 10px; text-align: right; border: 1px solid ${borderColor};">${formatCurrencyExport(summary.totalPassivo)}</td>
+                  <td style="padding: 10px; text-align: right; border: 1px solid ${borderColor};">${formatCurrencyExport(summary.ticketMedioGlobal)}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+      
+      <!-- Section 2: Detalhamento por Origem -->
+      <section>
+        <h2 style="font-size: 20px; font-weight: bold; margin-bottom: 24px; padding-bottom: 8px; border-bottom: 1px solid ${borderColor};">
+          Detalhamento por Origem / Empresa
+        </h2>
+        
+        <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+          <thead>
+            <tr style="background: ${isDark ? '#222' : '#e5e7eb'};">
+              <th style="padding: 10px; text-align: left; border: 1px solid ${borderColor};" rowspan="2">Empresa</th>
+              <th style="padding: 10px; text-align: center; border: 1px solid ${borderColor};" colspan="2">Conhecimento</th>
+              <th style="padding: 10px; text-align: center; border: 1px solid ${borderColor};" colspan="2">Recursal</th>
+              <th style="padding: 10px; text-align: center; border: 1px solid ${borderColor};" colspan="2">Execução</th>
+              <th style="padding: 10px; text-align: center; border: 1px solid ${borderColor};" colspan="3">Total</th>
+            </tr>
+            <tr style="background: ${isDark ? '#222' : '#e5e7eb'};">
+              <th style="padding: 8px; text-align: right; border: 1px solid ${borderColor}; font-size: 11px;">Procs</th>
+              <th style="padding: 8px; text-align: right; border: 1px solid ${borderColor}; font-size: 11px;">Valor</th>
+              <th style="padding: 8px; text-align: right; border: 1px solid ${borderColor}; font-size: 11px;">Procs</th>
+              <th style="padding: 8px; text-align: right; border: 1px solid ${borderColor}; font-size: 11px;">Valor</th>
+              <th style="padding: 8px; text-align: right; border: 1px solid ${borderColor}; font-size: 11px;">Procs</th>
+              <th style="padding: 8px; text-align: right; border: 1px solid ${borderColor}; font-size: 11px;">Valor</th>
+              <th style="padding: 8px; text-align: right; border: 1px solid ${borderColor}; font-size: 11px;">Procs</th>
+              <th style="padding: 8px; text-align: right; border: 1px solid ${borderColor}; font-size: 11px;">%</th>
+              <th style="padding: 8px; text-align: right; border: 1px solid ${borderColor}; font-size: 11px;">Valor</th>
+            </tr>
+          </thead>
+          <tbody>
+  `;
+  
+  for (const emp of empresas) {
+    content += `
+            <tr style="background: ${cardBg};">
+              <td style="padding: 10px; border: 1px solid ${borderColor}; font-weight: 500;">${emp.empresa}</td>
+              <td style="padding: 8px; text-align: right; border: 1px solid ${borderColor};">${emp.conhecimento.processos.toLocaleString('pt-BR')}</td>
+              <td style="padding: 8px; text-align: right; border: 1px solid ${borderColor};">${formatCurrencyExport(emp.conhecimento.valor)}</td>
+              <td style="padding: 8px; text-align: right; border: 1px solid ${borderColor};">${emp.recursal.processos.toLocaleString('pt-BR')}</td>
+              <td style="padding: 8px; text-align: right; border: 1px solid ${borderColor};">${formatCurrencyExport(emp.recursal.valor)}</td>
+              <td style="padding: 8px; text-align: right; border: 1px solid ${borderColor};">${emp.execucao.processos.toLocaleString('pt-BR')}</td>
+              <td style="padding: 8px; text-align: right; border: 1px solid ${borderColor};">${formatCurrencyExport(emp.execucao.valor)}</td>
+              <td style="padding: 8px; text-align: right; border: 1px solid ${borderColor};">${emp.total.processos.toLocaleString('pt-BR')}</td>
+              <td style="padding: 8px; text-align: right; border: 1px solid ${borderColor};">${formatPercentExport(emp.total.percentualProcessos)}</td>
+              <td style="padding: 8px; text-align: right; border: 1px solid ${borderColor};">${formatCurrencyExport(emp.total.valor)}</td>
+            </tr>
+    `;
+  }
+  
+  content += `
+          </tbody>
+        </table>
+      </section>
+    </div>
+  `;
+  
+  const htmlDoc = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${title} - ${tenant}</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background-color: ${bgColor};
+      color: ${textColor};
+      line-height: 1.5;
+    }
+    @media print {
+      body { background: white !important; color: black !important; }
+      * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    }
+  </style>
+</head>
+<body>
+  ${content}
+</body>
+</html>`;
+  
+  downloadHTML(htmlDoc, `passivo-sob-gestao-${new Date().toISOString().split('T')[0]}.html`);
 }
