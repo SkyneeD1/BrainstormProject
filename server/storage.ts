@@ -1657,7 +1657,7 @@ export class MemStorage implements IStorage {
     return regiao;
   }
 
-  async getTRTsComEstatisticas(tenantId: string, responsabilidadeFilter?: string, empresaFilter?: string, instancia?: string, numeroProcesso?: string): Promise<Array<{
+  async getTRTsComEstatisticas(tenantId: string, responsabilidadeFilter?: string, empresaFilter?: string, instancia?: string, numeroProcesso?: string, ufFilter?: string): Promise<Array<{
     nome: string;
     totalTurmas: number;
     totalDesembargadores: number;
@@ -1678,7 +1678,8 @@ export class MemStorage implements IStorage {
     }>();
 
     const isFiltering = (responsabilidadeFilter && responsabilidadeFilter !== 'todas') || 
-                        (empresaFilter && empresaFilter !== 'todas');
+                        (empresaFilter && empresaFilter !== 'todas') ||
+                        (ufFilter && ufFilter !== 'todos');
 
     for (const turma of turmasList) {
       const trtKey = this.normalizeTRTKey(turma.regiao);
@@ -1704,7 +1705,7 @@ export class MemStorage implements IStorage {
         trtMap.get(trtKey)!.allDesembargadores.add(d.id);
         
         const decisoes = await this.getDecisoesRpacByDesembargador(d.id, tenantId);
-        // Filter decisoes by responsabilidade and empresa if filters are active
+        // Filter decisoes by responsabilidade, empresa, numeroProcesso, and UF if filters are active
         let filteredDecisoes = decisoes;
         if (responsabilidadeFilter && responsabilidadeFilter !== 'todas') {
           filteredDecisoes = filteredDecisoes.filter(dec => this.matchesResponsabilidade(dec.responsabilidade, responsabilidadeFilter));
@@ -1716,6 +1717,9 @@ export class MemStorage implements IStorage {
           filteredDecisoes = filteredDecisoes.filter(dec => 
             dec.numeroProcesso.toLowerCase().includes(numeroProcesso.toLowerCase())
           );
+        }
+        if (ufFilter && ufFilter !== 'todos') {
+          filteredDecisoes = filteredDecisoes.filter(dec => dec.uf === ufFilter);
         }
         
         // If this judge has matching decisions, track them for counts

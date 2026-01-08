@@ -514,7 +514,13 @@ function DesembargadorView({ desembargadores, turmaNome, trtNome, onBack, labels
   );
 }
 
-function AnalyticsPanel({ labels, instancia }: { labels: Labels; instancia: "primeira" | "segunda" }) {
+function AnalyticsPanel({ labels, instancia, estadoFilter, setEstadoFilter, estadosDisponiveis }: { 
+  labels: Labels; 
+  instancia: "primeira" | "segunda";
+  estadoFilter?: string;
+  setEstadoFilter?: (uf: string) => void;
+  estadosDisponiveis?: Array<{ uf: string; estado: string }>;
+}) {
   const [dataInicio, setDataInicio] = useState<string>(() => {
     const date = new Date();
     date.setFullYear(date.getFullYear() - 1);
@@ -533,6 +539,9 @@ function AnalyticsPanel({ labels, instancia }: { labels: Labels; instancia: "pri
     if (responsabilidadeFilter && responsabilidadeFilter !== "todas") {
       params.append("responsabilidade", responsabilidadeFilter);
     }
+    if (estadoFilter && estadoFilter !== "todos") {
+      params.append("uf", estadoFilter);
+    }
     const queryString = params.toString();
     return queryString ? `${base}?${queryString}` : base;
   };
@@ -547,12 +556,12 @@ function AnalyticsPanel({ labels, instancia }: { labels: Labels; instancia: "pri
   };
 
   const { data: estatisticas, isLoading: loadingEstat } = useQuery<Estatisticas>({
-    queryKey: ["/api/mapa-decisoes/analytics/estatisticas", instancia, dataInicio, dataFim, responsabilidadeFilter],
+    queryKey: ["/api/mapa-decisoes/analytics/estatisticas", instancia, dataInicio, dataFim, responsabilidadeFilter, estadoFilter],
     queryFn: () => fetchWithCredentials(buildUrl("/api/mapa-decisoes/analytics/estatisticas")),
   });
 
   const { data: topTurmas, isLoading: loadingTop } = useQuery<TopTurma[]>({
-    queryKey: ["/api/mapa-decisoes/analytics/top-turmas", instancia, dataInicio, dataFim, responsabilidadeFilter],
+    queryKey: ["/api/mapa-decisoes/analytics/top-turmas", instancia, dataInicio, dataFim, responsabilidadeFilter, estadoFilter],
     queryFn: () => fetchWithCredentials(buildUrl("/api/mapa-decisoes/analytics/top-turmas")),
   });
 
@@ -563,7 +572,7 @@ function AnalyticsPanel({ labels, instancia }: { labels: Labels; instancia: "pri
     desfavoraveis: number;
     percentualFavoravel: number;
   }>>({
-    queryKey: ["/api/mapa-decisoes/analytics/top-regioes", instancia, dataInicio, dataFim, responsabilidadeFilter],
+    queryKey: ["/api/mapa-decisoes/analytics/top-regioes", instancia, dataInicio, dataFim, responsabilidadeFilter, estadoFilter],
     queryFn: () => fetchWithCredentials(buildUrl("/api/mapa-decisoes/analytics/top-regioes")),
   });
 
@@ -577,12 +586,12 @@ function AnalyticsPanel({ labels, instancia }: { labels: Labels; instancia: "pri
     desfavoraveis: number;
     percentualFavoravel: number;
   }>>({
-    queryKey: ["/api/mapa-decisoes/analytics/top-desembargadores", instancia, dataInicio, dataFim, responsabilidadeFilter],
+    queryKey: ["/api/mapa-decisoes/analytics/top-desembargadores", instancia, dataInicio, dataFim, responsabilidadeFilter, estadoFilter],
     queryFn: () => fetchWithCredentials(buildUrl("/api/mapa-decisoes/analytics/top-desembargadores")),
   });
 
   const { data: timeline, isLoading: loadingTimeline } = useQuery<TimelineData[]>({
-    queryKey: ["/api/mapa-decisoes/analytics/timeline", instancia, dataInicio, dataFim, responsabilidadeFilter],
+    queryKey: ["/api/mapa-decisoes/analytics/timeline", instancia, dataInicio, dataFim, responsabilidadeFilter, estadoFilter],
     queryFn: () => fetchWithCredentials(buildUrl("/api/mapa-decisoes/analytics/timeline")),
   });
 
@@ -595,7 +604,7 @@ function AnalyticsPanel({ labels, instancia }: { labels: Labels; instancia: "pri
     percentualFavoravel: number;
     percentualDesfavoravel: number;
   }>>({
-    queryKey: ["/api/mapa-decisoes/analytics/por-empresa", instancia, dataInicio, dataFim, responsabilidadeFilter],
+    queryKey: ["/api/mapa-decisoes/analytics/por-empresa", instancia, dataInicio, dataFim, responsabilidadeFilter, estadoFilter],
     queryFn: () => fetchWithCredentials(buildUrl("/api/mapa-decisoes/analytics/por-empresa")),
   });
 
@@ -641,6 +650,23 @@ function AnalyticsPanel({ labels, instancia }: { labels: Labels; instancia: "pri
                 data-testid="input-periodo-fim"
               />
             </div>
+            {estadosDisponiveis && estadosDisponiveis.length > 0 && setEstadoFilter && (
+              <div className="flex items-center gap-2">
+                <MapPin className="h-4 w-4 text-muted-foreground" />
+                <label className="text-sm text-muted-foreground">Estado:</label>
+                <Select value={estadoFilter || "todos"} onValueChange={setEstadoFilter}>
+                  <SelectTrigger className="w-40 h-8" data-testid="select-analytics-estado">
+                    <SelectValue placeholder="Todos" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos os Estados</SelectItem>
+                    {estadosDisponiveis.map((e) => (
+                      <SelectItem key={e.uf} value={e.uf}>{e.uf} - {e.estado}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="flex items-center gap-2">
               <Filter className="h-4 w-4 text-muted-foreground" />
               <label className="text-sm text-muted-foreground">Responsabilidade:</label>
@@ -1085,6 +1111,7 @@ export default function MapaDecisoesPage() {
   const [responsabilidadeFilter, setResponsabilidadeFilter] = useState<string>("todas");
   const [empresaNavFilter, setEmpresaNavFilter] = useState<string>("todas");
   const [numeroProcessoFilter, setNumeroProcessoFilter] = useState<string>("");
+  const [analyticsEstadoFilter, setAnalyticsEstadoFilter] = useState<string>("todos");
   const [isExporting, setIsExporting] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
 
@@ -1108,13 +1135,14 @@ export default function MapaDecisoesPage() {
   });
 
   const { data: trts, isLoading: loadingTRTs } = useQuery<TRTData[]>({
-    queryKey: ["/api/mapa-decisoes/trts", instancia, responsabilidadeFilter, empresaNavFilter, numeroProcessoFilter],
+    queryKey: ["/api/mapa-decisoes/trts", instancia, responsabilidadeFilter, empresaNavFilter, numeroProcessoFilter, selectedEstado?.uf],
     queryFn: async () => {
       const params = new URLSearchParams();
       params.append("instancia", instancia);
       if (responsabilidadeFilter !== "todas") params.append("responsabilidade", responsabilidadeFilter);
       if (empresaNavFilter !== "todas") params.append("empresa", empresaNavFilter);
       if (numeroProcessoFilter.trim()) params.append("numeroProcesso", numeroProcessoFilter.trim());
+      if (selectedEstado?.uf) params.append("uf", selectedEstado.uf);
       const queryString = `?${params.toString()}`;
       const res = await fetch(`/api/mapa-decisoes/trts${queryString}`, { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to fetch TRTs');
@@ -1378,7 +1406,13 @@ export default function MapaDecisoesPage() {
         </TabsContent>
 
         <TabsContent value="analytics">
-          <AnalyticsPanel labels={labels} instancia={instancia} />
+          <AnalyticsPanel 
+            labels={labels} 
+            instancia={instancia} 
+            estadoFilter={analyticsEstadoFilter}
+            setEstadoFilter={setAnalyticsEstadoFilter}
+            estadosDisponiveis={estados?.map(e => ({ uf: e.uf, estado: e.estado })) || []}
+          />
         </TabsContent>
       </Tabs>
     </div>

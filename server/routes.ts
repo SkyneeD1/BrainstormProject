@@ -1819,7 +1819,8 @@ export async function registerRoutes(
       const empresa = req.query.empresa as string | undefined;
       const instancia = (req.query.instancia as string) || 'segunda';
       const numeroProcesso = req.query.numeroProcesso as string | undefined;
-      const trts = await storage.getTRTsComEstatisticas(tenantId, responsabilidade, empresa, instancia, numeroProcesso);
+      const uf = req.query.uf as string | undefined;
+      const trts = await storage.getTRTsComEstatisticas(tenantId, responsabilidade, empresa, instancia, numeroProcesso, uf);
       res.json(trts);
     } catch (error) {
       console.error("Error fetching TRTs:", error);
