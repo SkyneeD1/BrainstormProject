@@ -104,25 +104,37 @@ function getLabels(instancia: "primeira" | "segunda") {
 }
 
 function FavorabilityAvatar({ percentual, size = 40 }: { percentual: number; size?: number }) {
-  const greenAngle = (percentual / 100) * 360;
+  const greenPercent = Math.max(0, Math.min(100, percentual));
+  
+  const gradient = greenPercent === 100 
+    ? '#10b981' 
+    : greenPercent === 0 
+      ? '#ef4444'
+      : `conic-gradient(#10b981 0% ${greenPercent}%, #ef4444 ${greenPercent}% 100%)`;
+  
+  const innerSize = size * 0.5;
+  const fontSize = size * 0.35;
+  
   return (
     <div 
-      className="relative rounded-full overflow-hidden flex-shrink-0"
-      style={{ width: size, height: size }}
+      className="relative rounded-full flex-shrink-0 flex items-center justify-center"
+      style={{ 
+        width: size, 
+        height: size,
+        background: gradient
+      }}
     >
-      <svg viewBox="0 0 100 100" className="w-full h-full">
-        <circle cx="50" cy="50" r="50" fill="#ef4444" />
-        {percentual > 0 && (
-          <path
-            d={`M50,50 L50,0 A50,50 0 ${greenAngle > 180 ? 1 : 0},1 ${50 + 50 * Math.sin((greenAngle * Math.PI) / 180)},${50 - 50 * Math.cos((greenAngle * Math.PI) / 180)} Z`}
-            fill="#10b981"
-          />
-        )}
-        <circle cx="50" cy="50" r="25" fill="white" className="dark:fill-slate-800" />
-        <text x="50" y="56" textAnchor="middle" fontSize="18" fontWeight="bold" className="fill-slate-700 dark:fill-slate-200">
-          {percentual}
-        </text>
-      </svg>
+      <div 
+        className="rounded-full bg-white dark:bg-slate-800 flex items-center justify-center"
+        style={{ width: innerSize, height: innerSize }}
+      >
+        <span 
+          className="font-bold text-slate-700 dark:text-slate-200"
+          style={{ fontSize: fontSize }}
+        >
+          {Math.round(percentual)}
+        </span>
+      </div>
     </div>
   );
 }
