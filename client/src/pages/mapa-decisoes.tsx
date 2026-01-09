@@ -1197,9 +1197,12 @@ export default function MapaDecisoesPage() {
       const tenantName = tenant.name || tenant.code;
       const tenantColor = tenant.primaryColor || "#ffd700";
       
-      // Fetch all data for export
+      // Fetch all data for export with current filters
       const params = new URLSearchParams();
       params.append("instancia", instancia);
+      if (analyticsEstadoFilter && analyticsEstadoFilter !== "todos") {
+        params.append("uf", analyticsEstadoFilter);
+      }
       
       const exportDataRes = await fetch(`/api/mapa-decisoes/export-hierarchy?${params.toString()}`, { credentials: 'include' });
       if (!exportDataRes.ok) throw new Error('Failed to fetch export data');

@@ -1838,7 +1838,8 @@ export async function registerRoutes(
       const empresa = req.query.empresa as string | undefined;
       const instancia = (req.query.instancia as string) || 'segunda';
       const numeroProcesso = req.query.numeroProcesso as string | undefined;
-      const turmas = await storage.getTurmasByTRT(tenantId, decodeURIComponent(req.params.trtNome), responsabilidade, empresa, instancia, numeroProcesso);
+      const uf = req.query.uf as string | undefined;
+      const turmas = await storage.getTurmasByTRT(tenantId, decodeURIComponent(req.params.trtNome), responsabilidade, empresa, instancia, numeroProcesso, uf);
       res.json(turmas);
     } catch (error) {
       console.error("Error fetching turmas:", error);
@@ -1852,7 +1853,10 @@ export async function registerRoutes(
       if (!tenantId) {
         return res.status(401).json({ error: "Não autenticado" });
       }
-      const desembargadores = await storage.getDesembargadoresComDecisoesByTurma(req.params.turmaId, tenantId);
+      const responsabilidade = req.query.responsabilidade as string | undefined;
+      const empresa = req.query.empresa as string | undefined;
+      const uf = req.query.uf as string | undefined;
+      const desembargadores = await storage.getDesembargadoresComDecisoesByTurma(req.params.turmaId, tenantId, responsabilidade, empresa, uf);
       res.json(desembargadores);
     } catch (error) {
       console.error("Error fetching desembargadores:", error);
@@ -1869,7 +1873,8 @@ export async function registerRoutes(
       const dataFim = req.query.dataFim ? new Date(req.query.dataFim as string) : undefined;
       const responsabilidade = req.query.responsabilidade as string | undefined;
       const instancia = (req.query.instancia as string) || 'segunda';
-      const topTurmas = await storage.getTopTurmasFavorabilidade(tenantId, limit, dataInicio, dataFim, responsabilidade, instancia);
+      const uf = req.query.uf as string | undefined;
+      const topTurmas = await storage.getTopTurmasFavorabilidade(tenantId, limit, dataInicio, dataFim, responsabilidade, instancia, uf);
       res.json(topTurmas);
     } catch (error) {
       console.error("Error fetching top turmas:", error);
@@ -1886,7 +1891,8 @@ export async function registerRoutes(
       const dataFim = req.query.dataFim ? new Date(req.query.dataFim as string) : undefined;
       const responsabilidade = req.query.responsabilidade as string | undefined;
       const instancia = (req.query.instancia as string) || 'segunda';
-      const topRegioes = await storage.getTopRegioes(tenantId, limit, dataInicio, dataFim, responsabilidade, instancia);
+      const uf = req.query.uf as string | undefined;
+      const topRegioes = await storage.getTopRegioes(tenantId, limit, dataInicio, dataFim, responsabilidade, instancia, uf);
       res.json(topRegioes);
     } catch (error) {
       console.error("Error fetching top regioes:", error);
@@ -1903,7 +1909,8 @@ export async function registerRoutes(
       const dataFim = req.query.dataFim ? new Date(req.query.dataFim as string) : undefined;
       const responsabilidade = req.query.responsabilidade as string | undefined;
       const instancia = (req.query.instancia as string) || 'segunda';
-      const topDesembargadores = await storage.getTopDesembargadores(tenantId, limit, dataInicio, dataFim, responsabilidade, instancia);
+      const uf = req.query.uf as string | undefined;
+      const topDesembargadores = await storage.getTopDesembargadores(tenantId, limit, dataInicio, dataFim, responsabilidade, instancia, uf);
       res.json(topDesembargadores);
     } catch (error) {
       console.error("Error fetching top desembargadores:", error);
@@ -1919,7 +1926,8 @@ export async function registerRoutes(
       const dataFim = req.query.dataFim ? new Date(req.query.dataFim as string) : undefined;
       const responsabilidade = req.query.responsabilidade as string | undefined;
       const instancia = (req.query.instancia as string) || 'segunda';
-      const estatisticas = await storage.getEstatisticasGerais(tenantId, dataInicio, dataFim, responsabilidade, instancia);
+      const uf = req.query.uf as string | undefined;
+      const estatisticas = await storage.getEstatisticasGerais(tenantId, dataInicio, dataFim, responsabilidade, instancia, uf);
       res.json(estatisticas);
     } catch (error) {
       console.error("Error fetching estatisticas:", error);
@@ -1935,7 +1943,8 @@ export async function registerRoutes(
       const dataFim = req.query.dataFim ? new Date(req.query.dataFim as string) : undefined;
       const responsabilidade = req.query.responsabilidade as string | undefined;
       const instancia = (req.query.instancia as string) || 'segunda';
-      const timeline = await storage.getTimelineData(tenantId, dataInicio, dataFim, responsabilidade, instancia);
+      const uf = req.query.uf as string | undefined;
+      const timeline = await storage.getTimelineData(tenantId, dataInicio, dataFim, responsabilidade, instancia, uf);
       res.json(timeline);
     } catch (error) {
       console.error("Error fetching timeline:", error);
@@ -1951,7 +1960,8 @@ export async function registerRoutes(
       const dataFim = req.query.dataFim ? new Date(req.query.dataFim as string) : undefined;
       const responsabilidade = req.query.responsabilidade as string | undefined;
       const instancia = (req.query.instancia as string) || 'segunda';
-      const estatsPorEmpresa = await storage.getEstatisticasPorEmpresa(tenantId, dataInicio, dataFim, responsabilidade, instancia);
+      const uf = req.query.uf as string | undefined;
+      const estatsPorEmpresa = await storage.getEstatisticasPorEmpresa(tenantId, dataInicio, dataFim, responsabilidade, instancia, uf);
       res.json(estatsPorEmpresa);
     } catch (error) {
       console.error("Error fetching empresa stats:", error);
@@ -1968,16 +1978,17 @@ export async function registerRoutes(
       const instancia = (req.query.instancia as string) || 'segunda';
       const responsabilidade = req.query.responsabilidade as string | undefined;
       const empresa = req.query.empresa as string | undefined;
+      const uf = req.query.uf as string | undefined;
       
       // Get all TRTs with statistics
-      const trts = await storage.getTRTsComEstatisticas(tenantId, responsabilidade, empresa, instancia);
+      const trts = await storage.getTRTsComEstatisticas(tenantId, responsabilidade, empresa, instancia, undefined, uf);
       
       // For each TRT, get turmas and desembargadores
       const hierarchy = await Promise.all(trts.map(async (trt) => {
-        const turmas = await storage.getTurmasByTRT(tenantId, trt.nome, responsabilidade, empresa, instancia);
+        const turmas = await storage.getTurmasByTRT(tenantId, trt.nome, responsabilidade, empresa, instancia, undefined, uf);
         
         const turmasWithDesembargadores = await Promise.all(turmas.map(async (turma) => {
-          const desembargadores = await storage.getDesembargadoresComDecisoesByTurma(turma.id, tenantId);
+          const desembargadores = await storage.getDesembargadoresComDecisoesByTurma(turma.id, tenantId, responsabilidade, empresa, uf);
           return {
             ...turma,
             desembargadores: desembargadores.map(d => ({
@@ -2005,7 +2016,7 @@ export async function registerRoutes(
         };
       }));
       
-      res.json({ trts: hierarchy, instancia });
+      res.json({ trts: hierarchy, instancia, uf });
     } catch (error) {
       console.error("Error fetching export hierarchy:", error);
       res.status(500).json({ error: "Erro ao buscar hierarquia para exportação" });
