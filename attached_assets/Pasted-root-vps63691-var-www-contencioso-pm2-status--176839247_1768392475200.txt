@@ -1,0 +1,70 @@
+root@vps63691:/var/www/contencioso# pm2 status
+┌────┬────────────────────┬──────────┬──────┬───────────┬──────────┬──────────┐
+│ id │ name               │ mode     │ ↺    │ status    │ cpu      │ memory   │
+├────┼────────────────────┼──────────┼──────┼───────────┼──────────┼──────────┤
+│ 0  │ contencioso        │ fork     │ 30   │ errored   │ 0%       │ 0b       │
+└────┴────────────────────┴──────────┴──────┴───────────┴──────────┴──────────┘
+root@vps63691:/var/www/contencioso# pm2 logs contencioso --lines 30
+[TAILING] Tailing last 30 lines for [contencioso] process (change the value with --lines option)
+/root/.pm2/logs/contencioso-out.log last 30 lines:
+0|contenci | > NODE_ENV=production node dist/index.cjs
+0|contenci |
+0|contenci |
+0|contenci | > rest-express@1.0.0 start
+0|contenci | > NODE_ENV=production node dist/index.cjs
+0|contenci |
+0|contenci |
+0|contenci | > rest-express@1.0.0 start
+0|contenci | > NODE_ENV=production node dist/index.cjs
+0|contenci |
+0|contenci |
+0|contenci | > rest-express@1.0.0 start
+0|contenci | > NODE_ENV=production node dist/index.cjs
+0|contenci |
+0|contenci |
+0|contenci | > rest-express@1.0.0 start
+0|contenci | > NODE_ENV=production node dist/index.cjs
+0|contenci |
+0|contenci |
+0|contenci | > rest-express@1.0.0 start
+0|contenci | > NODE_ENV=production node dist/index.cjs
+0|contenci |
+0|contenci |
+0|contenci | > rest-express@1.0.0 start
+0|contenci | > NODE_ENV=production node dist/index.cjs
+0|contenci |
+0|contenci |
+0|contenci | > rest-express@1.0.0 start
+0|contenci | > NODE_ENV=production node dist/index.cjs
+0|contenci |
+
+/root/.pm2/logs/contencioso-error.log last 30 lines:
+0|contenci | user?.tenantId;if(!i)return e.status(401).json({error:"Tenant n\xE3o identificado"});let c=await Fe.createCasoEncerrado(i,r.body);e.status(201).json(c)}catch(i){console.error("Error creating caso encerrado:",i),e.status(500).json({error:"Erro ao criar caso encerrado"})}}),t.post("/api/casos-encerrados/batch",He,_t,$t("encerrados"),async(r,e)=>{try{let i=r.session.user?.tenantId;if(!i)return e.status(401).json({error:"Tenant n\xE3o identificado"});let c=r.body;if(!Array.isArray(c))return e.status(400).json({error:"Esperado array de itens"});let f=await Fe.createCasosEncerradosBatch(i,c);e.status(201).json({count:f.length,items:f})}catch(i){console.error("Error batch creating casos encerrados:",i),e.status(500).json({error:"Erro ao criar casos encerrados em lote"})}}),t.post("/api/casos-encerrados/upload",He,_t,$t("encerrados"),r1.single("file"),async(r,e)=>{try{if(!r.file)return e.status(400).json({error:"Arquivo n\xE3o enviado"});let i=Gs.default.read(r.file.buffer,{type:"buffer"}),c=i.SheetNames[0],f=i.Sheets[c],d=Gs.default.utils.sheet_to_json(f,{header:1,raw:!1});if(d.length<2)return e.status(400).json({error:"Arquivo vazio ou sem dados"});let v=d.slice(1).filter(_=>_.some(F=>F)).map(_=>{let F=C=>_[C]?.toString().trim()||"",T,w=F(1);if(w){let C=w.split("/");if(C.length===3){let O=parseInt(C[0])-1,q=parseInt(C[1]),M=parseInt(C[2]);M<100&&(M=2e3+M),T=new Date(M,O,q)}}return{numeroProcesso:F(0),dataEncerramento:T,tribunal:F(2),empresa:F(3).toUpperCase(),valorContingencia:F(4)}}).filter(_=>_.numeroProcesso),x=r.session.user?.tenantId;if(!x)return e.status(400).json({error:"Tenant n\xE3o identificado"});let y=await Fe.createCasosEncerradosBatch(x,v);e.status(201).json({success:!0,count:y.length,message:`${y.length} casos encerrados importados com sucesso`})}catch(i){console.error("Error uploading casos encerrados:",i),e.status(500).json({error:"Erro ao processar arquivo"})}}),t.delete("/api/casos-encerrados/:id",He,_t,$t("encerrados"),async(r,e)=>{try{let i=r.session.user?.tenantId;if(!i)return e.status(401).json({error:"N\xE3o autenticado"});await Fe.deleteCasoEncerrado(r.params.id,i),e.json({success:!0})}catch(i){console.error("Error deleting caso encerrado:",i),e.status(500).json({error:"Erro ao excluir caso encerrado"})}}),t.post("/api/casos-encerrados/delete-batch",He,_t,$t("encerrados"),async(r,e)=>{try{let{ids:i}=r.body;if(!Array.isArray(i))return e.status(400).json({error:"Esperado array de IDs"});let c=r.session.user?.tenantId;if(!c)return e.status(401).json({error:"N\xE3o autenticado"});await Fe.deleteCasosEncerradosBatch(i,c),e.json({success:!0,count:i.length})}catch(i){console.error("Error batch deleting casos encerrados:",i),e.status(500).json({error:"Erro ao excluir casos encerrados em lote"})}}),t.delete("/api/casos-encerrados",He,_t,$t("encerrados"),async(r,e)=>{try{let i=r.session.user?.tenantId;if(!i)return e.status(401).json({error:"Tenant n\xE3o identificado"});await Fe.deleteAllCasosEncerrados(i),e.json({success:!0})}catch(i){console.error("Error deleting all casos encerrados:",i),e.status(500).json({error:"Erro ao excluir todos os casos encerrados"})}}),n}var F7=qa(Ax(),1),C7=qa(require("fs"),1),j_=qa(require("path"),1);function k7(n){let t=j_.default.resolve(__dirname,"public");if(!C7.default.existsSync(t))throw new Error(`Could not find the build directory: ${t}, make sure to build the client first`);n.use(F7.default.static(t)),n.use("*",(r,e)=>{e.sendFile(j_.default.resolve(t,"index.html"))})}var I7=require("http"),Gc=(0,n1.default)(),D7=(0,I7.createServer)(Gc);Gc.use(n1.default.json({verify:(n,t,r)=>{n.rawBody=r}}));Gc.use(n1.default.urlencoded({extended:!1}));function U_(n,t="express"){let r=new Date().toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit",second:"2-digit",hour12:!0});console.log(`${r} [${t}] ${n}`)}Gc.use((n,t,r)=>{let e=Date.now(),i=n.path,c,f=t.json;t.json=function(d,...m){return c=d,f.apply(t,[d,...m])},t.on("finish",()=>{let d=Date.now()-e;if(i.startsWith("/api")){let m=`${n.method} ${i} ${t.statusCode} in ${d}ms`;c&&(m+=` :: ${JSON.stringify(c)}`),U_(m)}}),r()});(async()=>{await A7(D7,Gc),Gc.use((t,r,e,i)=>{let c=t.status||t.statusCode||500,f=t.message||"Internal Server Error";throw e.status(c).json({message:f}),t}),k7(Gc);let n=parseInt(process.env.PORT||"5000",10);D7.listen({port:n,host:"0.0.0.0",reusePort:!0},()=>{U_(`serving on port ${n}`)})})();0&&(module.exports={log});
+0|contenci |
+
+
+
+
+
+
+
+
+0|contenci |
+0|contenci | Error: DATABASE_URL must be set. Did you forget to provision a database?
+0|contenci |     at Object.<anonymous> (/var/www/contencioso/dist/index.cjs:223:74375)
+0|contenci |     at Module._compile (node:internal/modules/cjs/loader:1521:14)
+0|contenci |     at Module._extensions..js (node:internal/modules/cjs/loader:1623:10)
+0|contenci |     at Module.load (node:internal/modules/cjs/loader:1266:32)
+0|contenci |     at Module._load (node:internal/modules/cjs/loader:1091:12)
+0|contenci |     at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:164:12)
+0|contenci |     at node:internal/main/run_main_module:28:49
+0|contenci |
+0|contenci | Node.js v20.20.0
+
+netstat -tlnp | grep 5000
+^C
+root@vps63691:/var/www/contencioso# netstat -tlnp | grep 5000
+-bash: netstat: command not found
+root@vps63691:/var/www/contencioso# netstat -tlnp | grep 5000
+-bash: netstat: command not found
+root@vps63691:/var/www/contencioso#
