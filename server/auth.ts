@@ -27,6 +27,9 @@ export async function setupAuth(app: Express) {
     createTableIfMissing: false,
   });
 
+  // Trust proxy for sessions behind nginx
+  app.set("trust proxy", 1);
+  
   app.use(
     session({
       store: sessionStore,
@@ -34,7 +37,7 @@ export async function setupAuth(app: Express) {
       resave: false,
       saveUninitialized: false,
       cookie: {
-        secure: process.env.NODE_ENV === "production",
+        secure: process.env.COOKIE_SECURE === "true",
         httpOnly: true,
         maxAge: 24 * 60 * 60 * 1000, // 24 hours
         sameSite: "lax",

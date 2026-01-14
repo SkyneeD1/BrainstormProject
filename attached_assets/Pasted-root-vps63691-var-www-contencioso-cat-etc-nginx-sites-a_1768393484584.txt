@@ -1,0 +1,58 @@
+root@vps63691:/var/www/contencioso# cat > /etc/nginx/sites-available/contencioso << 'EOF'
+server {
+    listen 80;
+    server_name _;
+
+    location / {
+        proxy_pass http://localhost:5000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+
+        # Cookie settings
+        proxy_set_header Cookie $http_cookie;
+        proxy_pass_header Set-Cookie;
+    }
+}
+EOF
+root@vps63691:/var/www/contencioso# nginx -t && systemctl restart nginx
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+root@vps63691:/var/www/contencioso# pm2 logs contencioso --lines 15
+[TAILING] Tailing last 15 lines for [contencioso] process (change the value with --lines option)
+/root/.pm2/logs/contencioso-error.log last 15 lines:
+0|contenci |     _autoPong: true,
+0|contenci |     _url: 'wss://localhost/v2',
+0|contenci |     _req: null,
+0|contenci |     [Symbol(shapeMode)]: false,
+0|contenci |     [Symbol(kCapture)]: false
+0|contenci |   },
+0|contenci |   [Symbol(kType)]: 'error',
+0|contenci |   [Symbol(kError)]: AggregateError [ECONNREFUSED]:
+0|contenci |       at internalConnectMultiple (node:net:1122:18)
+0|contenci |       at afterConnectMultiple (node:net:1689:7) {
+0|contenci |     code: 'ECONNREFUSED',
+0|contenci |     [errors]: [ [Error], [Error] ]
+0|contenci |   },
+0|contenci |   [Symbol(kMessage)]: ''
+0|contenci | }
+
+/root/.pm2/logs/contencioso-out.log last 15 lines:
+0|contenci | ssage":"Unauthorized"}
+0|contenci | 9:22:15 AM [express] POST /api/login 200 in 442ms :: {"id":"3ae199f3-7aa0-4cc3-9f51-142e5948052f","username":"admin","firstName":"Administrador","lastName":"V.tal","role":"admin","modulePermissions":[],"tenant":{"id":"4a9b00be-59e2-4321-a2a2-04637bcc50de","code":"vtal","name":"V.tal","primaryColor":"#ffd700","backgroundColor":"#0a1628","logoUrl":"https://vtal.com/wp-content/uploads/2025/02/logo-vtal-footer.png"},"availableTenants":[{"id":"4a9b00be-59e2-4321-a2a2-04637bcc50de","code":"vtal","name":"V.tal","primaryColor":"#ffd700","backgroundColor":"#0a1628","logoUrl":"https://vtal.com/wp-content/uploads/2025/02/logo-vtal-footer.png"}]}
+0|contenci | 9:22:15 AM [express] GET /api/auth/user 401 in 2ms :: {"message":"Unauthorized"}
+0|contenci | 9:23:20 AM [express] POST /api/login 200 in 467ms :: {"id":"3ae199f3-7aa0-4cc3-9f51-142e5948052f","username":"admin","firstName":"Administrador","lastName":"V.tal","role":"admin","modulePermissions":[],"tenant":{"id":"4a9b00be-59e2-4321-a2a2-04637bcc50de","code":"vtal","name":"V.tal","primaryColor":"#ffd700","backgroundColor":"#0a1628","logoUrl":"https://vtal.com/wp-content/uploads/2025/02/logo-vtal-footer.png"},"availableTenants":[{"id":"4a9b00be-59e2-4321-a2a2-04637bcc50de","code":"vtal","name":"V.tal","primaryColor":"#ffd700","backgroundColor":"#0a1628","logoUrl":"https://vtal.com/wp-content/uploads/2025/02/logo-vtal-footer.png"}]}
+0|contenci | 9:23:20 AM [express] GET /api/auth/user 401 in 1ms :: {"message":"Unauthorized"}
+0|contenci | 9:24:10 AM [express] GET /api/auth/user 401 in 0ms :: {"message":"Unauthorized"}
+0|contenci | 9:24:13 AM [express] POST /api/login 200 in 472ms :: {"id":"3ae199f3-7aa0-4cc3-9f51-142e5948052f","username":"admin","firstName":"Administrador","lastName":"V.tal","role":"admin","modulePermissions":[],"tenant":{"id":"4a9b00be-59e2-4321-a2a2-04637bcc50de","code":"vtal","name":"V.tal","primaryColor":"#ffd700","backgroundColor":"#0a1628","logoUrl":"https://vtal.com/wp-content/uploads/2025/02/logo-vtal-footer.png"},"availableTenants":[{"id":"4a9b00be-59e2-4321-a2a2-04637bcc50de","code":"vtal","name":"V.tal","primaryColor":"#ffd700","backgroundColor":"#0a1628","logoUrl":"https://vtal.com/wp-content/uploads/2025/02/logo-vtal-footer.png"}]}
+0|contenci | 9:24:13 AM [express] GET /api/auth/user 401 in 2ms :: {"message":"Unauthorized"}
+0|contenci | 9:24:15 AM [express] POST /api/login 200 in 471ms :: {"id":"3ae199f3-7aa0-4cc3-9f51-142e5948052f","username":"admin","firstName":"Administrador","lastName":"V.tal","role":"admin","modulePermissions":[],"tenant":{"id":"4a9b00be-59e2-4321-a2a2-04637bcc50de","code":"vtal","name":"V.tal","primaryColor":"#ffd700","backgroundColor":"#0a1628","logoUrl":"https://vtal.com/wp-content/uploads/2025/02/logo-vtal-footer.png"},"availableTenants":[{"id":"4a9b00be-59e2-4321-a2a2-04637bcc50de","code":"vtal","name":"V.tal","primaryColor":"#ffd700","backgroundColor":"#0a1628","logoUrl":"https://vtal.com/wp-content/uploads/2025/02/logo-vtal-footer.png"}]}
+0|contenci | 9:24:16 AM [express] GET /api/auth/user 401 in 1ms :: {"message":"Unauthorized"}
+
+0|contencioso  | 9:24:37 AM [express] POST /api/login 200 in 481ms :: {"id":"3ae199f3-7aa0-4cc3-9f51-142e5948052f","username":"admin","firstName":"Administrador","lastName":"V.tal","role":"admin","modulePermissions":[],"tenant":{"id":"4a9b00be-59e2-4321-a2a2-04637bcc50de","code":"vtal","name":"V.tal","primaryColor":"#ffd700","backgroundColor":"#0a1628","logoUrl":"https://vtal.com/wp-content/uploads/2025/02/logo-vtal-footer.png"},"availableTenants":[{"id":"4a9b00be-59e2-4321-a2a2-04637bcc50de","code":"vtal","name":"V.tal","primaryColor":"#ffd700","backgroundColor":"#0a1628","logoUrl":"https://vtal.com/wp-content/uploads/2025/02/logo-vtal-footer.png"}]}
+0|contencioso  | 9:24:37 AM [express] GET /api/auth/user 401 in 1ms :: {"message":"Unauthorized"}
