@@ -54,41 +54,49 @@ async function seedDefaultTenantsAndAdmins() {
     // First, seed default tenants
     await storage.seedDefaultTenants();
     
-    // Get tenants to create admin users
+    // Get tenants
     const vtalTenant = await storage.getTenantByCode("vtal");
     const nioTenant = await storage.getTenantByCode("nio");
     
-    // Create admin for V.tal if doesn't exist
-    if (vtalTenant) {
-      const existingVtalAdmin = await storage.getUserByUsernameAndTenant("admin", vtalTenant.id);
-      if (!existingVtalAdmin) {
-        const passwordHash = await bcrypt.hash("123456", 12);
-        await storage.createUser({
-          username: "admin",
-          passwordHash,
-          firstName: "Administrador",
-          lastName: "V.tal",
-          role: "admin",
-          tenantId: vtalTenant.id,
-        });
-        console.log("Default V.tal admin user created (admin/123456)");
-      }
+    if (!vtalTenant || !nioTenant) {
+      console.error("Could not find tenants V.tal or NIO");
+      return;
     }
     
-    // Create admin for NIO if doesn't exist
-    if (nioTenant) {
-      const existingNioAdmin = await storage.getUserByUsernameAndTenant("admin", nioTenant.id);
-      if (!existingNioAdmin) {
-        const passwordHash = await bcrypt.hash("123456", 12);
-        await storage.createUser({
-          username: "admin",
-          passwordHash,
-          firstName: "Administrador",
-          lastName: "NIO",
-          role: "admin",
-          tenantId: nioTenant.id,
-        });
-        console.log("Default NIO admin user created (admin/123456)");
+    // Check if admin user already exists (by username only, not tenant-specific)
+    const allUsers = await storage.getAllUsers();
+    const existingAdmin = allUsers.find(u => u.username === "admin");
+    
+    if (!existingAdmin) {
+      // Create single admin user with V.tal as primary tenant
+      const passwordHash = await bcrypt.hash("123456", 12);
+      const adminUser = await storage.createUser({
+        username: "admin",
+        passwordHash,
+        firstName: "Administrador",
+        lastName: "Sistema",
+        role: "admin",
+        tenantId: vtalTenant.id,
+      });
+      
+      // Add admin to both tenants
+      await storage.addUserToTenant(adminUser.id, vtalTenant.id, true);
+      await storage.addUserToTenant(adminUser.id, nioTenant.id, false);
+      
+      console.log("Default admin user created with access to V.tal and NIO (admin/123456)");
+    } else {
+      // Make sure existing admin has access to both tenants
+      const userTenants = await storage.getUserTenants(existingAdmin.id);
+      const hasVtal = userTenants.some(t => t.code === "vtal");
+      const hasNio = userTenants.some(t => t.code === "nio");
+      
+      if (!hasVtal) {
+        await storage.addUserToTenant(existingAdmin.id, vtalTenant.id, false);
+        console.log("Added V.tal access to existing admin");
+      }
+      if (!hasNio) {
+        await storage.addUserToTenant(existingAdmin.id, nioTenant.id, false);
+        console.log("Added NIO access to existing admin");
       }
     }
   } catch (error) {
