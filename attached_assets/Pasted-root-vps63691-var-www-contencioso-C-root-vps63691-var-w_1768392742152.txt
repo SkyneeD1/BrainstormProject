@@ -1,0 +1,173 @@
+root@vps63691:/var/www/contencioso# ^C
+root@vps63691:/var/www/contencioso# cd /var/www/contencioso
+git pull origin main
+npm install
+npm run build
+remote: Enumerating objects: 28, done.
+remote: Counting objects: 100% (28/28), done.
+remote: Compressing objects: 100% (8/8), done.
+remote: Total 22 (delta 14), reused 22 (delta 14), pack-reused 0 (from 0)
+Unpacking objects: 100% (22/22), 23.79 KiB | 188.00 KiB/s, done.
+From https://github.com/SkyneeD1/BrainstormProject
+ * branch            main       -> FETCH_HEAD
+   666fc3b..c62ea4e  main       -> origin/main
+Updating 666fc3b..c62ea4e
+Fast-forward
+ INSTALACAO_VPS.md                                                           |  300 ++++++++++
+ ...inux-vps63691-6-1-0-38-amd64-1-SMP-PREEMPT-DYNAMIC-Deb_1768392399370.txt | 1100 +++++++++++++++++++++++++++++++++++
+ ...oot-vps63691-var-www-contencioso-cd-var-www-contencios_1768392527536.txt |  127 ++++
+ ...oot-vps63691-var-www-contencioso-pm2-status--176839247_1768392475200.txt |   70 +++
+ package-lock.json                                                           |  217 +++----
+ package.json                                                                |    2 +
+ server/db.ts                                                                |   27 +-
+ 7 files changed, 1735 insertions(+), 108 deletions(-)
+ create mode 100644 INSTALACAO_VPS.md
+ create mode 100644 attached_assets/Pasted-Linux-vps63691-6-1-0-38-amd64-1-SMP-PREEMPT-DYNAMIC-Deb_1768392399370.txt
+ create mode 100644 attached_assets/Pasted-root-vps63691-var-www-contencioso-cd-var-www-contencios_1768392527536.txt
+ create mode 100644 attached_assets/Pasted-root-vps63691-var-www-contencioso-pm2-status--176839247_1768392475200.txt
+
+added 6 packages, removed 5 packages, changed 11 packages, and audited 445 packages in 3s
+
+57 packages are looking for funding
+  run `npm fund` for details
+
+9 vulnerabilities (3 low, 5 high, 1 critical)
+
+To address issues that do not require attention, run:
+  npm audit fix
+
+To address all issues possible (including breaking changes), run:
+  npm audit fix --force
+
+Some issues need review, and may require choosing
+a different dependency.
+
+Run `npm audit` for details.
+
+> rest-express@1.0.0 build
+> tsx script/build.ts
+
+sh: 1: tsx: not found
+root@vps63691:/var/www/contencioso# export $(cat .env | xargs)
+pm2 restart contencioso
+Use --update-env to update environment variables
+[PM2] Applying action restartProcessId on app [contencioso](ids: [ 0 ])
+[PM2] [contencioso](0) ✓
+┌────┬────────────────────┬──────────┬──────┬───────────┬──────────┬──────────┐
+│ id │ name               │ mode     │ ↺    │ status    │ cpu      │ memory   │
+├────┼────────────────────┼──────────┼──────┼───────────┼──────────┼──────────┤
+│ 0  │ contencioso        │ fork     │ 1    │ online    │ 0%       │ 16.9mb   │
+└────┴────────────────────┴──────────┴──────┴───────────┴──────────┴──────────┘
+root@vps63691:/var/www/contencioso# pm2 logs contencioso --lines 10
+[TAILING] Tailing last 10 lines for [contencioso] process (change the value with --lines option)
+/root/.pm2/logs/contencioso-error.log last 10 lines:
+0|contenci |   },
+0|contenci |   [Symbol(kType)]: 'error',
+0|contenci |   [Symbol(kError)]: AggregateError [ECONNREFUSED]:
+0|contenci |       at internalConnectMultiple (node:net:1122:18)
+0|contenci |       at afterConnectMultiple (node:net:1689:7) {
+0|contenci |     code: 'ECONNREFUSED',
+0|contenci |     [errors]: [ [Error], [Error] ]
+0|contenci |   },
+0|contenci |   [Symbol(kMessage)]: ''
+0|contenci | }
+
+/root/.pm2/logs/contencioso-out.log last 10 lines:
+0|contenci | 9:08:22 AM [express] serving on port 5000
+0|contenci | 9:08:31 AM [express] GET /api/auth/user 401 in 4ms :: {"message":"Unauthorized"}
+0|contenci | 9:08:35 AM [express] POST /api/login 500 in 11ms :: {"error":"Erro no servidor"}
+0|contenci | 9:08:37 AM [express] POST /api/login 500 in 7ms :: {"error":"Erro no servidor"}
+0|contenci |
+0|contenci | > rest-express@1.0.0 start
+0|contenci | > NODE_ENV=production node dist/index.cjs
+0|contenci |
+0|contenci | Sistema iniciado sem dados pré-carregados
+0|contenci | 9:11:53 AM [express] serving on port 5000
+
+0|contencioso  | 9:12:01 AM [express] GET /api/auth/user 401 in 5ms :: {"message":"Unauthorized"}
+0|contencioso  | Login error: ul {
+0|contencioso  |   [Symbol(kTarget)]: n {
+0|contencioso  |     _events: [Object: null prototype] {
+0|contencioso  |       error: [Function],
+0|contencioso  |       message: [Function],
+0|contencioso  |       close: [Function],
+0|contencioso  |       open: [Function]
+0|contencioso  |     },
+0|contencioso  |     _eventsCount: 4,
+0|contencioso  |     _maxListeners: undefined,
+0|contencioso  |     _binaryType: 'arraybuffer',
+0|contencioso  |     _closeCode: 1006,
+0|contencioso  |     _closeFrameReceived: false,
+0|contencioso  |     _closeFrameSent: false,
+0|contencioso  |     _closeMessage: <Buffer >,
+0|contencioso  |     _closeTimer: null,
+0|contencioso  |     _errorEmitted: true,
+0|contencioso  |     _extensions: {},
+0|contencioso  |     _paused: false,
+0|contencioso  |     _protocol: '',
+0|contencioso  |     _readyState: 3,
+0|contencioso  |     _receiver: null,
+0|contencioso  |     _sender: null,
+0|contencioso  |     _socket: null,
+0|contencioso  |     _bufferedAmount: 0,
+0|contencioso  |     _isServer: false,
+0|contencioso  |     _redirects: 0,
+0|contencioso  |     _autoPong: true,
+0|contencioso  |     _url: 'wss://localhost/v2',
+0|contencioso  |     _req: null,
+0|contencioso  |     [Symbol(shapeMode)]: false,
+0|contencioso  |     [Symbol(kCapture)]: false
+0|contencioso  |   },
+0|contencioso  |   [Symbol(kType)]: 'error',
+0|contencioso  |   [Symbol(kError)]: AggregateError [ECONNREFUSED]:
+0|contencioso  |       at internalConnectMultiple (node:net:1122:18)
+0|contencioso  |       at afterConnectMultiple (node:net:1689:7) {
+0|contencioso  |     code: 'ECONNREFUSED',
+0|contencioso  |     [errors]: [ [Error], [Error] ]
+0|contencioso  |   },
+0|contencioso  |   [Symbol(kMessage)]: ''
+0|contencioso  | }
+0|contencioso  | 9:12:04 AM [express] POST /api/login 500 in 13ms :: {"error":"Erro no servidor"}
+0|contencioso  | Login error: ul {
+0|contencioso  |   [Symbol(kTarget)]: n {
+0|contencioso  |     _events: [Object: null prototype] {
+0|contencioso  |       error: [Function],
+0|contencioso  |       message: [Function],
+0|contencioso  |       close: [Function],
+0|contencioso  |       open: [Function]
+0|contencioso  |     },
+0|contencioso  |     _eventsCount: 4,
+0|contencioso  |     _maxListeners: undefined,
+0|contencioso  |     _binaryType: 'arraybuffer',
+0|contencioso  |     _closeCode: 1006,
+0|contencioso  |     _closeFrameReceived: false,
+0|contencioso  |     _closeFrameSent: false,
+0|contencioso  |     _closeMessage: <Buffer >,
+0|contencioso  |     _closeTimer: null,
+0|contencioso  |     _errorEmitted: true,
+0|contencioso  |     _extensions: {},
+0|contencioso  |     _paused: false,
+0|contencioso  |     _protocol: '',
+0|contencioso  |     _readyState: 3,
+0|contencioso  |     _receiver: null,
+0|contencioso  |     _sender: null,
+0|contencioso  |     _socket: null,
+0|contencioso  |     _bufferedAmount: 0,
+0|contencioso  |     _isServer: false,
+0|contencioso  |     _redirects: 0,
+0|contencioso  |     _autoPong: true,
+0|contencioso  |     _url: 'wss://localhost/v2',
+0|contencioso  |     _req: null,
+0|contencioso  |     [Symbol(shapeMode)]: false,
+0|contencioso  |     [Symbol(kCapture)]: false
+0|contencioso  |   },
+0|contencioso  |   [Symbol(kType)]: 'error',
+0|contencioso  |   [Symbol(kError)]: AggregateError [ECONNREFUSED]:
+0|contencioso  |       at internalConnectMultiple (node:net:1122:18)
+0|contencioso  |       at afterConnectMultiple (node:net:1689:7) {
+0|contencioso  |     code: 'ECONNREFUSED',
+0|contencioso  |     [errors]: [ [Error], [Error] ]
+0|contencioso  |   },
+0|contencioso  |   [Symbol(kMessage)]: ''
+0|contencioso  | }
+0|contencioso  | 9:12:06 AM [express] POST /api/login 500 in 10ms :: {"error":"Erro no servidor"}
